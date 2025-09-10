@@ -10,50 +10,48 @@
   --card-foreground: oklch(0.145 0 0);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.145 0 0);
-  /* Colores corporativos de seguros */
-  --primary: #1e40af; /* azul seguros */
+  --primary: #3b82f6;
   --primary-foreground: oklch(0.985 0 0);
-  --secondary: #64748b; /* gris profesional */
-  --secondary-foreground: oklch(0.985 0 0);
-  --success: #059669; /* verde confirmación */
+  --secondary: #f1f5f9;
+  --secondary-foreground: oklch(0.145 0 0);
+  --success: #10b981;
   --success-foreground: oklch(0.985 0 0);
-  --warning: #d97706; /* naranja pendientes */
-  --warning-foreground: oklch(0.985 0 0);
-  --error: #dc2626; /* rojo alertas */
+  --warning: #f59e0b;
+  --warning-foreground: oklch(0.145 0 0);
+  --error: #ef4444;
   --error-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: #dc2626;
+  --muted: oklch(0.969 0 0);
+  --muted-foreground: oklch(0.506 0 0);
+  --accent: oklch(0.969 0 0);
+  --accent-foreground: oklch(0.145 0 0);
+  --destructive: #ef4444;
   --destructive-foreground: oklch(0.985 0 0);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: #1e40af;
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
-  --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
+  --border: oklch(0.883 0 0);
+  --input: oklch(0.883 0 0);
+  --ring: #3b82f6;
+  --radius: 0.5rem;
+  --sidebar: oklch(0.98 0 0);
   --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: #1e40af;
+  --sidebar-primary: #3b82f6;
   --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: #1e40af;
+  --sidebar-accent: oklch(0.95 0 0);
+  --sidebar-accent-foreground: oklch(0.145 0 0);
+  --sidebar-border: oklch(0.883 0 0);
+  --sidebar-ring: #3b82f6;
 }
 
 .dark {
   --background: oklch(0.145 0 0);
   --foreground: oklch(0.985 0 0);
+  --sidebar: oklch(0.205 0 0);
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.269 0 0);
+  --sidebar-border: oklch(0.269 0 0);
   --card: oklch(0.145 0 0);
   --card-foreground: oklch(0.985 0 0);
   --popover: oklch(0.145 0 0);
   --popover-foreground: oklch(0.985 0 0);
-  --primary: #3b82f6; /* azul más claro para modo oscuro */
+  --primary: #3b82f6;
   --primary-foreground: oklch(0.985 0 0);
   --secondary: #64748b;
   --secondary-foreground: oklch(0.985 0 0);
@@ -88,7 +86,6 @@
 }
 
 @theme inline {
-  /* Configuración de fuente Inter */
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-geist-mono);
   --color-background: var(--background);
@@ -144,7 +141,6 @@
   }
 }
 
-/* Animaciones personalizadas para el sidebar */
 @keyframes slideIn {
   from {
     transform: translateX(-100%);

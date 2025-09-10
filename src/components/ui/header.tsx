@@ -1,9 +1,9 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
-import { useSidebar } from "./sidebar-provider"
+import { useSidebar } from "../../hooks/use-sidebar"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
@@ -28,6 +28,7 @@ import {
   Moon,
   Sun,
   PanelLeftOpen,
+  PanelLeftClose,
 } from "lucide-react"
 import { useTheme } from "next-themes"
 
@@ -46,35 +47,60 @@ export function Header() {
   const { theme, setTheme } = useTheme()
   const pathname = usePathname()
   const [searchQuery, setSearchQuery] = useState("")
+  const [isClient, setIsClient] = useState(false) // 🔥 FIX: Evitar hidratación
 
   const breadcrumbs = breadcrumbMap[pathname] || ["Dashboard"]
+
+  // 🔥 FIX: Solo renderizar en cliente después de hidratación
+  useEffect(() => {
+    setIsClient(true)
+  }, [])
+
+  // DEBUG temporal
+  console.log("=== HEADER DEBUG ===")
+  console.log("isCollapsed:", isCollapsed)
+  console.log("isMobile:", isMobile)
+  console.log("isClient:", isClient)
+  console.log("Should show desktop button:", !isMobile && isClient)
+  console.log("========================")
 
   return (
     <header
       className={cn(
-        "fixed top-0 z-40 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60",
+        "fixed top-0 z-40 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60",
         "transition-all duration-300",
-        isCollapsed ? "md:left-16" : "md:left-64",
+        isCollapsed ? "left-0 md:left-16 right-0" : "left-0 md:left-64 right-0"
       )}
     >
       <div className="flex h-16 items-center justify-between px-4 md:px-6">
-        {/* Left Section - Mobile Menu + Expand Button + Breadcrumbs */}
+        {/* Left Section */}
         <div className="flex items-center gap-4">
           {/* Mobile Menu Button */}
-          {isMobile && (
-            <Button variant="ghost" size="icon" onClick={toggleSidebar} className="md:hidden">
+          {isClient && isMobile && (
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={toggleSidebar} 
+              className="md:hidden"
+            >
               <Menu className="h-5 w-5" />
             </Button>
           )}
 
-          {isCollapsed && !isMobile && (
+          {/* 🔥 DESKTOP TOGGLE BUTTON - CON FIX DE HIDRATACIÓN */}
+          {isClient && !isMobile && (
             <Button
               variant="ghost"
               size="icon"
               onClick={toggleSidebar}
-              className="hidden md:flex bg-primary/10 hover:bg-primary/20 text-primary"
+              className="hidden md:flex bg-primary/10 hover:bg-primary/20 text-primary border-2 border-primary/20"
+              title={isCollapsed ? "Expandir sidebar" : "Colapsar sidebar"}
             >
-              <PanelLeftOpen className="h-5 w-5" />
+              {isCollapsed ? (
+                <PanelLeftOpen className="h-5 w-5" />
+              ) : (
+                <PanelLeftClose className="h-5 w-5" />
+              )}
             </Button>
           )}
 
@@ -86,7 +112,9 @@ export function Header() {
                 <ChevronRight className="h-4 w-4 mx-1" />
                 <span
                   className={cn(
-                    index === breadcrumbs.length - 1 ? "text-foreground font-medium" : "text-muted-foreground",
+                    index === breadcrumbs.length - 1 
+                      ? "text-foreground font-medium" 
+                      : "text-muted-foreground"
                   )}
                 >
                   {crumb}
@@ -96,99 +124,68 @@ export function Header() {
           </nav>
         </div>
 
-        {/* Center Section - Search */}
-        <div className="hidden md:flex flex-1 max-w-md mx-8">
+        {/* Center Section - Search Bar */}
+        <div className="hidden md:flex flex-1 max-w-md mx-4">
           <div className="relative w-full">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
             <Input
+              type="search"
               placeholder="Buscar pólizas, clientes..."
+              className="pl-10 bg-background"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 pr-4"
             />
           </div>
         </div>
 
-        {/* Right Section - Actions */}
+        {/* Right Section - Actions + User Menu */}
         <div className="flex items-center gap-2">
+          {/* Mobile Search */}
+          <div className="md:hidden">
+            <Button variant="ghost" size="icon">
+              <Search className="h-5 w-5" />
+            </Button>
+          </div>
+
+          {/* Notifications */}
+          <Button variant="ghost" size="icon" className="relative">
+            <Bell className="h-5 w-5" />
+            <Badge 
+              variant="destructive" 
+              className="absolute -top-1 -right-1 h-5 w-5 p-0 text-xs flex items-center justify-center"
+            >
+              3
+            </Badge>
+          </Button>
+
           {/* Theme Toggle */}
           <Button
             variant="ghost"
             size="icon"
             onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-            className="h-9 w-9"
           >
-            <Sun className="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-            <Moon className="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+            <Sun className="h-5 w-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
+            <Moon className="absolute h-5 w-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+            <span className="sr-only">Cambiar tema</span>
           </Button>
-
-          {/* Notifications */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="relative h-9 w-9">
-                <Bell className="h-4 w-4" />
-                <Badge className="absolute -top-1 -right-1 h-5 w-5 p-0 text-xs bg-error text-error-foreground">3</Badge>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-80">
-              <DropdownMenuLabel>Notificaciones</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem>
-                <div className="flex flex-col gap-1">
-                  <p className="text-sm font-medium">Póliza próxima a vencer</p>
-                  <p className="text-xs text-muted-foreground">La póliza #12345 vence en 5 días</p>
-                </div>
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <div className="flex flex-col gap-1">
-                  <p className="text-sm font-medium">Nuevo cliente registrado</p>
-                  <p className="text-xs text-muted-foreground">Juan Pérez se registró hace 2 horas</p>
-                </div>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-
-          {/* Tenant Selector */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="hidden md:flex items-center gap-2 h-9">
-                <Building2 className="h-4 w-4" />
-                <span className="text-sm">SEMP001</span>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuLabel>Cambiar Empresa</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem>
-                <div className="flex flex-col">
-                  <span className="font-medium">Seguros Empresariales S.A.</span>
-                  <span className="text-xs text-muted-foreground">SEMP001</span>
-                </div>
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <div className="flex flex-col">
-                  <span className="font-medium">Seguros Generales Ltda.</span>
-                  <span className="text-xs text-muted-foreground">SGEN002</span>
-                </div>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
 
           {/* User Menu */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="relative h-9 w-9 rounded-full">
-                <Avatar className="h-8 w-8">
-                  <AvatarImage src="/avatars/01.png" alt="Usuario" />
-                  <AvatarFallback>JD</AvatarFallback>
+                <Avatar className="h-9 w-9">
+                  <AvatarImage src="/avatars/01.png" alt="Avatar" />
+                  <AvatarFallback>US</AvatarFallback>
                 </Avatar>
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent className="w-56" align="end" forceMount>
               <DropdownMenuLabel className="font-normal">
                 <div className="flex flex-col space-y-1">
-                  <p className="text-sm font-medium leading-none">Juan Díaz</p>
-                  <p className="text-xs leading-none text-muted-foreground">juan.diaz@segurosapp.com</p>
+                  <p className="text-sm font-medium leading-none">Usuario Admin</p>
+                  <p className="text-xs leading-none text-muted-foreground">
+                    admin@segurosapp.com
+                  </p>
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
@@ -197,11 +194,15 @@ export function Header() {
                 <span>Perfil</span>
               </DropdownMenuItem>
               <DropdownMenuItem>
+                <Building2 className="mr-2 h-4 w-4" />
+                <span>Empresa</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem>
                 <Settings className="mr-2 h-4 w-4" />
                 <span>Configuración</span>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem className="text-red-600">
+              <DropdownMenuItem>
                 <LogOut className="mr-2 h-4 w-4" />
                 <span>Cerrar sesión</span>
               </DropdownMenuItem>
