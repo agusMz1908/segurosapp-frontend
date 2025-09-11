@@ -1,6 +1,8 @@
 "use client"
 
+import { apiClient, type LoginResponse } from '@/lib/api'
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { Eye, EyeOff, User, Lock, Shield, FileText, BarChart3 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -9,6 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Checkbox } from "@/components/ui/checkbox"
 
 export default function LoginPage() {
+  const router = useRouter()
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [formData, setFormData] = useState({
@@ -18,11 +21,12 @@ export default function LoginPage() {
   })
   const [errors, setErrors] = useState({
     username: "",
-    password: ""
+    password: "",
+    general: ""
   })
 
   const validateForm = () => {
-    const newErrors = { username: "", password: "" }
+    const newErrors = { username: "", password: "", general: "" }
     
     if (!formData.username.trim()) {
       newErrors.username = "El usuario es requerido"
@@ -37,19 +41,52 @@ export default function LoginPage() {
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+  e.preventDefault()
+  
+  if (!validateForm()) return
+  
+  setIsLoading(true)
+  setErrors(prev => ({ ...prev, general: "" }))
+  
+  try {
+    // ✅ Usar cliente API centralizado
+    const data = await apiClient.post<LoginResponse>('/api/auth/login', {
+      username: formData.username,
+      password: formData.password
+    })
     
-    if (!validateForm()) return
-    
-    setIsLoading(true)
-    console.log("Login data:", formData)
-    
-    // Simulación
-    setTimeout(() => {
-      setIsLoading(false)
-      alert("Login simulado exitoso!")
-    }, 1000)
+    console.log('Login response:', data)
+
+    if (data.success) {
+      // Guardar token
+      if (data.token) {
+        document.cookie = `seguros_token=${data.token}; path=/; max-age=${30 * 24 * 60 * 60}; secure; samesite=strict`
+        localStorage.setItem('auth_token', data.token)
+      }
+      
+      if (data.user) {
+        localStorage.setItem('user_data', JSON.stringify(data.user))
+      }
+      
+      console.log('Token guardado, redirigiendo...')
+      window.location.href = '/dashboard'
+      
+    } else {
+      setErrors(prev => ({
+        ...prev,
+        general: data.message || "Error de autenticación"
+      }))
+    }
+  } catch (error) {
+    console.error('Login error:', error)
+    setErrors(prev => ({
+      ...prev,
+      general: error instanceof Error ? error.message : "Error de conexión con el servidor"
+    }))
+  } finally {
+    setIsLoading(false)
   }
+}
 
   const handleInputChange = (field: string, value: string | boolean) => {
     setFormData(prev => ({ ...prev, [field]: value }))
@@ -65,7 +102,7 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
-      {/* Branding */}
+      {/* Branding Side */}
       <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-blue-600 to-blue-800 text-white p-12">
         <div className="flex flex-col justify-center">
           <div className="flex items-center mb-8">
@@ -90,7 +127,7 @@ export default function LoginPage() {
         </div>
       </div>
 
-      {/* Formulario */}
+      {/* Login Form */}
       <div className="w-full lg:w-1/2 flex items-center justify-center p-8">
         <div className="w-full max-w-md">
           <Card className="shadow-xl">
@@ -101,6 +138,12 @@ export default function LoginPage() {
 
             <CardContent>
               <form onSubmit={handleSubmit} className="space-y-6">
+                {errors.general && (
+                  <div className="p-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded">
+                    {errors.general}
+                  </div>
+                )}
+
                 <div className="space-y-2">
                   <Label htmlFor="username">Usuario</Label>
                   <div className="relative">

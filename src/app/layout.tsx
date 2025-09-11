@@ -1,9 +1,9 @@
 import type React from "react"
 import type { Metadata } from "next"
 import { Inter } from "next/font/google"
-import { Analytics } from "@vercel/analytics/next"
 import { ThemeProvider } from "@/components/ui/theme-provider"
-import { SidebarProvider } from "@/context/sidebar-context" 
+import { AuthProvider } from "../context/auth-context"
+import { SidebarProvider } from "../context/sidebar-context"
 import "./globals.css"
 
 const inter = Inter({
@@ -15,7 +15,6 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "SegurosApp - Gestión de Seguros Empresarial",
   description: "Plataforma integral para la gestión de pólizas de seguros",
-  generator: "SegurosApp",
 }
 
 export default function RootLayout({
@@ -25,19 +24,19 @@ export default function RootLayout({
 }) {
   return (
     <html lang="es" suppressHydrationWarning>
-      <body className={`${inter.variable} font-sans antialiased`} suppressHydrationWarning>
+      <body className={`${inter.variable} font-sans antialiased`}>
         <ThemeProvider 
           attribute="class" 
           defaultTheme="light" 
           enableSystem 
           disableTransitionOnChange
-          suppressHydrationWarning
         >
-          <SidebarProvider>
-            {children}
-          </SidebarProvider>
+          <AuthProvider>
+            <SidebarProvider>
+              {children}
+            </SidebarProvider>
+          </AuthProvider>
         </ThemeProvider>
-        <Analytics />
       </body>
     </html>
   )

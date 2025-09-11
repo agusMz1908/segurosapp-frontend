@@ -15,6 +15,7 @@ import {
   TrendingUp,
   Settings,
   ChevronLeft,
+  ChevronRight,
   Shield,
   Building2,
   Bell,
@@ -90,20 +91,23 @@ export function Sidebar() {
             <span className="text-xl font-bold text-sidebar-foreground">SegurosApp</span>
           </div>
 
-          {isCollapsed ? (
-            <div className="flex items-center justify-center w-full">
-              <Shield className="h-6 w-6 text-primary" />
-            </div>
-          ) : (
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={toggleSidebar}
-              className="h-8 w-8 text-sidebar-foreground hover:bg-sidebar-accent"
-            >
-              <ChevronLeft className="h-4 w-4 transition-transform duration-200" />
-            </Button>
-          )}
+          {/* Botón de toggle mejorado - siempre visible */}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={toggleSidebar}
+            className={cn(
+              "h-8 w-8 text-sidebar-foreground hover:bg-sidebar-accent transition-all duration-200",
+              isCollapsed ? "mx-auto" : "ml-auto"
+            )}
+            title={isCollapsed ? "Expandir sidebar" : "Colapsar sidebar"}
+          >
+            {isCollapsed ? (
+              <ChevronRight className="h-4 w-4" />
+            ) : (
+              <ChevronLeft className="h-4 w-4" />
+            )}
+          </Button>
         </div>
 
         {/* Navigation */}

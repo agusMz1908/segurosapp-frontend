@@ -1,7 +1,8 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useEffect, useState } from "react"
 import { usePathname } from "next/navigation"
+import { useAuth, type user } from "@/hooks/useAuth"
 import { cn } from "@/lib/utils"
 import { useSidebar } from "../../hooks/use-sidebar"
 import { Button } from "@/components/ui/button"
@@ -27,8 +28,6 @@ import {
   LogOut,
   Moon,
   Sun,
-  PanelLeftOpen,
-  PanelLeftClose,
 } from "lucide-react"
 import { useTheme } from "next-themes"
 
@@ -45,24 +44,29 @@ const breadcrumbMap: Record<string, string[]> = {
 export function Header() {
   const { isCollapsed, toggleSidebar, isMobile } = useSidebar()
   const { theme, setTheme } = useTheme()
+  const { logout, getUser } = useAuth()
   const pathname = usePathname()
   const [searchQuery, setSearchQuery] = useState("")
-  const [isClient, setIsClient] = useState(false) // 🔥 FIX: Evitar hidratación
+  const [user, setUser] = useState<user | null>(null)
+  const [isLoggingOut, setIsLoggingOut] = useState(false)
+
+  // Cargar datos del usuario al montar el componente
+  useEffect(() => {
+    const userData = getUser()
+    setUser(userData)
+  }, [getUser])
+
+  // Función para manejar logout
+  const handleLogout = async () => {
+    setIsLoggingOut(true)
+    try {
+      await logout()
+    } finally {
+      setIsLoggingOut(false)
+    }
+  }
 
   const breadcrumbs = breadcrumbMap[pathname] || ["Dashboard"]
-
-  // 🔥 FIX: Solo renderizar en cliente después de hidratación
-  useEffect(() => {
-    setIsClient(true)
-  }, [])
-
-  // DEBUG temporal
-  console.log("=== HEADER DEBUG ===")
-  console.log("isCollapsed:", isCollapsed)
-  console.log("isMobile:", isMobile)
-  console.log("isClient:", isClient)
-  console.log("Should show desktop button:", !isMobile && isClient)
-  console.log("========================")
 
   return (
     <header
@@ -75,8 +79,8 @@ export function Header() {
       <div className="flex h-16 items-center justify-between px-4 md:px-6">
         {/* Left Section */}
         <div className="flex items-center gap-4">
-          {/* Mobile Menu Button */}
-          {isClient && isMobile && (
+          {/* Mobile Menu Button - Solo para mobile */}
+          {isMobile && (
             <Button 
               variant="ghost" 
               size="icon" 
@@ -84,23 +88,6 @@ export function Header() {
               className="md:hidden"
             >
               <Menu className="h-5 w-5" />
-            </Button>
-          )}
-
-          {/* 🔥 DESKTOP TOGGLE BUTTON - CON FIX DE HIDRATACIÓN */}
-          {isClient && !isMobile && (
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={toggleSidebar}
-              className="hidden md:flex bg-primary/10 hover:bg-primary/20 text-primary border-2 border-primary/20"
-              title={isCollapsed ? "Expandir sidebar" : "Colapsar sidebar"}
-            >
-              {isCollapsed ? (
-                <PanelLeftOpen className="h-5 w-5" />
-              ) : (
-                <PanelLeftClose className="h-5 w-5" />
-              )}
             </Button>
           )}
 
@@ -173,18 +160,22 @@ export function Header() {
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="relative h-9 w-9 rounded-full">
-                <Avatar className="h-9 w-9">
-                  <AvatarImage src="/avatars/01.png" alt="Avatar" />
-                  <AvatarFallback>US</AvatarFallback>
+                <Avatar className="h-8 w-8">
+                  <AvatarImage src="/avatars/01.png" alt="Usuario" />
+                  <AvatarFallback>
+                    {user ? user.username.substring(0, 2).toUpperCase() : 'US'}
+                  </AvatarFallback>
                 </Avatar>
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent className="w-56" align="end" forceMount>
               <DropdownMenuLabel className="font-normal">
                 <div className="flex flex-col space-y-1">
-                  <p className="text-sm font-medium leading-none">Usuario Admin</p>
+                  <p className="text-sm font-medium leading-none">
+                    {user?.username || 'Usuario'}
+                  </p>
                   <p className="text-xs leading-none text-muted-foreground">
-                    admin@segurosapp.com
+                    {user?.email || 'usuario@segurosapp.com'}
                   </p>
                 </div>
               </DropdownMenuLabel>
@@ -194,17 +185,19 @@ export function Header() {
                 <span>Perfil</span>
               </DropdownMenuItem>
               <DropdownMenuItem>
-                <Building2 className="mr-2 h-4 w-4" />
-                <span>Empresa</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem>
                 <Settings className="mr-2 h-4 w-4" />
                 <span>Configuración</span>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem>
+              <DropdownMenuItem 
+                className="text-red-600 focus:text-red-600 focus:bg-red-50 dark:focus:bg-red-950"
+                onClick={handleLogout}
+                disabled={isLoggingOut}
+              >
                 <LogOut className="mr-2 h-4 w-4" />
-                <span>Cerrar sesión</span>
+                <span>
+                  {isLoggingOut ? 'Cerrando sesión...' : 'Cerrar sesión'}
+                </span>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
