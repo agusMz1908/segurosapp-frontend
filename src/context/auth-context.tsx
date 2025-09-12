@@ -26,24 +26,70 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://localhost:7202'
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
+  // ✅ Corregir la lógica de isAuthenticated
   const isAuthenticated = !!user
 
   useEffect(() => {
-    const token = localStorage.getItem('auth-token')
-    if (token) {
-      verifyToken(token)
-    } else {
-      setIsLoading(false)
-    }
+    initializeAuth()
   }, [])
 
-  const verifyToken = async (token: string) => {
+  const initializeAuth = async () => {
+    try {
+      // Buscar token en cookies primero, luego en localStorage
+      const cookieToken = getCookieToken()
+      const localToken = localStorage.getItem('auth_token') // Usar nombre consistente
+      const token = cookieToken || localToken
+
+      console.log('Auth initialization - Token found:', !!token)
+
+      if (token) {
+        // Intentar verificar el token
+        const userData = await verifyToken(token)
+        if (userData) {
+          setUser(userData)
+          console.log('User authenticated:', userData)
+        } else {
+          // Token inválido, limpiar
+          clearTokens()
+        }
+      }
+    } catch (error) {
+      console.error('Error initializing auth:', error)
+      clearTokens()
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const getCookieToken = (): string | null => {
+    if (typeof document === 'undefined') return null
+    
+    return document.cookie
+      .split('; ')
+      .find(row => row.startsWith('seguros_token='))
+      ?.split('=')[1] || null
+  }
+
+  const clearTokens = () => {
+    // Limpiar cookie
+    if (typeof document !== 'undefined') {
+      document.cookie = 'seguros_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT'
+    }
+    
+    // Limpiar localStorage
+    localStorage.removeItem('auth_token')
+    localStorage.removeItem('user_data')
+    
+    setUser(null)
+  }
+
+  const verifyToken = async (token: string): Promise<User | null> => {
     try {
       const response = await fetch(`${API_BASE_URL}/api/Auth/me`, {
         headers: {
@@ -54,15 +100,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       
       if (response.ok) {
         const userData = await response.json()
-        setUser(userData)
+        return userData
       } else {
-        localStorage.removeItem('auth-token')
+        console.warn('Token verification failed:', response.status)
+        return null
       }
     } catch (error) {
-      console.error('Error verificando token:', error)
-      localStorage.removeItem('auth-token')
-    } finally {
-      setIsLoading(false)
+      console.error('Error verifying token:', error)
+      return null
     }
   }
 
@@ -83,15 +128,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (response.ok) {
         const data: LoginResponse = await response.json()
         
-        // Verificar que el login fue exitoso
         if (data.success && data.token && data.user) {
-          localStorage.setItem('auth-token', data.token)
+          // Guardar en ambos lugares para consistencia
+          localStorage.setItem('auth_token', data.token)
+          localStorage.setItem('user_data', JSON.stringify(data.user))
+          
+          // También en cookie
+          document.cookie = `seguros_token=${data.token}; path=/; max-age=${30 * 24 * 60 * 60}; secure; samesite=strict`
+          
           setUser(data.user)
+          console.log('Login successful, user set:', data.user)
           return true
         }
         
         return false
       } else {
+        console.error('Login failed:', response.status)
         return false
       }
     } catch (error) {
@@ -104,8 +156,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = async () => {
     try {
-      const token = localStorage.getItem('auth-token')
+      const token = getCookieToken() || localStorage.getItem('auth_token')
+      
       if (token) {
+        // Intentar logout en backend
         await fetch(`${API_BASE_URL}/api/Auth/logout`, {
           method: 'POST',
           headers: {
@@ -113,17 +167,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             'Content-Type': 'application/json',
           }
         }).catch(() => {
-          // Si falla el logout en el backend, continuar
+          // Si falla el logout en el backend, continuar con limpieza local
+          console.warn('Backend logout failed, continuing with local cleanup')
         })
       }
     } finally {
-      localStorage.removeItem('auth-token')
-      setUser(null)
+      clearTokens()
+      console.log('Logout complete')
     }
   }
 
+  const contextValue = {
+    user,
+    login,
+    logout,
+    isLoading,
+    isAuthenticated
+  }
+
   return (
-    <AuthContext.Provider value={{ user, login, logout, isLoading, isAuthenticated }}>
+    <AuthContext.Provider value={contextValue}>
       {children}
     </AuthContext.Provider>
   )

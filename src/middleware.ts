@@ -7,28 +7,29 @@ export function middleware(request: NextRequest) {
   
   const { pathname } = request.nextUrl
 
-  // Rutas públicas que no requieren autenticación
-  const publicRoutes = ['/login', '/api/auth/login']
+  // Rutas que no requieren intervención del middleware
+  const publicRoutes = ['/login', '/api/auth/login', '/']
   
   console.log(`Middleware: ${pathname}, Token: ${token ? 'EXISTS' : 'NONE'}`)
   
-  // Si está en una ruta pública
-  if (publicRoutes.some(route => pathname.startsWith(route))) {
-    // Si tiene token y va a login, redirigir al dashboard
+  // Si está en una ruta pública, permitir que pase
+  if (publicRoutes.some(route => pathname === route || pathname.startsWith(route))) {
+    // Excepción: Si tiene token y va específicamente a login, redirigir al dashboard
     if (token && pathname === '/login') {
       console.log('Redirect: Login -> Dashboard (tiene token)')
       return NextResponse.redirect(new URL('/dashboard', request.url))
     }
+    
     return NextResponse.next()
   }
 
-  // Si no tiene token y no está en ruta pública, redirigir a login
+  // Para todas las demás rutas protegidas
   if (!token) {
-    console.log('Redirect: Dashboard -> Login (sin token)')
+    console.log('Redirect: Protected route -> Login (sin token)')
     return NextResponse.redirect(new URL('/login', request.url))
   }
 
-  // Permitir acceso
+  // Permitir acceso a rutas protegidas si tiene token
   return NextResponse.next()
 }
 

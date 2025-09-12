@@ -2,290 +2,416 @@
 "use client"
 
 import { useState, useCallback } from 'react';
-
-export interface Cliente {
-  id: number;
-  nombre: string;
-  documento: string;
-  email?: string;
-  telefono?: string;
-  activo: boolean;
-}
-
-export interface Compania {
-  id: number;
-  nombre: string;
-  codigo?: string;
-  activa: boolean;
-}
-
-export interface Seccion {
-  id: number;
-  nombre: string;
-  codigo?: string;
-  companiaId?: number;
-  activa: boolean;
-}
-
-export interface MasterDataItem {
-  id: number;
-  nombre: string;
-  codigo?: string;
-  valor?: string;
-  activo: boolean;
-}
-
-// Mock data - Replace with real API calls
-const mockClientes: Cliente[] = [
-  { id: 1, nombre: "Juan Pérez", documento: "12345678-9", email: "juan@email.com", activo: true },
-  { id: 2, nombre: "María González", documento: "87654321-0", email: "maria@email.com", activo: true },
-  { id: 3, nombre: "Carlos Ruiz", documento: "11223344-5", email: "carlos@email.com", activo: true },
-  { id: 4, nombre: "Ana López", documento: "99887766-4", email: "ana@email.com", activo: true },
-  { id: 5, nombre: "Roberto Silva", documento: "55443322-1", email: "roberto@email.com", activo: true },
-];
-
-const mockCompanias: Compania[] = [
-  { id: 1, nombre: "Sura Seguros", codigo: "SURA", activa: true },
-  { id: 2, nombre: "Mapfre Uruguay", codigo: "MAPFRE", activa: true },
-  { id: 3, nombre: "BSE - Banco de Seguros del Estado", codigo: "BSE", activa: true },
-  { id: 4, nombre: "Berkley International", codigo: "BERKLEY", activa: true },
-];
-
-const mockSecciones: Seccion[] = [
-  { id: 1, nombre: "Automotor", codigo: "AUTO", activa: true },
-  { id: 2, nombre: "Hogar", codigo: "HOGAR", activa: true },
-  { id: 3, nombre: "Vida", codigo: "VIDA", activa: true },
-  { id: 4, nombre: "Accidentes Personales", codigo: "AP", activa: true },
-  { id: 5, nombre: "Responsabilidad Civil", codigo: "RC", activa: true },
-];
-
-const mockMasterData = {
-  combustibles: [
-    { id: 1, nombre: "Nafta", codigo: "NAFTA", activo: true },
-    { id: 2, nombre: "Gasoil", codigo: "GASOIL", activo: true },
-    { id: 3, nombre: "GNC", codigo: "GNC", activo: true },
-    { id: 4, nombre: "Eléctrico", codigo: "ELEC", activo: true },
-  ],
-  categorias: [
-    { id: 1, nombre: "Particular", codigo: "PART", activo: true },
-    { id: 2, nombre: "Comercial", codigo: "COMER", activo: true },
-    { id: 3, nombre: "Transporte", codigo: "TRANS", activo: true },
-  ],
-  "usos-vehiculo": [
-    { id: 1, nombre: "Particular", codigo: "PART", activo: true },
-    { id: 2, nombre: "Comercial liviano", codigo: "COMER_LIV", activo: true },
-    { id: 3, nombre: "Taxi/Remise", codigo: "TAXI", activo: true },
-    { id: 4, nombre: "Carga", codigo: "CARGA", activo: true },
-  ],
-};
-
-// Simulate API delay
-const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+import { apiClient } from '@/lib/api';
+import {
+  mapClienteItemToCliente,
+  mapCompaniaItemToCompania,
+  mapSeccionItemToSeccion
+} from '@/lib/mappers';
+import type {
+  Cliente,
+  ClienteItem,
+  Compania,
+  CompaniaItem,
+  Seccion,
+  SeccionItem,
+  MasterDataItem,
+  ApiResponse,
+  PaginatedResponse
+} from '@/types/master-data';
 
 export function useMasterData() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Función para obtener el token de autorización
-  const getAuthToken = useCallback(() => {
-    return localStorage.getItem('token') || '';
+  // =================== CLIENTES ===================
+
+  const searchClientes = useCallback(async (query: string, limit: number = 10): Promise<Cliente[]> => {
+    try {
+      if (!query || query.length < 2) {
+        return [];
+      }
+
+      setLoading(true);
+      setError(null);
+
+      const response = await apiClient.get<ApiResponse<ClienteItem[]>>(
+        `/api/MasterData/clientes/search?query=${encodeURIComponent(query)}&limit=${limit}`
+      );
+
+      // Verificar si es el formato ApiResponse o directo
+      let clientes: ClienteItem[] = [];
+      if (response && Array.isArray(response)) {
+        // Si viene directo como array
+        clientes = response;
+      } else if (response && response.data) {
+        // Si viene como ApiResponse<T>
+        clientes = response.data;
+      } else if (response && response.success && response.data) {
+        // Si viene como ApiResponse con success flag
+        clientes = response.data;
+      } else {
+        console.warn('Formato de respuesta inesperado:', response);
+        return [];
+      }
+
+      // Mapear ClienteItem[] a Cliente[]
+      const clientesMapeados = clientes.map(mapClienteItemToCliente);
+      
+      console.log(`✅ Búsqueda clientes: ${clientesMapeados.length} resultados para "${query}"`);
+      return clientesMapeados;
+
+    } catch (error: any) {
+      console.error('❌ Error searching clientes:', error);
+      let errorMessage = 'Error desconocido buscando clientes';
+      
+      if (error.response?.status === 404) {
+        errorMessage = 'Endpoint de búsqueda de clientes no encontrado';
+      } else if (error.response?.status === 401) {
+        errorMessage = 'Sin autorización para buscar clientes';
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      setError(errorMessage);
+      throw new Error(errorMessage);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  // Función genérica para hacer requests
-  const makeRequest = useCallback(async <T>(
-    url: string,
-    options?: RequestInit
-  ): Promise<T> => {
+  const getClientes = useCallback(async (page: number = 1, pageSize: number = 50, search?: string): Promise<PaginatedResponse<Cliente>> => {
     try {
       setLoading(true);
       setError(null);
 
-      const response = await fetch(url, {
-        ...options,
-        headers: {
-          'Authorization': `Bearer ${getAuthToken()}`,
-          'Content-Type': 'application/json',
-          ...options?.headers,
-        },
+      // ✅ RUTA CORREGIDA: /api/MasterData/clientes para lista paginada
+      const params = new URLSearchParams({
+        page: page.toString(),
+        pageSize: pageSize.toString()
       });
 
-      if (!response.ok) {
-        throw new Error(`Error ${response.status}: ${response.statusText}`);
+      if (search && search.trim()) {
+        params.append('search', search.trim());
       }
 
-      const result = await response.json();
-      return result.data || result;
+      const response = await apiClient.get<any>(
+        `/api/MasterData/clientes?${params.toString()}`
+      );
+
+      // El backend podría devolver formato diferente, adaptarse
+      const items = response.items || response.data || response || [];
+      const mappedItems = items.map(mapClienteItemToCliente);
+
+      const result: PaginatedResponse<Cliente> = {
+        items: mappedItems,
+        totalCount: response.totalCount || mappedItems.length,
+        currentPage: response.currentPage || page,
+        pageNumber: response.pageNumber || page,
+        pageSize: response.pageSize || pageSize,
+        totalPages: response.totalPages || Math.ceil((response.totalCount || mappedItems.length) / pageSize),
+        hasNextPage: response.hasNextPage || false,
+        hasPreviousPage: response.hasPreviousPage || false,
+        startItem: response.startItem,
+        endItem: response.endItem
+      };
+
+      console.log(`✅ Lista clientes: ${result.items.length}/${result.totalCount} (página ${page})`);
+      return result;
 
     } catch (error: any) {
-      console.error(`Error fetching data from ${url}:`, error);
-      setError(error.message || 'Error desconocido');
-      throw error;
+      console.error('❌ Error getting clientes:', error);
+      const errorMessage = error.message || 'Error desconocido obteniendo clientes';
+      setError(errorMessage);
+      throw new Error(errorMessage);
     } finally {
       setLoading(false);
-    }
-  }, [getAuthToken]);
-
-  // Clientes
-  const getClientes = useCallback(async (): Promise<Cliente[]> => {
-    try {
-      // Simular llamada a la API real - reemplazar con makeRequest cuando esté listo
-      await delay(500);
-      return mockClientes.filter(c => c.activo);
-    } catch (error) {
-      console.error('Error getting clientes:', error);
-      return [];
-    }
-  }, []);
-
-  const searchClientes = useCallback(async (query: string): Promise<Cliente[]> => {
-    try {
-      await delay(300);
-      
-      if (!query.trim()) return [];
-      
-      const normalizedQuery = query.toLowerCase();
-      return mockClientes.filter(cliente => 
-        cliente.activo && (
-          cliente.nombre.toLowerCase().includes(normalizedQuery) ||
-          cliente.documento.includes(normalizedQuery) ||
-          (cliente.email && cliente.email.toLowerCase().includes(normalizedQuery))
-        )
-      );
-    } catch (error) {
-      console.error('Error searching clientes:', error);
-      return [];
     }
   }, []);
 
   const getClienteById = useCallback(async (id: number): Promise<Cliente | null> => {
     try {
-      await delay(200);
-      return mockClientes.find(c => c.id === id && c.activo) || null;
-    } catch (error) {
-      console.error('Error getting cliente by id:', error);
+      if (id <= 0) {
+        throw new Error('ID de cliente debe ser mayor a 0');
+      }
+
+      setLoading(true);
+      setError(null);
+
+      // ✅ RUTA CORREGIDA: /api/MasterData/clientes/{id}
+      const response = await apiClient.get<any>(
+        `/api/MasterData/clientes/${id}`
+      );
+
+      let clienteItem: ClienteItem | null = null;
+      
+      if (response && response.data) {
+        clienteItem = response.data;
+      } else if (response && response.id) {
+        clienteItem = response;
+      }
+
+      if (!clienteItem) {
+        return null;
+      }
+
+      const cliente = mapClienteItemToCliente(clienteItem);
+      
+      console.log(`✅ Cliente obtenido: ${cliente.displayName} (ID: ${id})`);
+      return cliente;
+
+    } catch (error: any) {
+      console.error(`❌ Error getting cliente ${id}:`, error);
+      
+      // Si es 404, devolver null sin error
+      if (error.response?.status === 404 || error.message?.includes('404') || error.message?.includes('no encontrado')) {
+        return null;
+      }
+      
+      const errorMessage = error.message || 'Error desconocido obteniendo cliente';
+      setError(errorMessage);
       return null;
+    } finally {
+      setLoading(false);
     }
   }, []);
 
-  // Compañías
+  // =================== COMPAÑÍAS ===================
+
   const getCompanias = useCallback(async (): Promise<Compania[]> => {
     try {
-      // En producción, usar: return await makeRequest<Compania[]>('/api/master-data/companias');
-      await delay(400);
-      return mockCompanias.filter(c => c.activa);
-    } catch (error) {
-      console.error('Error getting companias:', error);
+      setLoading(true);
+      setError(null);
+
+      // ✅ RUTA CORREGIDA: Usar el endpoint específico de compañías
+      const response = await apiClient.get<any>('/api/MasterData/companias');
+
+      let companias: CompaniaItem[] = [];
+      
+      // Adaptarse a diferentes formatos de respuesta
+      if (response && Array.isArray(response)) {
+        companias = response;
+      } else if (response && response.data && Array.isArray(response.data)) {
+        companias = response.data;
+      } else if (response && response.success && response.data) {
+        companias = response.data;
+      } else {
+        console.warn('Formato de respuesta inesperado para compañías:', response);
+        return [];
+      }
+
+      // Filtrar solo activas y mapear
+      const companiasMapeadas = companias
+        .filter((c: CompaniaItem) => c.isActive)
+        .map(mapCompaniaItemToCompania);
+
+      console.log(`✅ Compañías obtenidas: ${companiasMapeadas.length}`);
+      return companiasMapeadas;
+
+    } catch (error: any) {
+      console.error('❌ Error getting companias:', error);
+      let errorMessage = 'Error desconocido obteniendo compañías';
+      
+      if (error.response?.status === 404) {
+        errorMessage = 'Endpoint de compañías no encontrado';
+      } else if (error.response?.status === 401) {
+        errorMessage = 'Sin autorización para obtener compañías';
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      setError(errorMessage);
       return [];
+    } finally {
+      setLoading(false);
     }
   }, []);
 
   const getCompaniaById = useCallback(async (id: number): Promise<Compania | null> => {
     try {
-      await delay(200);
-      return mockCompanias.find(c => c.id === id && c.activa) || null;
+      const companias = await getCompanias();
+      return companias.find(c => c.id === id) || null;
     } catch (error) {
-      console.error('Error getting compania by id:', error);
+      console.error(`❌ Error getting compania ${id}:`, error);
       return null;
     }
-  }, []);
+  }, [getCompanias]);
 
-  // Secciones
-  const getSecciones = useCallback(async (companiaId?: number): Promise<Seccion[]> => {
+  // =================== SECCIONES ===================
+
+  const getSecciones = useCallback(async (): Promise<Seccion[]> => {
     try {
-      // En producción, usar: 
-      // const url = companiaId ? `/api/master-data/secciones?companiaId=${companiaId}` : '/api/master-data/secciones';
-      // return await makeRequest<Seccion[]>(url);
+      setLoading(true);
+      setError(null);
+
+      const url = '/api/MasterData/secciones';
+      const response = await apiClient.get<any>(url);
+      let secciones: SeccionItem[] = [];
       
-      await delay(400);
+      // Adaptarse a diferentes formatos de respuesta
+      if (response && Array.isArray(response)) {
+        secciones = response;
+      } else if (response && response.data && Array.isArray(response.data)) {
+        secciones = response.data;
+      } else if (response && response.success && response.data) {
+        secciones = response.data;
+      } else {
+        console.warn('Formato de respuesta inesperado para secciones:', response);
+        return [];
+      }
+
+      // Filtrar solo activas y mapear
+      const seccionesMapeadas = secciones
+        .filter((s: SeccionItem) => s.isActive)
+        .map(mapSeccionItemToSeccion);
+      return seccionesMapeadas;
+
+    } catch (error: any) {
+      console.error('❌ Error getting secciones:', error);
+      let errorMessage = 'Error desconocido obteniendo secciones';
       
-      // Por ahora devolvemos todas las secciones activas
-      // En el futuro se pueden filtrar por compañía si es necesario
-      return mockSecciones.filter(s => s.activa);
-    } catch (error) {
-      console.error('Error getting secciones:', error);
+      if (error.response?.status === 404) {
+        errorMessage = 'Endpoint de secciones no encontrado';
+      } else if (error.response?.status === 401) {
+        errorMessage = 'Sin autorización para obtener secciones';
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      setError(errorMessage);
       return [];
+    } finally {
+      setLoading(false);
     }
   }, []);
 
   const getSeccionById = useCallback(async (id: number): Promise<Seccion | null> => {
     try {
-      await delay(200);
-      return mockSecciones.find(s => s.id === id && s.activa) || null;
+      const secciones = await getSecciones();
+      return secciones.find(s => s.id === id) || null;
     } catch (error) {
-      console.error('Error getting seccion by id:', error);
+      console.error(`❌ Error getting seccion ${id}:`, error);
       return null;
     }
-  }, []);
+  }, [getSecciones]);
 
-  // Datos maestros específicos (combustibles, categorías, etc.)
+  // =================== DATOS MAESTROS ESPECÍFICOS ===================
+
   const getMasterDataByType = useCallback(async (type: string): Promise<MasterDataItem[]> => {
     try {
-      // En producción, usar: return await makeRequest<MasterDataItem[]>(`/api/master-data/${type}`);
-      await delay(300);
+      setLoading(true);
+      setError(null);
+
+      // ✅ ENDPOINTS ESPECÍFICOS según el tipo
+      const endpointMap: Record<string, string> = {
+        'combustibles': '/api/MasterData/combustibles',
+        'categorias': '/api/MasterData/categorias',
+        'departamentos': '/api/MasterData/departamentos',
+        'corredores': '/api/MasterData/corredores',
+        'destinos': '/api/MasterData/destinos',
+        'calidades': '/api/MasterData/calidades',
+        'tarifas': '/api/MasterData/tarifas'
+      };
+
+      const endpoint = endpointMap[type];
+      if (!endpoint) {
+        console.warn(`Tipo de master data '${type}' no soportado`);
+        return [];
+      }
+
+      const response = await apiClient.get<any>(endpoint);
+
+      let items: any[] = [];
       
-      const data = mockMasterData[type as keyof typeof mockMasterData];
-      if (!data) {
-        throw new Error(`Tipo de dato maestro '${type}' no encontrado`);
+      // Adaptarse a diferentes formatos
+      if (response && Array.isArray(response)) {
+        items = response;
+      } else if (response && response.data && Array.isArray(response.data)) {
+        items = response.data;
+      } else {
+        console.warn(`Formato de respuesta inesperado para '${type}':`, response);
+        return [];
       }
       
-      return data.filter(item => item.activo);
-    } catch (error) {
-      console.error(`Error getting master data for type ${type}:`, error);
+      // Convertir a formato MasterDataItem estándar
+      const mappedItems: MasterDataItem[] = items
+        .filter((item: any) => item.activo !== false)
+        .map((item: any) => ({
+          id: item.id,
+          nombre: item.nombre || item.displayName || item.DisplayName || 'Sin nombre',
+          codigo: item.codigo || item.Codigo,
+          valor: item.valor || item.Valor,
+          activo: item.activo !== false
+        }));
+
+      console.log(`✅ Master data '${type}': ${mappedItems.length} items`);
+      return mappedItems;
+
+    } catch (error: any) {
+      console.error(`❌ Error getting master data '${type}':`, error);
+      const errorMessage = error.message || `Error obteniendo master data '${type}'`;
+      setError(errorMessage);
       return [];
+    } finally {
+      setLoading(false);
     }
   }, []);
 
-  // Función para crear nuevo cliente (si es necesario en el futuro)
+  // =================== UTILIDADES ===================
+
+  const preloadCommonData = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      console.log('🔄 Precargando datos maestros comunes...');
+      
+      // ✅ Usar endpoints específicos en paralelo
+      await Promise.allSettled([
+        getCompanias(),
+        getSecciones(),
+        getMasterDataByType('combustibles'),
+        getMasterDataByType('categorias'),
+        getMasterDataByType('departamentos')
+      ]);
+      
+      console.log('✅ Datos maestros precargados exitosamente');
+      
+    } catch (error: any) {
+      console.error('❌ Error precargando datos maestros:', error);
+      setError(error.message || 'Error precargando datos');
+    } finally {
+      setLoading(false);
+    }
+  }, [getCompanias, getSecciones, getMasterDataByType]);
+
+  const clearError = useCallback(() => {
+    setError(null);
+  }, []);
+
+  // =================== CREAR CLIENTE (FUTURO) ===================
+
   const createCliente = useCallback(async (clienteData: Partial<Cliente>): Promise<Cliente | null> => {
     try {
       setLoading(true);
       setError(null);
 
-      // En producción, usar makeRequest
-      await delay(800);
+      // TODO: Implementar cuando esté disponible el endpoint de creación
+      // const response = await apiClient.post<ApiResponse<ClienteItem>>('/MasterData/clientes', clienteData);
+      // return mapClienteItemToCliente(response.data);
       
-      // Mock creation
-      const newCliente: Cliente = {
-        id: Math.max(...mockClientes.map(c => c.id)) + 1,
-        nombre: clienteData.nombre || '',
-        documento: clienteData.documento || '',
-        email: clienteData.email,
-        telefono: clienteData.telefono,
-        activo: true,
-      };
-
-      mockClientes.push(newCliente);
-      return newCliente;
+      console.warn('⚠️ Creación de clientes aún no implementada en el backend');
+      throw new Error('Creación de clientes no disponible aún');
 
     } catch (error: any) {
-      console.error('Error creating cliente:', error);
-      setError(error.message || 'Error creando cliente');
+      console.error('❌ Error creating cliente:', error);
+      const errorMessage = error.message || 'Error creando cliente';
+      setError(errorMessage);
       return null;
     } finally {
       setLoading(false);
     }
   }, []);
-
-  // Hook para precargar datos comunes
-  const preloadCommonData = useCallback(async () => {
-    try {
-      setLoading(true);
-      
-      // Precargar datos que se usan frecuentemente
-      await Promise.all([
-        getCompanias(),
-        getSecciones(),
-        getMasterDataByType('combustibles'),
-        getMasterDataByType('categorias'),
-        getMasterDataByType('usos-vehiculo'),
-      ]);
-      
-    } catch (error) {
-      console.error('Error preloading data:', error);
-    } finally {
-      setLoading(false);
-    }
-  }, [getCompanias, getSecciones, getMasterDataByType]);
 
   return {
     // Estado
@@ -309,8 +435,9 @@ export function useMasterData() {
     // Datos maestros
     getMasterDataByType,
     
-    // Utils
+    // Utilidades
     preloadCommonData,
+    clearError,
     setError,
   };
 }

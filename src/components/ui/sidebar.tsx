@@ -154,23 +154,6 @@ export function Sidebar() {
 
         {/* Footer section */}
         <div className="mt-auto">
-          {/* Notificaciones */}
-          {isCollapsed ? (
-            <div className="p-4 border-t border-sidebar-border flex justify-center">
-              <div className="relative">
-                <Bell className="h-5 w-5 text-sidebar-foreground" />
-                <div className="absolute -top-1 -right-1 h-3 w-3 bg-warning rounded-full"></div>
-              </div>
-            </div>
-          ) : (
-            <div className="p-4 border-t border-sidebar-border">
-              <div className="flex items-center gap-2 text-sm text-sidebar-foreground">
-                <Bell className="h-4 w-4" />
-                <span>5 notificaciones pendientes</span>
-              </div>
-            </div>
-          )}
-
           {/* Información del tenant */}
           <div className="p-4 border-t border-sidebar-border">
             <div className={cn("flex items-center gap-2", isCollapsed && "justify-center")}>

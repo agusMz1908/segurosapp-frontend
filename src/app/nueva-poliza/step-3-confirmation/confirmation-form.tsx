@@ -46,14 +46,6 @@ export function ConfirmationForm({ hookInstance }: ConfirmationFormProps) {
       </div>
 
       <ReviewState hookInstance={hookInstance} />
-
-      <Alert>
-        <AlertTriangle className="h-4 w-4" />
-        <AlertDescription>
-          <strong>Importante:</strong> Al hacer clic en "Enviar a Velneo", se creará la póliza definitivamente 
-          en tu sistema. Asegúrate de que toda la información sea correcta antes de continuar.
-        </AlertDescription>
-      </Alert>
     </div>
   );
 }

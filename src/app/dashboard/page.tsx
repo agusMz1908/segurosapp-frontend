@@ -86,45 +86,69 @@ export default function DashboardPage() {
   const { isAuthenticated, isLoading, user } = useAuth()
 
   useEffect(() => {
+    // Solo redirigir si ya terminó de cargar y no está autenticado
     if (!isLoading && !isAuthenticated) {
-      router.push('/login')
+      console.log('Dashboard: Not authenticated, redirecting to login')
+      router.replace('/login')
     }
   }, [isAuthenticated, isLoading, router])
 
+  // Mostrar loading mientras se verifica autenticación
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
-          <p className="mt-4 text-muted-foreground">Cargando dashboard...</p>
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <div className="bg-blue-600 rounded-full p-4 shadow-lg w-16 h-16 mx-auto flex items-center justify-center">
+            <Shield className="h-8 w-8 text-white" />
+          </div>
+          <h1 className="text-xl font-bold text-gray-900 dark:text-white">
+            SegurosApp
+          </h1>
+          <div className="flex items-center justify-center space-x-2">
+            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+            <p className="text-gray-600 dark:text-gray-400">
+              Cargando dashboard...
+            </p>
+          </div>
         </div>
       </div>
     )
   }
 
+  // Si no está autenticado después del loading, mostrar brevemente antes de redirect
   if (!isAuthenticated) {
-    return null // El useEffect ya redirige
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="text-gray-600 dark:text-gray-400">
+            Redirigiendo al login...
+          </p>
+        </div>
+      </div>
+    )
+  }
+
+  const handleNewPolicy = () => {
+    router.push('/nueva-poliza')
   }
 
   return (
     <AppLayout>
-      <div className="space-y-8">
+      <div className="space-y-8 py-10">
         {/* Header con saludo personalizado */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
             <h1 className="text-3xl font-bold tracking-tight">
-            Bienvenido, {user?.username || 'Usuario'}
+              Bienvenido
             </h1>
-            <p className="text-muted-foreground text-lg">
-              Resumen general de tu cartera de seguros
-            </p>
           </div>
           <div className="flex gap-2">
             <Button variant="outline" size="sm">
               <Eye className="h-4 w-4 mr-2" />
               Ver reportes
             </Button>
-            <Button size="sm">
+            <Button size="sm" onClick={handleNewPolicy}>
               <Plus className="h-4 w-4 mr-2" />
               Nueva póliza
             </Button>
@@ -132,7 +156,7 @@ export default function DashboardPage() {
         </div>
 
         {/* Métricas principales */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
           {metrics.map((metric) => {
             const Icon = metric.icon
             const TrendIcon = metric.trend === "up" ? TrendingUp : TrendingDown
@@ -251,7 +275,11 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <Button variant="outline" className="h-auto p-4 flex flex-col items-center gap-2">
+              <Button 
+                variant="outline" 
+                className="h-auto p-4 flex flex-col items-center gap-2"
+                onClick={handleNewPolicy}
+              >
                 <Plus className="h-6 w-6" />
                 <span>Nueva Póliza</span>
               </Button>

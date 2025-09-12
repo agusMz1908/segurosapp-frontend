@@ -36,7 +36,6 @@ export function SuccessState({ polizaNumber }: SuccessStateProps) {
       <div className="text-center py-12">
         <div className="relative mb-6">
           <CheckCircle className="mx-auto h-24 w-24 text-green-500" />
-          <Sparkles className="absolute -top-2 -right-2 h-8 w-8 text-yellow-400 animate-pulse" />
         </div>
         
         <h2 className="text-3xl font-bold text-green-700 mb-4">
@@ -64,11 +63,6 @@ export function SuccessState({ polizaNumber }: SuccessStateProps) {
                   <Copy className="h-4 w-4" />
                 </Button>
               </div>
-              
-              <div className="flex items-center justify-center gap-2 text-sm text-gray-600">
-                <CheckCircle className="h-4 w-4 text-green-500" />
-                <span>Integrada en sistema Velneo</span>
-              </div>
             </div>
           </CardContent>
         </Card>
@@ -91,13 +85,6 @@ export function SuccessState({ polizaNumber }: SuccessStateProps) {
             <FileText className="mr-2 h-5 w-5" />
             Crear Nueva Poliza
           </Button>
-        </div>
-
-        <div className="mt-8 p-4 bg-green-50 rounded-lg max-w-md mx-auto">
-          <p className="text-sm text-green-700">
-            <CheckCircle className="inline h-4 w-4 mr-1" />
-            Tu poliza ya esta disponible en el sistema Velneo y puedes consultarla en el dashboard principal.
-          </p>
         </div>
       </div>
     </div>
