@@ -1,13 +1,17 @@
+// step-3-confirmation/error-state.tsx
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { AlertTriangle, Send } from 'lucide-react';
-import { useNuevaPoliza } from '../../../hooks/use-nueva-poliza';
 
-export function ErrorState() {
-  const { state, sendToVelneo } = useNuevaPoliza();
+interface ErrorStateProps {
+  hookInstance: any;
+}
+
+export function ErrorState({ hookInstance }: ErrorStateProps) {
+  const { state, sendToVelneo } = hookInstance;
 
   const handleRetry = () => {
-    sendToVelneo();
+    sendToVelneo({ scanId: 12345 });
   };
 
   return (

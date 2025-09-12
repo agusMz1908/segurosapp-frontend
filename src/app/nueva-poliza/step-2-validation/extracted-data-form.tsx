@@ -4,9 +4,17 @@ import { Label } from '@/components/ui/label';
 import { CheckCircle, AlertTriangle } from 'lucide-react';
 import { useNuevaPoliza } from '../../../hooks/use-nueva-poliza';
 
-export function ExtractedDataForm() {
+interface ExtractedDataFormProps {
+  hookInstance: any
+}
+
+export function ExtractedDataForm({ hookInstance }: ExtractedDataFormProps) {
   const { state, updateState } = useNuevaPoliza();
   const [editedData, setEditedData] = useState<any>({});
+
+  interface ContextFormProps {
+    hookInstance: any;
+  }
 
   // Mock de datos extraídos si no existen
   const mockExtractedData = {

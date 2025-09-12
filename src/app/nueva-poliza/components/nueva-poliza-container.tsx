@@ -1,3 +1,4 @@
+// nueva-poliza-container.tsx - Solo cambios necesarios
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -20,6 +21,7 @@ import { ValidationForm } from '../step-2-validation/validation-form';
 import { ConfirmationForm } from '../step-3-confirmation/confirmation-form';
 
 export function NuevaPolizaContainer() {
+  const hookInstance = useNuevaPoliza(); // Una sola instancia
   const {
     state,
     isContextValid,
@@ -29,7 +31,7 @@ export function NuevaPolizaContainer() {
     prevStep,
     reset,
     cancelOperation
-  } = useNuevaPoliza();
+  } = hookInstance;
 
   const steps = [
     { 
@@ -55,8 +57,6 @@ export function NuevaPolizaContainer() {
     }
   ];
 
-  const currentStepData = steps[state.currentStep - 1];
-
   const renderStepIndicator = () => (
     <Card className="mb-6">
       <CardContent className="pt-6">
@@ -69,7 +69,6 @@ export function NuevaPolizaContainer() {
             return (
               <React.Fragment key={step.number}>
                 <div className="flex flex-col items-center min-w-0 flex-1">
-                  {/* Círculo del paso */}
                   <div className={`
                     w-12 h-12 rounded-full flex items-center justify-center border-2 transition-all duration-300 mb-3
                     ${isCompleted 
@@ -82,7 +81,6 @@ export function NuevaPolizaContainer() {
                     <Icon className="h-5 w-5" />
                   </div>
                   
-                  {/* Título y descripción */}
                   <div className="text-center">
                     <h3 className={`font-semibold text-sm mb-1 ${
                       isActive ? 'text-blue-600' : isCompleted ? 'text-green-600' : 'text-gray-500'
@@ -95,7 +93,6 @@ export function NuevaPolizaContainer() {
                   </div>
                 </div>
                 
-                {/* Línea conectora */}
                 {index < steps.length - 1 && (
                   <div className={`
                     flex-1 h-0.5 mx-4 transition-colors duration-300
@@ -110,21 +107,21 @@ export function NuevaPolizaContainer() {
     </Card>
   );
 
-    const renderCurrentStep = () => {
+  // CAMBIO CRÍTICO: Pasar hookInstance a todos los componentes
+  const renderCurrentStep = () => {
     switch (state.currentStep) {
-        case 1:
-        return <ContextForm />;       
-        case 2:
-        return <ValidationForm />;     
-        case 3:
-        return <ConfirmationForm />;   
-        default:
+      case 1:
+        return <ContextForm hookInstance={hookInstance} />;       
+      case 2:
+        return <ValidationForm hookInstance={hookInstance} />;     
+      case 3:
+        return <ConfirmationForm hookInstance={hookInstance} />;   
+      default:
         return null;
     }
-    };
+  };
 
   const renderNavigation = () => {
-    // No mostrar navegación si el proceso está completado
     if (state.velneo.status === 'completed') {
       return null;
     }
@@ -133,7 +130,6 @@ export function NuevaPolizaContainer() {
       <Card className="mt-6">
         <CardContent className="pt-6">
           <div className="flex justify-between items-center">
-            {/* Botón Anterior */}
             <div className="flex gap-2">
               <Button 
                 variant="outline" 
@@ -144,7 +140,6 @@ export function NuevaPolizaContainer() {
                 Anterior
               </Button>
               
-              {/* Botón de cancelar operación si está en proceso */}
               {(state.scan.status === 'scanning' || state.velneo.status === 'sending') && (
                 <Button 
                   variant="outline" 
@@ -156,9 +151,7 @@ export function NuevaPolizaContainer() {
               )}
             </div>
 
-            {/* Estado actual y botón siguiente */}
             <div className="flex items-center gap-4">
-              {/* Indicador de estado */}
               {state.isLoading && (
                 <div className="flex items-center gap-2 text-blue-600">
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
@@ -169,54 +162,33 @@ export function NuevaPolizaContainer() {
                 </div>
               )}
               
-<Button 
-  onClick={() => {
-    if (state.currentStep === 3) {
-      // Finalizar: redirigir al dashboard
-      console.log('Finalizando y redirigiendo al dashboard...');
-      window.location.href = '/dashboard'; // o la ruta principal
-    } else {
-      nextStep();
-    }
-  }}
-  disabled={
-  state.isLoading ||
-  (state.currentStep === 3 && state.velneo.status === 'idle') ||
-  (state.currentStep === 2 && state.scan.status === 'completed') // ← BIEN
-}
-  className="min-w-[100px]"
->
-  {state.currentStep === 3 ? 'Finalizar' : 'Siguiente'}
-  <ArrowRight className="ml-2 h-4 w-4" />
-</Button>
+              <Button 
+                onClick={() => {
+                  if (state.currentStep === 3) {
+                    console.log('Finalizando y redirigiendo al dashboard...');
+                    window.location.href = '/dashboard';
+                  } else {
+                    nextStep();
+                  }
+                }}
+                disabled={
+                  state.isLoading ||
+                  (state.currentStep === 3 && state.velneo.status === 'idle') ||
+                  (state.currentStep === 2 && state.scan.status !== 'completed') // CORREGIDO
+                }
+                className="min-w-[100px]"
+              >
+                {state.currentStep === 3 ? 'Finalizar' : 'Siguiente'}
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
             </div>
           </div>
           
-          {/* Mensaje de ayuda contextual */}
           {state.currentStep === 1 && !isContextValid && (
             <Alert className="mt-4">
               <AlertTriangle className="h-4 w-4" />
               <AlertDescription>
-                Selecciona el cliente, compañía y sección para continuar. Luego podrás cargar el archivo PDF.
-              </AlertDescription>
-            </Alert>
-          )}
-          
-          {state.currentStep === 1 && isContextValid && !state.file.uploaded && (
-            <Alert className="mt-4">
-              <Upload className="h-4 w-4" />
-              <AlertDescription>
-                Contexto configurado correctamente. Ahora puedes cargar el archivo PDF para escanear.
-              </AlertDescription>
-            </Alert>
-          )}
-          
-          {state.currentStep === 2 && state.scan.completionPercentage > 0 && state.scan.completionPercentage < 80 && (
-            <Alert className="mt-4">
-              <AlertTriangle className="h-4 w-4" />
-              <AlertDescription>
-                El nivel de confianza es bajo ({state.scan.completionPercentage}%). 
-                Revisa y completa los datos antes de continuar.
+                Selecciona el cliente, compañía y sección para continuar.
               </AlertDescription>
             </Alert>
           )}
@@ -238,16 +210,14 @@ export function NuevaPolizaContainer() {
                   : `Error enviando a Velneo: ${state.velneo.errorMessage || 'Error desconocido'}`
                 }
               </span>
-              <div className="flex gap-2 ml-4">
-                <Button 
-                  size="sm" 
-                  variant="outline"
-                  onClick={reset}
-                >
-                  <RotateCcw className="h-4 w-4 mr-1" />
-                  Reiniciar
-                </Button>
-              </div>
+              <Button 
+                size="sm" 
+                variant="outline"
+                onClick={reset}
+              >
+                <RotateCcw className="h-4 w-4 mr-1" />
+                Reiniciar
+              </Button>
             </div>
           </AlertDescription>
         </Alert>
@@ -258,42 +228,21 @@ export function NuevaPolizaContainer() {
 
   return (
     <div className="container mx-auto py-6 space-y-6 max-w-6xl">
-      {/* Header */}
       <div className="text-center mb-8">
         <h1 className="text-3xl font-bold text-gray-900 mb-2">Nueva Póliza</h1>
         <p className="text-gray-600 max-w-2xl mx-auto">
-          Proceso guiado para crear una nueva póliza desde documento PDF. 
-          Sigue los pasos para escanear, validar y enviar la información a Velneo.
+          Proceso guiado para crear una nueva póliza desde documento PDF.
         </p>
       </div>
 
-      {/* Indicador de pasos */}
       {renderStepIndicator()}
-
-      {/* Estado de error */}
       {renderErrorState()}
-
-      {/* Contenido del paso actual */}
+      
       <div className="min-h-[600px]">
         {renderCurrentStep()}
       </div>
 
-      {/* Navegación */}
       {renderNavigation()}
-
-      {/* Footer con información adicional */}
-      <div className="text-center text-sm text-gray-500 pt-6 border-t">
-        <p>
-          ¿Necesitas ayuda? Consulta la{' '}
-          <button className="text-blue-600 hover:underline">
-            documentación
-          </button>
-          {' '}o contacta al{' '}
-          <button className="text-blue-600 hover:underline">
-            soporte técnico
-          </button>
-        </p>
-      </div>
     </div>
   );
 }

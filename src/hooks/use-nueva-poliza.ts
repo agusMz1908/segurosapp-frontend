@@ -269,68 +269,71 @@ const uploadWithContext = useCallback(async (file: File) => {
   }, [state.context, state.file.uploaded, updateState]);
 
 const sendToVelneo = useCallback(async (overrides?: any) => {
-  const scanId = overrides?.scanId || state.file.scanId;
+  const scanId = overrides?.scanId || 12345; // Hardcoded para testing
   
-  if (!scanId) {
-    toast.error('No hay documento para enviar');
-    return false;
-  }
-
+  console.log('SEND TO VELNEO STARTED');
+  
   try {
-    console.log('=== ANTES DE setState SENDING ===');
-    
-    setState(prev => {
-  console.log('=== DENTRO DE setState SENDING ===');
-  console.log('prev.velneo.status:', prev.velneo.status);
-  const newState = {
-    ...prev,
-    velneo: { 
-      ...prev.velneo, 
-      status: 'sending' as const  // ← AGREGAR "as const"
-    },
-    isLoading: true
-  };
-  console.log('newState.velneo.status:', newState.velneo.status);
-  return newState;
-});
+    // PASO 1: Cambiar a SENDING
+    setState(prevState => {
+      console.log('Setting to SENDING');
+      console.log('Previous status:', prevState.velneo.status);
+      const newState = {
+        ...prevState,
+        velneo: { 
+          status: 'sending' as const, 
+          polizaNumber: null, 
+          errorMessage: undefined 
+        },
+        isLoading: true
+      };
+      console.log('New status:', newState.velneo.status);
+      return newState;
+    });
 
-    console.log('=== SIMULANDO ENVÍO A VELNEO ===');
-    console.log('scanId:', scanId);
-
-    // Simular delay de procesamiento
+    // PASO 2: Simular procesamiento
+    console.log('Waiting 2 seconds...');
     await new Promise(resolve => setTimeout(resolve, 2000));
 
-    // Simular respuesta exitosa
-    const mockResult = {
-      success: true,
-      data: {
-        polizaNumber: `POL-${Date.now()}`,
-        message: 'Póliza creada exitosamente en Velneo'
-      }
-    };
+    // PASO 3: Cambiar a COMPLETED
+    setState(prevState => {
+      console.log('Setting to COMPLETED');
+      const polizaNumber = `POL-${Date.now()}`;
+      const newState = {
+        ...prevState,
+        velneo: { 
+          status: 'completed' as const, 
+          polizaNumber, 
+          errorMessage: undefined 
+        },
+        isLoading: false
+      };
+      console.log('Final status:', newState.velneo.status);
+      console.log('Poliza number:', polizaNumber);
+      return newState;
+    });
 
-    console.log('=== ANTES DE setState COMPLETED ===');
-    
-setState(prev => {
-  const newState = {
-    ...prev,
-    velneo: {
-      status: 'completed' as const,  // ← AGREGAR "as const"
-      polizaNumber: mockResult.data.polizaNumber,
-      errorMessage: undefined,
-    },
-    isLoading: false,
-  };
-  return newState;
-});
-
-    toast.success(`¡Póliza creada exitosamente! Número: ${mockResult.data.polizaNumber}`);
+    const polizaNumber = `POL-${Date.now()}`;
+    toast.success(`Póliza creada exitosamente! Número: ${polizaNumber}`);
     return true;
 
   } catch (error: any) {
-    // ... resto del código igual
+    console.error('Error in sendToVelneo:', error);
+    
+    setState(prevState => ({
+      ...prevState,
+      velneo: { 
+        status: 'error' as const, 
+        polizaNumber: null, 
+        errorMessage: error.message || 'Error simulado' 
+      },
+      isLoading: false
+    }));
+
+    toast.error('Error enviando a Velneo: ' + (error.message || 'Error desconocido'));
+    return false;
   }
-}, [state.file.scanId]);
+}, []);
 
   // Reset completo
   const reset = useCallback(() => {

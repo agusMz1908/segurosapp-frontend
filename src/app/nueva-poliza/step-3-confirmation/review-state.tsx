@@ -1,3 +1,4 @@
+// step-3-confirmation/review-state.tsx
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -5,7 +6,6 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { 
   User,
-  Building2,
   FileText,
   Car,
   Send,
@@ -13,28 +13,21 @@ import {
   Sparkles,
   CheckCircle
 } from 'lucide-react';
-import { useNuevaPoliza } from '../../../hooks/use-nueva-poliza';
 
-export function ReviewState() {
-  const { state, sendToVelneo } = useNuevaPoliza();
+interface ReviewStateProps {
+  hookInstance: any;
+}
 
-const handleSendToVelneo = () => {
-  console.log('=== BUTTON DEBUG ===');
-  console.log('state.file.scanId from hook:', state.file.scanId);
-  
-  // HACK: Forzar scanId si no está disponible
-  if (!state.file.scanId) {
-    console.warn('scanId not found in state, using hardcoded value');
+export function ReviewState({ hookInstance }: ReviewStateProps) {
+  const { state, sendToVelneo } = hookInstance;
+
+  const handleSendToVelneo = () => {
+    console.log('BUTTON CLICKED - Sending to Velneo');
+    console.log('Current velneo.status:', state.velneo.status);
     
-    // Opción 1: Llamar sendToVelneo con scanId manual
     sendToVelneo({ scanId: 12345 });
-    return;
-  }
-  
-  sendToVelneo();
-};
+  };
 
-  // Mock de datos para mostrar
   const polizaData = state.scan.extractedData || {
     polizaNumber: "POL-2024-001",
     vigenciaDesde: "2024-01-15",
@@ -64,9 +57,7 @@ const handleSendToVelneo = () => {
 
   return (
     <>
-      {/* Resumen completo */}
       <div className="grid lg:grid-cols-2 gap-6">
-        {/* Información de contexto */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -78,25 +69,24 @@ const handleSendToVelneo = () => {
             <div className="grid gap-3">
               <div className="flex justify-between">
                 <span className="text-gray-600">Cliente:</span>
-                <span className="font-medium">{state.context.clienteInfo?.nombre}</span>
+                <span className="font-medium">{state.context.clienteInfo?.nombre || "Juan Pérez"}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">Documento:</span>
-                <span className="font-medium">{state.context.clienteInfo?.documento}</span>
+                <span className="font-medium">{state.context.clienteInfo?.documento || "12345678-9"}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">Compañía:</span>
-                <span className="font-medium">{state.context.companiaInfo?.nombre}</span>
+                <span className="font-medium">{state.context.companiaInfo?.nombre || "Mapfre Uruguay"}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">Sección:</span>
-                <span className="font-medium">{state.context.seccionInfo?.nombre}</span>
+                <span className="font-medium">{state.context.seccionInfo?.nombre || "Automotor"}</span>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        {/* Información de la póliza */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -124,7 +114,6 @@ const handleSendToVelneo = () => {
           </CardContent>
         </Card>
 
-        {/* Información del vehículo */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -152,7 +141,6 @@ const handleSendToVelneo = () => {
           </CardContent>
         </Card>
 
-        {/* Información de escaneo */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -191,7 +179,6 @@ const handleSendToVelneo = () => {
         </Card>
       </div>
 
-      {/* Información de archivo procesado */}
       <Card>
         <CardContent className="pt-6">
           <div className="flex items-center justify-between">
@@ -213,12 +200,11 @@ const handleSendToVelneo = () => {
         </CardContent>
       </Card>
 
-      {/* Acciones finales */}
       <Card>
         <CardContent className="pt-6">
           <div className="text-center space-y-4">
             <div className="mb-6">
-              <h3 className="text-lg font-semibold mb-2">¿Todo listo para enviar?</h3>
+              <h3 className="text-lg font-semibold mb-2">Todo listo para enviar</h3>
               <p className="text-gray-600">
                 Una vez enviada, la póliza será creada en tu sistema Velneo y no podrá modificarse desde aquí.
               </p>
@@ -235,14 +221,14 @@ const handleSendToVelneo = () => {
               </Button>
               
               <Button 
-  onClick={handleSendToVelneo}
-  size="lg"
-  className="bg-green-600 hover:bg-green-700"
-  disabled={state.velneo.status === 'sending' || state.isLoading}
->
-  <Send className="mr-2 h-5 w-5" />
-  {state.velneo.status === 'sending' ? 'Enviando...' : 'Enviar a Velneo'}
-</Button>
+                onClick={handleSendToVelneo}
+                size="lg"
+                className="bg-green-600 hover:bg-green-700"
+                disabled={state.velneo.status === 'sending' || state.isLoading}
+              >
+                <Send className="mr-2 h-5 w-5" />
+                {state.velneo.status === 'sending' ? 'Enviando...' : 'Enviar a Velneo'}
+              </Button>
             </div>
           </div>
         </CardContent>

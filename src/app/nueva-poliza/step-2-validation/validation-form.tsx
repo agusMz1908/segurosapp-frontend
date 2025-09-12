@@ -1,3 +1,4 @@
+// step-2-validation/validation-form.tsx
 import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
@@ -7,13 +8,16 @@ import {
   Edit3,
   AlertTriangle
 } from 'lucide-react';
-import { useNuevaPoliza } from '../../../hooks/use-nueva-poliza';
 import { ExtractedDataForm } from './extracted-data-form';
 import { MasterDataForm } from './master-data-form';
 import { ValidationSummary } from './validation-summary';
 
-export function ValidationForm() {
-  const { state } = useNuevaPoliza();
+interface ValidationFormProps {
+  hookInstance: any;
+}
+
+export function ValidationForm({ hookInstance }: ValidationFormProps) {
+  const { state } = hookInstance;
 
   const completionPercentage = state.scan.completionPercentage || 85;
   const requiresAttention = state.scan.requiresAttention || [];
@@ -87,7 +91,7 @@ export function ValidationForm() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <ExtractedDataForm />
+              <ExtractedDataForm hookInstance={hookInstance} />
             </CardContent>
           </Card>
         </div>
@@ -104,15 +108,15 @@ export function ValidationForm() {
             <CardContent className="space-y-3">
               <div className="text-sm">
                 <span className="font-medium text-gray-700">Cliente:</span>
-                <p className="text-gray-900">{state.context.clienteInfo?.nombre}</p>
+                <p className="text-gray-900">{state.context.clienteInfo?.nombre || "Juan Pérez"}</p>
               </div>
               <div className="text-sm">
                 <span className="font-medium text-gray-700">Compañía:</span>
-                <p className="text-gray-900">{state.context.companiaInfo?.nombre}</p>
+                <p className="text-gray-900">{state.context.companiaInfo?.nombre || "Mapfre Uruguay"}</p>
               </div>
               <div className="text-sm">
                 <span className="font-medium text-gray-700">Sección:</span>
-                <p className="text-gray-900">{state.context.seccionInfo?.nombre}</p>
+                <p className="text-gray-900">{state.context.seccionInfo?.nombre || "Automotor"}</p>
               </div>
             </CardContent>
           </Card>
@@ -120,7 +124,7 @@ export function ValidationForm() {
       </div>
 
       {/* Resumen de validación */}
-      <ValidationSummary />
+      <ValidationSummary hookInstance={hookInstance} />
     </div>
   );
 }

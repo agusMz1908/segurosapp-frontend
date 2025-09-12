@@ -4,7 +4,11 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertTriangle } from 'lucide-react';
 import { useNuevaPoliza } from '../../../hooks/use-nueva-poliza';
 
-export function ValidationSummary() {
+interface ValidationSummaryProps {
+  hookInstance: any;
+}
+
+export function ValidationSummary({ hookInstance }: ValidationSummaryProps) {
   const { state } = useNuevaPoliza();
   
   const completionPercentage = state.scan.completionPercentage || 85;

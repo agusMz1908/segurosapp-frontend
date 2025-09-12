@@ -1,3 +1,4 @@
+// step-1-context/context-form.tsx
 import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -8,13 +9,16 @@ import {
   CheckCircle,
   AlertTriangle
 } from 'lucide-react';
-import { useNuevaPoliza } from '../../../hooks/use-nueva-poliza';
 import { useMasterData } from '../../../hooks/use-master-data';
 import { FileUpload } from './file-upload';
 import { ContextSummary } from './context-summary';
 
-export function ContextForm() {
-  const { state, updateContext, isContextValid, uploadWithContext } = useNuevaPoliza();
+interface ContextFormProps {
+  hookInstance: any;
+}
+
+export function ContextForm({ hookInstance }: ContextFormProps) {
+  const { state, updateContext, isContextValid, uploadWithContext } = hookInstance;
   const { 
     searchClientes, 
     getCompanias, 
