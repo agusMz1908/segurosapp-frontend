@@ -23,18 +23,33 @@ export function ExtractedDataForm() {
     aseguradoDocumento: state.context.clienteInfo?.documento || "12345678-9",
   };
 
-  const displayData = state.scan.extractedData || mockExtractedData;
+  const displayData = editedData;
   const requiresAttention = state.scan.requiresAttention || [
     { fieldName: 'vehiculoChasis', reason: 'Confianza baja', severity: 'warning' },
     { fieldName: 'prima', reason: 'Valor no estándar', severity: 'info' }
   ];
 
-  // Inicializar datos editados
-  useEffect(() => {
-    if (displayData) {
-      setEditedData(displayData);
-    }
-  }, [displayData]);
+useEffect(() => {
+  if (state.scan.extractedData) {
+    setEditedData(state.scan.extractedData);
+  } else {
+    // Solo setear mock data una vez
+    const mockData = {
+      polizaNumber: "POL-2024-001",
+      vigenciaDesde: "2024-01-15",
+      vigenciaHasta: "2024-12-15",
+      prima: "45000",
+      vehiculoMarca: "Toyota",
+      vehiculoModelo: "Corolla",
+      vehiculoAno: "2020",
+      vehiculoChasis: "JTDBR32E400123456",
+      vehiculoPatente: "ABC1234",
+      aseguradoNombre: state.context.clienteInfo?.nombre || "Cliente Seleccionado",
+      aseguradoDocumento: state.context.clienteInfo?.documento || "12345678-9",
+    };
+    setEditedData(mockData);
+  }
+}, [state.scan.extractedData]);
 
   const handleFieldChange = (fieldName: string, value: string) => {
     setEditedData((prev: any) => ({

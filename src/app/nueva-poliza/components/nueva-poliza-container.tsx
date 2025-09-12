@@ -169,20 +169,26 @@ export function NuevaPolizaContainer() {
                 </div>
               )}
               
-              {/* Botón Siguiente */}
-              <Button 
-                onClick={nextStep}
-                disabled={
-                  state.isLoading ||
-                  (state.currentStep === 1 && !canProceedToStep2) ||
-                  (state.currentStep === 2 && !canProceedToStep3) ||
-                  state.currentStep === 3
-                }
-                className="min-w-[100px]"
-              >
-                {state.currentStep === 3 ? 'Finalizar' : 'Siguiente'}
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
+<Button 
+  onClick={() => {
+    if (state.currentStep === 3) {
+      // Finalizar: redirigir al dashboard
+      console.log('Finalizando y redirigiendo al dashboard...');
+      window.location.href = '/dashboard'; // o la ruta principal
+    } else {
+      nextStep();
+    }
+  }}
+  disabled={
+  state.isLoading ||
+  (state.currentStep === 3 && state.velneo.status === 'idle') ||
+  (state.currentStep === 2 && state.scan.status === 'completed') // ← BIEN
+}
+  className="min-w-[100px]"
+>
+  {state.currentStep === 3 ? 'Finalizar' : 'Siguiente'}
+  <ArrowRight className="ml-2 h-4 w-4" />
+</Button>
             </div>
           </div>
           

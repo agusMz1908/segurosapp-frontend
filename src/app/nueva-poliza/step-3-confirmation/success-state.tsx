@@ -62,23 +62,23 @@ export function SuccessState() {
         </Card>
 
         <div className="flex gap-4 justify-center">
-          <Button 
-            onClick={() => window.location.reload()}
-            size="lg"
-          >
-            <FileText className="mr-2 h-5 w-5" />
-            Crear Nueva Póliza
-          </Button>
-          
-          <Button 
-            variant="outline" 
-            size="lg"
-            onClick={() => window.open('/polizas', '_blank')}
-          >
-            <ExternalLink className="mr-2 h-5 w-5" />
-            Ver en Listado
-          </Button>
-        </div>
+  <Button 
+    onClick={() => window.location.href = '/dashboard'} 
+    size="lg"
+  >
+    <ExternalLink className="mr-2 h-5 w-5" />
+    Ir al Dashboard
+  </Button>
+  
+  <Button 
+    variant="outline"
+    onClick={() => window.location.reload()}
+    size="lg"
+  >
+    <FileText className="mr-2 h-5 w-5" />
+    Crear Nueva Póliza
+  </Button>
+</div>
       </div>
     </div>
   );

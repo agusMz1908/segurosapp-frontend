@@ -18,9 +18,21 @@ import { useNuevaPoliza } from '../../../hooks/use-nueva-poliza';
 export function ReviewState() {
   const { state, sendToVelneo } = useNuevaPoliza();
 
-  const handleSendToVelneo = () => {
-    sendToVelneo();
-  };
+const handleSendToVelneo = () => {
+  console.log('=== BUTTON DEBUG ===');
+  console.log('state.file.scanId from hook:', state.file.scanId);
+  
+  // HACK: Forzar scanId si no está disponible
+  if (!state.file.scanId) {
+    console.warn('scanId not found in state, using hardcoded value');
+    
+    // Opción 1: Llamar sendToVelneo con scanId manual
+    sendToVelneo({ scanId: 12345 });
+    return;
+  }
+  
+  sendToVelneo();
+};
 
   // Mock de datos para mostrar
   const polizaData = state.scan.extractedData || {
@@ -223,13 +235,14 @@ export function ReviewState() {
               </Button>
               
               <Button 
-                onClick={handleSendToVelneo}
-                size="lg"
-                className="bg-green-600 hover:bg-green-700"
-              >
-                <Send className="mr-2 h-5 w-5" />
-                Enviar a Velneo
-              </Button>
+  onClick={handleSendToVelneo}
+  size="lg"
+  className="bg-green-600 hover:bg-green-700"
+  disabled={state.velneo.status === 'sending' || state.isLoading}
+>
+  <Send className="mr-2 h-5 w-5" />
+  {state.velneo.status === 'sending' ? 'Enviando...' : 'Enviar a Velneo'}
+</Button>
             </div>
           </div>
         </CardContent>

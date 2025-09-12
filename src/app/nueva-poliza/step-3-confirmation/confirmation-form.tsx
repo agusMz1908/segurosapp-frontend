@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertTriangle } from 'lucide-react';
 import { useNuevaPoliza } from '../../../hooks/use-nueva-poliza';
@@ -10,22 +10,34 @@ import { ReviewState } from '../step-3-confirmation/review-state';
 export function ConfirmationForm() {
   const { state } = useNuevaPoliza();
 
+  useEffect(() => {
+    console.log('ConfirmationForm useEffect - velneo.status changed to:', state.velneo.status);
+  }, [state.velneo.status]);
+
+  console.log('=== CONFIRMATION FORM DEBUG ===');
+  console.log('velneo.status:', state.velneo.status);
+  console.log('Should show SuccessState:', state.velneo.status === 'completed');
+
   // Estado de éxito
   if (state.velneo.status === 'completed') {
+    console.log('Rendering SuccessState');
     return <SuccessState />;
   }
 
   // Estado de envío en progreso
   if (state.velneo.status === 'sending') {
+    console.log('Rendering SendingState');
     return <SendingState />;
   }
 
   // Estado de error
   if (state.velneo.status === 'error') {
+    console.log('Rendering ErrorState');
     return <ErrorState />;
   }
 
   // Estado inicial - Revisión final
+  console.log('Rendering ReviewState (default)');
   return (
     <div className="space-y-6">
       {/* Header */}
