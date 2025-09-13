@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
-import { Loader2, CheckCircle } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { useMasterData } from '../../../hooks/use-master-data';
+import { MasterDataSelector } from '@/components/ui/master-data-selector';
 
 interface MasterDataFormProps {
   hookInstance: any;
@@ -110,16 +111,11 @@ export function MasterDataForm({ hookInstance }: MasterDataFormProps) {
     });
   };
 
-  const isFieldComplete = (fieldName: string) => {
-    return formData[fieldName as keyof typeof formData] && 
-           formData[fieldName as keyof typeof formData] !== '';
-  };
-
-  const isFieldRequired = (fieldName: string) => {
-    // Campos requeridos para poder crear la póliza
-    const requiredFields = ['combustibleId', 'categoriaId', 'destinoId', 'departamentoId'];
-    return requiredFields.includes(fieldName);
-  };
+  // Opciones para cantidad de cuotas
+  const cuotasOptions = [1, 2, 3, 4, 6, 12].map(num => ({
+    id: num,
+    nombre: `${num} cuota${num > 1 ? 's' : ''}`
+  }));
 
   return (
     <Card>
@@ -132,213 +128,111 @@ export function MasterDataForm({ hookInstance }: MasterDataFormProps) {
       <CardContent className="space-y-4">
         
         {/* Tipo de Combustible - REQUERIDO */}
-        <div className="space-y-2">
-          <Label htmlFor="combustible" className="flex items-center gap-2">
-            Tipo de Combustible *
-            {isFieldComplete('combustibleId') && <CheckCircle className="h-4 w-4 text-green-500" />}
-          </Label>
-          <select
-            id="combustible"
-            className={`w-full p-2 border rounded-md dark:bg-gray-800 dark:border-gray-600 ${
-              isFieldRequired('combustibleId') && !isFieldComplete('combustibleId') 
-                ? 'border-red-300 bg-red-50 dark:border-red-600 dark:bg-red-900/20' 
-                : ''
-            }`}
-            disabled={masterDataLoading}
-            value={formData.combustibleId}
-            onChange={(e) => handleFieldChange('combustibleId', e.target.value)}
-          >
-            <option value="">Seleccionar...</option>
-            {combustibles.map((item) => (
-              <option key={item.id} value={item.id}>
-                {item.nombre}
-              </option>
-            ))}
-          </select>
-        </div>
+        <MasterDataSelector
+          label="Tipo de Combustible"
+          value={formData.combustibleId}
+          onValueChange={(value) => handleFieldChange('combustibleId', value)}
+          options={combustibles}
+          required={true}
+          loading={masterDataLoading}
+          placeholder="Seleccionar combustible..."
+        />
 
         {/* Categoría - REQUERIDO */}
-        <div className="space-y-2">
-          <Label htmlFor="categoria" className="flex items-center gap-2">
-            Categoría *
-            {isFieldComplete('categoriaId') && <CheckCircle className="h-4 w-4 text-green-500" />}
-          </Label>
-          <select
-            id="categoria"
-            className={`w-full p-2 border rounded-md dark:bg-gray-800 dark:border-gray-600 ${
-              isFieldRequired('categoriaId') && !isFieldComplete('categoriaId') 
-                ? 'border-red-300 bg-red-50 dark:border-red-600 dark:bg-red-900/20' 
-                : ''
-            }`}
-            disabled={masterDataLoading}
-            value={formData.categoriaId}
-            onChange={(e) => handleFieldChange('categoriaId', e.target.value)}
-          >
-            <option value="">Seleccionar...</option>
-            {categorias.map((item) => (
-              <option key={item.id} value={item.id}>
-                {item.nombre}
-              </option>
-            ))}
-          </select>
-        </div>
+        <MasterDataSelector
+          label="Categoría"
+          value={formData.categoriaId}
+          onValueChange={(value) => handleFieldChange('categoriaId', value)}
+          options={categorias}
+          required={true}
+          loading={masterDataLoading}
+          placeholder="Seleccionar categoría..."
+        />
 
         {/* Destino del Vehículo - REQUERIDO */}
-        <div className="space-y-2">
-          <Label htmlFor="destino" className="flex items-center gap-2">
-            Destino del Vehículo *
-            {isFieldComplete('destinoId') && <CheckCircle className="h-4 w-4 text-green-500" />}
-          </Label>
-          <select
-            id="destino"
-            className={`w-full p-2 border rounded-md dark:bg-gray-800 dark:border-gray-600 ${
-              isFieldRequired('destinoId') && !isFieldComplete('destinoId') 
-                ? 'border-red-300 bg-red-50 dark:border-red-600 dark:bg-red-900/20' 
-                : ''
-            }`}
-            disabled={masterDataLoading}
-            value={formData.destinoId}
-            onChange={(e) => handleFieldChange('destinoId', e.target.value)}
-          >
-            <option value="">Seleccionar...</option>
-            {destinos.map((item) => (
-              <option key={item.id} value={item.id}>
-                {item.nombre}
-              </option>
-            ))}
-          </select>
-        </div>
+        <MasterDataSelector
+          label="Destino del Vehículo"
+          value={formData.destinoId}
+          onValueChange={(value) => handleFieldChange('destinoId', value)}
+          options={destinos}
+          required={true}
+          loading={masterDataLoading}
+          placeholder="Seleccionar destino..."
+        />
 
         {/* Departamento - REQUERIDO */}
-        <div className="space-y-2">
-          <Label htmlFor="departamento" className="flex items-center gap-2">
-            Departamento *
-            {isFieldComplete('departamentoId') && <CheckCircle className="h-4 w-4 text-green-500" />}
-          </Label>
-          <select
-            id="departamento"
-            className={`w-full p-2 border rounded-md dark:bg-gray-800 dark:border-gray-600 ${
-              isFieldRequired('departamentoId') && !isFieldComplete('departamentoId') 
-                ? 'border-red-300 bg-red-50 dark:border-red-600 dark:bg-red-900/20' 
-                : ''
-            }`}
-            disabled={masterDataLoading}
-            value={formData.departamentoId}
-            onChange={(e) => handleFieldChange('departamentoId', e.target.value)}
-          >
-            <option value="">Seleccionar...</option>
-            {departamentos.map((item) => (
-              <option key={item.id} value={item.id}>
-                {item.nombre}
-              </option>
-            ))}
-          </select>
-        </div>
+        <MasterDataSelector
+          label="Departamento"
+          value={formData.departamentoId}
+          onValueChange={(value) => handleFieldChange('departamentoId', value)}
+          options={departamentos}
+          required={true}
+          loading={masterDataLoading}
+          placeholder="Seleccionar departamento..."
+        />
 
         {/* Calidad - Opcional */}
-        <div className="space-y-2">
-          <Label htmlFor="calidad" className="flex items-center gap-2">
-            Calidad
-            {isFieldComplete('calidadId') && <CheckCircle className="h-4 w-4 text-green-500" />}
-          </Label>
-          <select
-            id="calidad"
-            className="w-full p-2 border rounded-md dark:bg-gray-800 dark:border-gray-600"
-            disabled={masterDataLoading}
-            value={formData.calidadId}
-            onChange={(e) => handleFieldChange('calidadId', e.target.value)}
-          >
-            <option value="">Seleccionar...</option>
-            {calidades.map((item) => (
-              <option key={item.id} value={item.id}>
-                {item.nombre}
-              </option>
-            ))}
-          </select>
-        </div>
+        <MasterDataSelector
+          label="Calidad"
+          value={formData.calidadId}
+          onValueChange={(value) => handleFieldChange('calidadId', value)}
+          options={calidades}
+          required={false}
+          loading={masterDataLoading}
+          placeholder="Seleccionar calidad..."
+        />
 
         {/* Tarifa - Opcional */}
-        <div className="space-y-2">
-          <Label htmlFor="tarifa" className="flex items-center gap-2">
-            Tarifa
-            {isFieldComplete('tarifaId') && <CheckCircle className="h-4 w-4 text-green-500" />}
-          </Label>
-          <select
-            id="tarifa"
-            className="w-full p-2 border rounded-md dark:bg-gray-800 dark:border-gray-600"
-            disabled={masterDataLoading}
-            value={formData.tarifaId}
-            onChange={(e) => handleFieldChange('tarifaId', e.target.value)}
-          >
-            <option value="">Seleccionar...</option>
-            {tarifas.map((item) => (
-              <option key={item.id} value={item.id}>
-                {item.nombre}
-              </option>
-            ))}
-          </select>
-        </div>
+        <MasterDataSelector
+          label="Tarifa"
+          value={formData.tarifaId}
+          onValueChange={(value) => handleFieldChange('tarifaId', value)}
+          options={tarifas}
+          required={false}
+          loading={masterDataLoading}
+          placeholder="Seleccionar tarifa..."
+        />
 
         {/* Corredor - Opcional */}
-        <div className="space-y-2">
-          <Label htmlFor="corredor" className="flex items-center gap-2">
-            Corredor
-            {isFieldComplete('corredorId') && <CheckCircle className="h-4 w-4 text-green-500" />}
-          </Label>
-          <select
-            id="corredor"
-            className="w-full p-2 border rounded-md dark:bg-gray-800 dark:border-gray-600"
-            disabled={masterDataLoading}
-            value={formData.corredorId}
-            onChange={(e) => handleFieldChange('corredorId', e.target.value)}
-          >
-            <option value="">Seleccionar...</option>
-            {corredores.map((item) => (
-              <option key={item.id} value={item.id}>
-                {item.nombre} {item.codigo && `(${item.codigo})`}
-              </option>
-            ))}
-          </select>
-        </div>
+        <MasterDataSelector
+          label="Corredor"
+          value={formData.corredorId}
+          onValueChange={(value) => handleFieldChange('corredorId', value)}
+          options={corredores.map(item => ({
+            ...item,
+            displayName: `${item.nombre}${item.codigo ? ` (${item.codigo})` : ''}`
+          }))}
+          required={false}
+          loading={masterDataLoading}
+          placeholder="Seleccionar corredor..."
+        />
 
         {/* Medio de Pago - Opcional */}
-        <div className="space-y-2">
-          <Label htmlFor="medioPago" className="flex items-center gap-2">
-            Medio de Pago
-            {isFieldComplete('medioPagoId') && <CheckCircle className="h-4 w-4 text-green-500" />}
-          </Label>
-          <select
-            id="medioPago"
-            className="w-full p-2 border rounded-md dark:bg-gray-800 dark:border-gray-600"
-            disabled={masterDataLoading}
-            value={formData.medioPagoId}
-            onChange={(e) => handleFieldChange('medioPagoId', e.target.value)}
-          >
-            <option value="">Seleccionar...</option>
-            {mediospago.map((item) => (
-              <option key={item.code || item.id} value={item.code || item.id}>
-                {item.nombre}
-              </option>
-            ))}
-          </select>
-        </div>
+        <MasterDataSelector
+          label="Medio de Pago"
+          value={formData.medioPagoId}
+          onValueChange={(value) => handleFieldChange('medioPagoId', value)}
+          options={mediospago.map(item => ({
+            id: item.code || item.id,
+            nombre: item.nombre,
+            codigo: item.code
+          }))}
+          required={false}
+          loading={masterDataLoading}
+          placeholder="Seleccionar medio de pago..."
+        />
 
         {/* Cantidad de Cuotas */}
-        <div className="space-y-2">
-          <Label htmlFor="cuotas">Cantidad de Cuotas</Label>
-          <select
-            id="cuotas"
-            className="w-full p-2 border rounded-md dark:bg-gray-800 dark:border-gray-600"
-            value={formData.cantidadCuotas}
-            onChange={(e) => handleFieldChange('cantidadCuotas', parseInt(e.target.value))}
-          >
-            {[1, 2, 3, 4, 6, 12].map(num => (
-              <option key={num} value={num}>{num} cuota{num > 1 ? 's' : ''}</option>
-            ))}
-          </select>
-        </div>
+        <MasterDataSelector
+          label="Cantidad de Cuotas"
+          value={formData.cantidadCuotas.toString()}
+          onValueChange={(value) => handleFieldChange('cantidadCuotas', parseInt(value))}
+          options={cuotasOptions}
+          required={false}
+          placeholder="Seleccionar cantidad..."
+        />
 
-        {/* Observaciones */}
+        {/* Observaciones - Mantener como textarea */}
         <div className="space-y-2">
           <Label htmlFor="observaciones">Observaciones</Label>
           <textarea

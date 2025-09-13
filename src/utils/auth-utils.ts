@@ -3,13 +3,12 @@
 
 /**
  * Nombre estándar para el token en localStorage
- * Usar SOLO este nombre en toda la aplicación
+ * USAR SOLO ESTE NOMBRE EN TODA LA APLICACIÓN
  */
 export const AUTH_TOKEN_KEY = 'auth-token';
 
 /**
  * Obtiene el token de autenticación de forma consistente
- * Prioriza auth-token pero también busca variantes por compatibilidad
  */
 export function getAuthToken(): string {
   if (typeof window === 'undefined') return '';
@@ -103,7 +102,7 @@ export function handle401Error(): void {
 }
 
 /**
- * Obtiene headers de autenticación para requests
+ * Obtiene headers de autenticación para requests JSON
  */
 export function getAuthHeaders(): HeadersInit {
   const token = getAuthToken();
