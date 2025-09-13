@@ -1,95 +1,37 @@
+// src/context/auth-context.tsx
 "use client"
 
 import React, { createContext, useContext, useState, useEffect } from 'react'
+import { LoginResponse } from '@/lib/api'
+import { getAuthToken, setAuthToken, clearAuthData, handle401Error } from '@/utils/auth-utils'
 
-interface User {
-  id: number
-  username: string
-  email: string
-}
-
-interface LoginResponse {
-  success: boolean
-  message: string
-  token: string
-  expiresAt: string
-  user: User
-}
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://localhost:7202'
 
 interface AuthContextType {
-  user: User | null
+  user: any
   login: (username: string, password: string) => Promise<boolean>
-  logout: () => void
+  logout: () => Promise<void>
   isLoading: boolean
   isAuthenticated: boolean
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://localhost:7202'
-
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null)
+  const [user, setUser] = useState<any>(null)
   const [isLoading, setIsLoading] = useState(true)
-
-  // ✅ Corregir la lógica de isAuthenticated
   const isAuthenticated = !!user
 
   useEffect(() => {
-    initializeAuth()
-  }, [])
-
-  const initializeAuth = async () => {
-    try {
-      // Buscar token en cookies primero, luego en localStorage
-      const cookieToken = getCookieToken()
-      const localToken = localStorage.getItem('auth_token') // Usar nombre consistente
-      const token = cookieToken || localToken
-
-      console.log('Auth initialization - Token found:', !!token)
-
-      if (token) {
-        // Intentar verificar el token
-        const userData = await verifyToken(token)
-        if (userData) {
-          setUser(userData)
-          console.log('User authenticated:', userData)
-        } else {
-          // Token inválido, limpiar
-          clearTokens()
-        }
-      }
-    } catch (error) {
-      console.error('Error initializing auth:', error)
-      clearTokens()
-    } finally {
+    const token = getAuthToken() // Usar utilidad estándar
+    if (token) {
+      verifyToken(token)
+    } else {
       setIsLoading(false)
     }
-  }
+  }, [])
 
-  const getCookieToken = (): string | null => {
-    if (typeof document === 'undefined') return null
-    
-    return document.cookie
-      .split('; ')
-      .find(row => row.startsWith('seguros_token='))
-      ?.split('=')[1] || null
-  }
-
-  const clearTokens = () => {
-    // Limpiar cookie
-    if (typeof document !== 'undefined') {
-      document.cookie = 'seguros_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT'
-    }
-    
-    // Limpiar localStorage
-    localStorage.removeItem('auth_token')
-    localStorage.removeItem('user_data')
-    
-    setUser(null)
-  }
-
-  const verifyToken = async (token: string): Promise<User | null> => {
+  const verifyToken = async (token: string) => {
     try {
       const response = await fetch(`${API_BASE_URL}/api/Auth/me`, {
         headers: {
@@ -100,20 +42,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       
       if (response.ok) {
         const userData = await response.json()
-        return userData
+        setUser(userData)
+        console.log('✅ Token válido, usuario autenticado:', userData.username)
+      } else if (response.status === 401) {
+        console.warn('⚠️ Token inválido o expirado')
+        handle401Error() // Usar utilidad estándar
       } else {
-        console.warn('Token verification failed:', response.status)
-        return null
+        console.error('❌ Error verificando token:', response.status)
+        clearAuthData()
       }
     } catch (error) {
-      console.error('Error verifying token:', error)
-      return null
+      console.error('❌ Error verificando token:', error)
+      clearAuthData()
+    } finally {
+      setIsLoading(false)
     }
   }
 
   const login = async (username: string, password: string): Promise<boolean> => {
     setIsLoading(true)
     try {
+      console.log('🔄 Intentando login para:', username)
+      
       const response = await fetch(`${API_BASE_URL}/api/Auth/login`, {
         method: 'POST',
         headers: {
@@ -125,29 +75,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }),
       })
 
+      console.log('📡 Response status:', response.status)
+
       if (response.ok) {
         const data: LoginResponse = await response.json()
+        console.log('📦 Login response:', { ...data, token: data.token ? data.token.substring(0, 20) + '...' : 'NONE' })
         
+        // Verificar que el login fue exitoso
         if (data.success && data.token && data.user) {
-          // Guardar en ambos lugares para consistencia
-          localStorage.setItem('auth_token', data.token)
-          localStorage.setItem('user_data', JSON.stringify(data.user))
-          
-          // También en cookie
-          document.cookie = `seguros_token=${data.token}; path=/; max-age=${30 * 24 * 60 * 60}; secure; samesite=strict`
-          
+          setAuthToken(data.token) // Usar utilidad estándar
           setUser(data.user)
-          console.log('Login successful, user set:', data.user)
+          console.log('✅ Login exitoso para:', data.user.username)
           return true
+        } else {
+          console.warn('⚠️ Login falló:', data.message)
+          return false
         }
-        
-        return false
       } else {
-        console.error('Login failed:', response.status)
+        const errorData = await response.json().catch(() => ({ message: 'Error desconocido' }))
+        console.error('❌ Login failed:', response.status, errorData)
         return false
       }
     } catch (error) {
-      console.error('Error en login:', error)
+      console.error('❌ Error en login:', error)
       return false
     } finally {
       setIsLoading(false)
@@ -156,10 +106,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = async () => {
     try {
-      const token = getCookieToken() || localStorage.getItem('auth_token')
-      
+      const token = getAuthToken() // Usar utilidad estándar
       if (token) {
-        // Intentar logout en backend
         await fetch(`${API_BASE_URL}/api/Auth/logout`, {
           method: 'POST',
           headers: {
@@ -167,26 +115,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             'Content-Type': 'application/json',
           }
         }).catch(() => {
-          // Si falla el logout en el backend, continuar con limpieza local
-          console.warn('Backend logout failed, continuing with local cleanup')
+          // Si falla el logout en el backend, continuar
+          console.warn('⚠️ Logout del backend falló, continuando con logout local')
         })
       }
     } finally {
-      clearTokens()
-      console.log('Logout complete')
+      clearAuthData() // Usar utilidad estándar
+      setUser(null)
+      console.log('👋 Logout completado')
     }
   }
 
-  const contextValue = {
-    user,
-    login,
-    logout,
-    isLoading,
-    isAuthenticated
-  }
-
   return (
-    <AuthContext.Provider value={contextValue}>
+    <AuthContext.Provider value={{ user, login, logout, isLoading, isAuthenticated }}>
       {children}
     </AuthContext.Provider>
   )

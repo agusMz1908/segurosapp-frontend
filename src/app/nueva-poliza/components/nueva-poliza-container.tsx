@@ -1,4 +1,4 @@
-// nueva-poliza-container.tsx - Solo cambios necesarios
+// nueva-poliza-container.tsx - Corregido para usar step3 en lugar de velneo
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -75,7 +75,7 @@ export function NuevaPolizaContainer() {
                       ? 'bg-green-500 border-green-500 text-white shadow-lg' 
                       : isActive 
                         ? 'bg-blue-500 border-blue-500 text-white shadow-lg scale-110'
-                        : 'border-gray-300 text-gray-400 bg-white'
+                        : 'border-gray-300 text-gray-400 bg-white dark:bg-gray-800 dark:border-gray-600'
                     }
                   `}>
                     <Icon className="h-5 w-5" />
@@ -83,11 +83,11 @@ export function NuevaPolizaContainer() {
                   
                   <div className="text-center">
                     <h3 className={`font-semibold text-sm mb-1 ${
-                      isActive ? 'text-blue-600' : isCompleted ? 'text-green-600' : 'text-gray-500'
+                      isActive ? 'text-blue-600 dark:text-blue-400' : isCompleted ? 'text-green-600 dark:text-green-400' : 'text-gray-500 dark:text-gray-400'
                     }`}>
                       {step.title}
                     </h3>
-                    <p className="text-xs text-gray-500 hidden sm:block">
+                    <p className="text-xs text-gray-500 dark:text-gray-400 hidden sm:block">
                       {step.description}
                     </p>
                   </div>
@@ -96,7 +96,7 @@ export function NuevaPolizaContainer() {
                 {index < steps.length - 1 && (
                   <div className={`
                     flex-1 h-0.5 mx-4 transition-colors duration-300
-                    ${isCompleted ? 'bg-green-500' : 'bg-gray-200'}
+                    ${isCompleted ? 'bg-green-500' : 'bg-gray-200 dark:bg-gray-700'}
                   `} />
                 )}
               </React.Fragment>
@@ -107,7 +107,7 @@ export function NuevaPolizaContainer() {
     </Card>
   );
 
-  // CAMBIO CRÍTICO: Pasar hookInstance a todos los componentes
+  // Pasar hookInstance a todos los componentes
   const renderCurrentStep = () => {
     switch (state.currentStep) {
       case 1:
@@ -122,7 +122,8 @@ export function NuevaPolizaContainer() {
   };
 
   const renderNavigation = () => {
-    if (state.velneo.status === 'completed') {
+    // No mostrar navegación si estamos en estado de éxito
+    if (state.step3.status === 'completed') {
       return null;
     }
 
@@ -140,11 +141,11 @@ export function NuevaPolizaContainer() {
                 Anterior
               </Button>
               
-              {(state.scan.status === 'scanning' || state.velneo.status === 'sending') && (
+              {(state.scan.status === 'scanning' || state.step3.status === 'creating') && (
                 <Button 
                   variant="outline" 
                   onClick={cancelOperation}
-                  className="text-red-600 border-red-300 hover:bg-red-50"
+                  className="text-red-600 border-red-300 hover:bg-red-50 dark:hover:bg-red-900/20"
                 >
                   Cancelar
                 </Button>
@@ -153,11 +154,12 @@ export function NuevaPolizaContainer() {
 
             <div className="flex items-center gap-4">
               {state.isLoading && (
-                <div className="flex items-center gap-2 text-blue-600">
+                <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400">
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
                   <span className="text-sm">
                     {state.scan.status === 'scanning' && 'Escaneando...'}
-                    {state.velneo.status === 'sending' && 'Enviando a Velneo...'}
+                    {state.scan.status === 'uploading' && 'Subiendo archivo...'}
+                    {state.step3.status === 'creating' && 'Enviando a Velneo...'}
                   </span>
                 </div>
               )}
@@ -173,8 +175,9 @@ export function NuevaPolizaContainer() {
                 }}
                 disabled={
                   state.isLoading ||
-                  (state.currentStep === 3 && state.velneo.status === 'idle') ||
-                  (state.currentStep === 2 && state.scan.status !== 'completed') // CORREGIDO
+                  (state.currentStep === 1 && !isContextValid) ||
+                  (state.currentStep === 2 && state.scan.status !== 'completed') ||
+                  (state.currentStep === 3 && !canProceedToStep3)
                 }
                 className="min-w-[100px]"
               >
@@ -192,13 +195,31 @@ export function NuevaPolizaContainer() {
               </AlertDescription>
             </Alert>
           )}
+
+          {state.currentStep === 2 && state.scan.status !== 'completed' && (
+            <Alert className="mt-4">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertDescription>
+                Sube y procesa un documento para continuar al siguiente paso.
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {state.currentStep === 3 && !canProceedToStep3 && (
+            <Alert className="mt-4">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertDescription>
+                Completa todos los datos requeridos para poder crear la póliza.
+              </AlertDescription>
+            </Alert>
+          )}
         </CardContent>
       </Card>
     );
   };
 
   const renderErrorState = () => {
-    if (state.scan.status === 'error' || state.velneo.status === 'error') {
+    if (state.scan.status === 'error' || state.step3.status === 'error') {
       return (
         <Alert variant="destructive" className="mb-6">
           <AlertTriangle className="h-4 w-4" />
@@ -207,7 +228,7 @@ export function NuevaPolizaContainer() {
               <span>
                 {state.scan.status === 'error' 
                   ? `Error escaneando: ${state.scan.errorMessage || 'Error desconocido'}`
-                  : `Error enviando a Velneo: ${state.velneo.errorMessage || 'Error desconocido'}`
+                  : `Error enviando a Velneo: ${state.step3.errorMessage || 'Error desconocido'}`
                 }
               </span>
               <Button 
@@ -229,8 +250,8 @@ export function NuevaPolizaContainer() {
   return (
     <div className="container mx-auto py-6 space-y-6 max-w-6xl">
       <div className="text-center mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">Nueva Póliza</h1>
-        <p className="text-gray-600 max-w-2xl mx-auto">
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-2">Nueva Póliza</h1>
+        <p className="text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
           Proceso guiado para crear una nueva póliza desde documento PDF.
         </p>
       </div>
