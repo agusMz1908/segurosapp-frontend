@@ -198,6 +198,11 @@ const mapBackendDataToFrontend = (backendData: any, rawData?: any) => {
     
     premioTotal: backendData.premioTotal?.toString() || 
                  (rawData?.["financiero.premio_total"] ? extractNumber(rawData["financiero.premio_total"]) : ""),
+
+    formaPago: backendData.formaPago || 
+               rawData?.["pago.forma_pago"] || 
+               rawData?.["pago.metodo_pago"] || 
+               "",
     
     vehiculoMarca: backendData.vehiculoMarca || "",
     vehiculoModelo: backendData.vehiculoModelo || "",
