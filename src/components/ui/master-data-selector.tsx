@@ -36,16 +36,14 @@ export function MasterDataSelector({
   className = "",
   disabled = false
 }: MasterDataSelectorProps) {
-  // Convertir valor vacío a "__empty__" para el Select
-  const selectValue = !value || value === "" ? "__empty__" : value;
+  // Simplificar el manejo de valores
+  const selectValue = value || "";
   
   const handleValueChange = (newValue: string) => {
-    // Convertir "__empty__" a string vacío para compatibilidad
-    const actualValue = newValue === "__empty__" ? "" : newValue;
-    onValueChange(actualValue);
+    onValueChange(newValue);
   };
 
-  const isValid = required ? !!value && value !== "__empty__" : true;
+  const isValid = required ? !!value && value !== "" : true;
   const hasError = !!error;
 
   return (
@@ -75,13 +73,11 @@ export function MasterDataSelector({
         </SelectTrigger>
         
         <SelectContent>
-          {/* Opción vacía si no es requerido */}
-          {!required && (
-            <SelectItem value="__empty__">Sin seleccionar</SelectItem>
-          )}
+          {/* Opción vacía estándar */}
+          <SelectItem value="">Sin seleccionar</SelectItem>
           
-        {options.map((option, index) => (
-        <SelectItem key={`${option.id}-${index}`} value={option.id.toString()}>
+          {options.map((option, index) => (
+            <SelectItem key={`${option.id}-${index}`} value={String(option.id)}>
               <div className="flex items-center gap-2">
                 <span>{option.displayName || option.nombre}</span>
                 {option.codigo && (

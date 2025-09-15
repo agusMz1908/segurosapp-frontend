@@ -167,7 +167,7 @@ export interface Seccion {
 }
 
 export interface MasterDataItem {
-  id: number;
+  id: string | number;
   nombre: string;
   codigo?: string;
   valor?: string;
