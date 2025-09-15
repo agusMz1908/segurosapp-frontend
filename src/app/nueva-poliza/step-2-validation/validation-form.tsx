@@ -10,7 +10,6 @@ import {
 } from 'lucide-react';
 import { ExtractedDataForm } from './extracted-data-form';
 import { MasterDataForm } from './master-data-form';
-import { ValidationSummary } from './validation-summary';
 
 interface ValidationFormProps {
   hookInstance: any;
@@ -38,45 +37,6 @@ export function ValidationForm({ hookInstance }: ValidationFormProps) {
           Revisa los datos extraídos automáticamente y completa la información con datos maestros
         </p>
       </div>
-
-      {/* Indicador de confianza - Solo mostrar si hay datos escaneados */}
-      {state.scan.status === 'completed' && (
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-3">
-                <FileText className="h-6 w-6 text-blue-600 dark:text-blue-400" />
-                <div>
-                  <h3 className="font-semibold text-gray-900 dark:text-gray-100">Resultado del Escaneo</h3>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">Procesado con Azure Document Intelligence</p>
-                </div>
-              </div>
-              
-              <div className={`px-3 py-1 rounded-lg border ${getConfidenceColor(completionPercentage)}`}>
-                <span className="font-medium">{completionPercentage}% de confianza</span>
-              </div>
-            </div>
-
-            <div className="mb-2">
-              <div className="flex items-center justify-between text-sm mb-2">
-                <span className="text-gray-600 dark:text-gray-400">Completitud del mapeo</span>
-                <span className="font-medium">{completionPercentage}%</span>
-              </div>
-              <Progress value={completionPercentage} className="h-2" />
-            </div>
-
-            {requiresAttention.length > 0 && (
-              <Alert className="mt-4">
-                <AlertTriangle className="h-4 w-4" />
-                <AlertDescription>
-                  {requiresAttention.length} campo(s) requieren tu atención. 
-                  Están marcados con íconos de advertencia.
-                </AlertDescription>
-              </Alert>
-            )}
-          </CardContent>
-        </Card>
-      )}
 
       {/* Contenido principal en dos columnas */}
       <div className="grid lg:grid-cols-3 gap-6">
@@ -130,9 +90,6 @@ export function ValidationForm({ hookInstance }: ValidationFormProps) {
           </Card>
         </div>
       </div>
-
-      {/* Resumen de validación */}
-      <ValidationSummary hookInstance={hookInstance} />
     </div>
   );
 }

@@ -263,17 +263,6 @@ export function ExtractedDataForm({ hookInstance }: ExtractedDataFormProps) {
           />
         </div>
       </div>
-
-      {/* Información sobre extracción */}
-      <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-md border border-blue-200 dark:border-blue-800">
-        <p className="text-sm text-blue-700 dark:text-blue-300">
-          Los datos fueron extraídos automáticamente del documento usando Azure Document Intelligence.
-          Puedes editarlos si es necesario antes de continuar.
-        </p>
-        <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
-          Se extrajeron {state.scan.completionPercentage || 0}% de los campos en total del documento.
-        </p>
-      </div>
     </div>
   );
 }

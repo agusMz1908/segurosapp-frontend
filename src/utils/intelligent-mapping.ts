@@ -1,5 +1,5 @@
 // src/utils/intelligent-mapping.ts
-// Implementación simple y directa del mapeo inteligente
+// Implementación corregida del mapeo inteligente
 
 import { toast } from 'react-hot-toast';
 import type { MasterDataItem } from '@/types/master-data';
@@ -83,7 +83,7 @@ export interface MasterDataFormData {
   departamentoId: string;
   calidadId: string;
   categoriaId: string;
-  tarifaId?: string;
+  tarifaId: string; // ✅ CORREGIDO: Ya no es opcional
 }
 
 /**
@@ -95,12 +95,12 @@ export interface MasterDataSets {
   departamentos: MasterDataItem[];
   calidades: MasterDataItem[];
   categorias: MasterDataItem[];
-  tarifas?: MasterDataItem[];
+  tarifas: MasterDataItem[]; // ✅ CORREGIDO: Ya no es opcional
 }
 
 /**
  * FUNCIÓN PRINCIPAL DE MAPEO INTELIGENTE
- * Esta es la implementación directa de tu código original
+ * ✅ CORREGIDA: Ahora incluye tarifas en el destructuring
  */
 export const intelligentMapping = (
   extractedData: Record<string, any>,
@@ -108,11 +108,20 @@ export const intelligentMapping = (
   masterDataSets: MasterDataSets
 ): MasterDataFormData => {
   
-  const { combustibles, destinos, departamentos, calidades, categorias } = masterDataSets;
+  // ✅ CORREGIDO: Incluir tarifas en el destructuring
+  const { combustibles, destinos, departamentos, calidades, categorias, tarifas } = masterDataSets;
   const newFormData = { ...currentFormData };
   let hasChanges = false;
 
   console.log('🤖 Iniciando mapeo inteligente de datos maestros...');
+  console.log('📊 Datos disponibles:', {
+    combustibles: combustibles.length,
+    destinos: destinos.length,
+    departamentos: departamentos.length,
+    calidades: calidades.length,
+    categorias: categorias.length,
+    tarifas: tarifas.length // ✅ CORREGIDO: Ahora puede acceder a tarifas
+  });
 
   // MAPEAR COMBUSTIBLE
   if (extractedData["vehiculo.combustible"] && combustibles.length > 0 && !newFormData.combustibleId) {
@@ -232,6 +241,41 @@ export const intelligentMapping = (
     }
   }
 
+  // ✅ NUEVO: MAPEAR TARIFA
+  // Intentar mapear tarifa basado en la categoría seleccionada o tipo de vehículo
+  if (tarifas.length > 0 && !newFormData.tarifaId) {
+    let tarifaMatch: MasterDataItem | null = null;
+    
+    // Estrategia 1: Si hay categoría seleccionada, buscar tarifa relacionada
+    if (newFormData.categoriaId) {
+      const categoriaSeleccionada = categorias.find(c => c.id.toString() === newFormData.categoriaId);
+      if (categoriaSeleccionada) {
+        // Buscar tarifa que contenga palabras similares a la categoría
+        tarifaMatch = findBestMatch(categoriaSeleccionada.nombre, tarifas, 0.7);
+      }
+    }
+    
+    // Estrategia 2: Si hay tipo de vehículo en los datos extraídos
+    if (!tarifaMatch && extractedData["vehiculo.tipo_vehiculo"]) {
+      tarifaMatch = findBestMatch(extractedData["vehiculo.tipo_vehiculo"], tarifas, 0.7);
+    }
+    
+    // Estrategia 3: Fallback a tarifa por defecto si hay una sola o una que se llame "GENERAL" o "ESTANDAR"
+    if (!tarifaMatch && tarifas.length > 0) {
+      tarifaMatch = tarifas.find(t => 
+        t.nombre.toLowerCase().includes('general') || 
+        t.nombre.toLowerCase().includes('estandar') ||
+        t.nombre.toLowerCase().includes('basica')
+      ) || tarifas[0]; // Si no hay ninguna por defecto, tomar la primera
+    }
+    
+    if (tarifaMatch) {
+      newFormData.tarifaId = tarifaMatch.id.toString();
+      hasChanges = true;
+      console.log(`💰 Tarifa mapeada: "${tarifaMatch.nombre}"`);
+    }
+  }
+
   // Aplicar cambios si los hay
   if (hasChanges) {
     console.log('✅ Mapeo inteligente completado con cambios aplicados');
@@ -243,6 +287,7 @@ export const intelligentMapping = (
     if (newFormData.departamentoId !== currentFormData.departamentoId) mappedFields.push('Departamento');
     if (newFormData.calidadId !== currentFormData.calidadId) mappedFields.push('Calidad');
     if (newFormData.categoriaId !== currentFormData.categoriaId) mappedFields.push('Categoría');
+    if (newFormData.tarifaId !== currentFormData.tarifaId) mappedFields.push('Tarifa'); // ✅ NUEVO
     
     toast.success(`Datos maestros mapeados automáticamente: ${mappedFields.join(', ')}`);
   } else {

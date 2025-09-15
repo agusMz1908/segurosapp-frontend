@@ -23,9 +23,9 @@ export function ReviewState({ hookInstance }: ReviewStateProps) {
 
   const handleSendToVelneo = () => {
     console.log('BUTTON CLICKED - Sending to Velneo');
-    console.log('Current velneo.status:', state.velneo.status);
+    console.log('Current step3.status:', state.step3.status); // ✅ CORREGIDO: step3 en lugar de velneo
     
-    sendToVelneo({ scanId: 12345 });
+    sendToVelneo(); // ✅ CORREGIDO: Remover parámetro innecesario
   };
 
   const polizaData = state.scan.extractedData || {
@@ -113,70 +113,6 @@ export function ReviewState({ hookInstance }: ReviewStateProps) {
             </div>
           </CardContent>
         </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Car className="h-5 w-5" />
-              Datos del Vehículo
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid gap-3">
-              <div className="flex justify-between">
-                <span className="text-gray-600">Marca/Modelo:</span>
-                <span className="font-medium">
-                  {polizaData.vehiculoMarca} {polizaData.vehiculoModelo}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">Año:</span>
-                <span className="font-medium">{polizaData.vehiculoAno}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">Patente:</span>
-                <span className="font-medium">{polizaData.vehiculoPatente}</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Sparkles className="h-5 w-5" />
-              Calidad del Escaneo
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-gray-600">Confianza:</span>
-              <Badge 
-                variant={state.scan.completionPercentage >= 80 ? "default" : "secondary"}
-                className={state.scan.completionPercentage >= 80 ? "bg-green-500" : "bg-yellow-500"}
-              >
-                {state.scan.completionPercentage}%
-              </Badge>
-            </div>
-            
-            <div className="flex items-center justify-between">
-              <span className="text-gray-600">Estado:</span>
-              <div className="flex items-center gap-2">
-                <CheckCircle className="h-4 w-4 text-green-500" />
-                <span className="text-green-700 font-medium">Listo para enviar</span>
-              </div>
-            </div>
-
-            {state.scan.requiresAttention.length > 0 && (
-              <Alert>
-                <AlertTriangle className="h-4 w-4" />
-                <AlertDescription>
-                  {state.scan.requiresAttention.length} campo(s) fueron revisados manualmente
-                </AlertDescription>
-              </Alert>
-            )}
-          </CardContent>
-        </Card>
       </div>
 
       <Card>
@@ -224,10 +160,10 @@ export function ReviewState({ hookInstance }: ReviewStateProps) {
                 onClick={handleSendToVelneo}
                 size="lg"
                 className="bg-green-600 hover:bg-green-700"
-                disabled={state.velneo.status === 'sending' || state.isLoading}
+                disabled={state.step3.status === 'creating' || state.isLoading} // ✅ CORREGIDO: step3.status en lugar de velneo.status
               >
                 <Send className="mr-2 h-5 w-5" />
-                {state.velneo.status === 'sending' ? 'Enviando...' : 'Enviar a Velneo'}
+                {state.step3.status === 'creating' ? 'Enviando...' : 'Enviar a Velneo'} {/* ✅ CORREGIDO: step3.status en lugar de velneo.status */}
               </Button>
             </div>
           </div>

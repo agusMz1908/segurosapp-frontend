@@ -111,9 +111,19 @@ export function useNuevaPoliza() {
   const [state, setState] = useState<NuevaPolizaState>(initialState);
   const abortControllerRef = useRef<AbortController | null>(null);
 
-  const updateState = useCallback((updates: Partial<NuevaPolizaState>) => {
-    setState(prev => ({ ...prev, ...updates }));
-  }, []);
+const updateState = useCallback((updates: Partial<NuevaPolizaState> | ((prev: NuevaPolizaState) => Partial<NuevaPolizaState>)) => {
+  console.log('🔧 updateState recibido:', updates);
+  
+  setState(prev => {
+    console.log('🔧 setState - prevState:', prev);
+    
+    const newUpdates = typeof updates === 'function' ? updates(prev) : updates;
+    const newState = { ...prev, ...newUpdates };
+    
+    console.log('🔧 setState - newState:', newState);
+    return newState;
+  });
+}, []);
 
   // Validaciones
   const isContextValid = useCallback(() => {
@@ -347,19 +357,31 @@ const uploadWithContext = useCallback(async (file: File): Promise<boolean> => {
     const result = await response.json();
     console.log('=== RESPUESTA DEL BACKEND ===', result);
 
-    // 6. Extraer datos usando la función actualizada
+    // 6. Extraer datos del escaneo
     const scanResult = result.scanResult || {};
     const polizaMapping = result.polizaMapping || {};
     
-    // CAMBIO IMPORTANTE: Pasar ambos parámetros a la función de mapeo
-    const extractedData = mapBackendDataToFrontend(
+    // CAMBIO CRÍTICO: Preservar los datos originales del escaneo
+    const originalExtractedData = scanResult.extractedData || {};
+    console.log('🔍 Datos originales del escaneo:', originalExtractedData);
+    
+    // Mapear para el formulario de visualización
+    const displayData = mapBackendDataToFrontend(
       polizaMapping.mappedData || {}, 
-      scanResult.extractedData || {}
+      originalExtractedData
     );
     
-    console.log('🔍 Datos extraídos finales:', extractedData);
+    console.log('🔍 Datos para formulario:', displayData);
     
-    // 7. Actualizar estado con datos reales
+    // 7. SOLUCIÓN: Combinar datos originales + datos del formulario
+    const combinedExtractedData = {
+      ...originalExtractedData,  // Datos originales para el mapeo inteligente
+      ...displayData             // Datos formateados para el formulario
+    };
+    
+    console.log('🔍 Datos combinados finales:', combinedExtractedData);
+    
+    // 8. Actualizar estado con datos combinados
     updateState({
       file: {
         selected: file,
@@ -369,7 +391,7 @@ const uploadWithContext = useCallback(async (file: File): Promise<boolean> => {
       },
       scan: {
         status: 'completed',
-        extractedData: extractedData,
+        extractedData: combinedExtractedData, // ✅ AQUÍ ESTÁ EL FIX
         mappedData: polizaMapping.mappedData || {},
         completionPercentage: calculateCompletionPercentage(polizaMapping),
         requiresAttention: mapFieldIssues(polizaMapping.mappingIssues || []),
@@ -412,130 +434,131 @@ const uploadWithContext = useCallback(async (file: File): Promise<boolean> => {
 }, [state.context, isContextValid, updateState, mapBackendDataToFrontend, calculateCompletionPercentage, mapFieldIssues]);
 
   // ✅ FUNCIÓN SEND TO VELNEO CORREGIDA
-  const sendToVelneo = useCallback(async (): Promise<boolean> => {
-    if (!canProceedToStep3()) {
-      toast.error('Faltan datos requeridos para crear la póliza');
-      return false;
-    }
+const sendToVelneo = useCallback(async (): Promise<boolean> => {
+  if (!canProceedToStep3()) {
+    toast.error('Faltan datos requeridos para crear la póliza');
+    return false;
+  }
 
-    if (!state.file.scanId) {
-      toast.error('No hay documento escaneado para procesar');
-      return false;
-    }
+  if (!state.file.scanId) {
+    toast.error('No hay documento escaneado para procesar');
+    return false;
+  }
 
-    updateState({
-      isLoading: true,
-      step3: {
-        ...state.step3,
-        status: 'creating'
-      }
+  updateState({
+    isLoading: true,
+    step3: {
+      ...state.step3,
+      status: 'creating'
+    }
+  });
+
+  try {
+    // ✅ CORREGIDO: Construir request sin incluir scanId en el body
+    const createRequest = {
+      scanId: state.file.scanId,
+      clienteId: state.context.clienteId,
+      companiaId: state.context.companiaId,
+      seccionId: state.context.seccionId,
+      
+      // CAMBIAR ESTOS NOMBRES para que coincidan con el DTO:
+      fuelCodeOverride: state.masterData.combustibleId || "",        // era: fuelId
+      tariffIdOverride: parseInt(state.masterData.tarifaId) || 0,    // era: tariffId
+      departmentIdOverride: parseInt(state.masterData.departamentoId) || 0,  // era: departmentId
+      destinationIdOverride: parseInt(state.masterData.destinoId) || 0,      // era: destinationId
+      categoryIdOverride: parseInt(state.masterData.categoriaId) || 0,       // era: categoryId
+      qualityIdOverride: parseInt(state.masterData.calidadId) || 0,          // era: qualityId
+      brokerIdOverride: parseInt(state.masterData.corredorId) || 0,          // era: brokerId
+      
+      // Datos de la póliza (estos nombres ya coinciden)
+      policyNumber: state.scan.extractedData?.polizaNumber || "",
+      startDate: state.scan.extractedData?.vigenciaDesde || "",
+      endDate: state.scan.extractedData?.vigenciaHasta || "",
+      premium: parseFloat(state.scan.extractedData?.prima || "0"),
+      
+      // Datos del vehículo
+      vehicleBrand: state.scan.extractedData?.vehiculoMarca || "",
+      vehicleModel: state.scan.extractedData?.vehiculoModelo || "",
+      vehicleYear: parseInt(state.scan.extractedData?.vehiculoAno || "0"),
+      motorNumber: state.scan.extractedData?.vehiculoMotor || "",
+      chassisNumber: state.scan.extractedData?.vehiculoChasis || "",
+      
+      // Forma de pago
+      paymentMethod: state.masterData.medioPagoId || "",
+      installmentCount: state.masterData.cantidadCuotas || 1,
+      
+      // Observaciones
+      notes: state.masterData.observaciones || "",
+      correctedFields: []
+    };
+
+    console.log('=== ENVIANDO A VELNEO ===');
+    console.log('ScanId:', state.file.scanId);
+    console.log('Request body:', createRequest);
+
+    // ✅ CORREGIDO: URL con scanId como parámetro de ruta
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://localhost:7202';
+    const response = await fetch(`${API_URL}/api/Document/${state.file.scanId}/create-in-velneo`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(createRequest),
     });
 
-    try {
-      // Construir request con todos los datos necesarios
-      const createRequest = {
-        scanId: state.file.scanId,
-        clientId: state.context.clienteId,
-        brokerId: parseInt(state.masterData.corredorId) || 0,
-        companyId: state.context.companiaId,
-        sectionId: state.context.seccionId,
-        departmentId: parseInt(state.masterData.departamentoId) || 0,
-        fuelId: state.masterData.combustibleId || "",
-        destinationId: parseInt(state.masterData.destinoId) || 0,
-        categoryId: parseInt(state.masterData.categoriaId) || 0,
-        qualityId: parseInt(state.masterData.calidadId) || 0,
-        tariffId: parseInt(state.masterData.tarifaId) || 0,
-        
-        // Datos de la póliza desde el formulario
-        policyNumber: state.scan.extractedData?.polizaNumber || "",
-        startDate: state.scan.extractedData?.vigenciaDesde || "",
-        endDate: state.scan.extractedData?.vigenciaHasta || "",
-        premium: parseFloat(state.scan.extractedData?.prima || "0"),
-        
-        // Datos del vehículo
-        vehicleBrand: state.scan.extractedData?.vehiculoMarca || "",
-        vehicleModel: state.scan.extractedData?.vehiculoModelo || "",
-        vehicleYear: parseInt(state.scan.extractedData?.vehiculoAno || "0"),
-        motorNumber: state.scan.extractedData?.vehiculoMotor || "",
-        chassisNumber: state.scan.extractedData?.vehiculoChasis || "",
-        
-        // Forma de pago
-        paymentMethod: state.masterData.medioPagoId || "",
-        installmentCount: state.masterData.cantidadCuotas || 1,
-        
-        // Observaciones
-        notes: state.masterData.observaciones || "",
-        
-        // Campos que fueron corregidos manualmente
-        correctedFields: [] // Se podría trackear qué campos editó el usuario
-      };
-
-      console.log('=== ENVIANDO A VELNEO ===', createRequest);
-
-      // ✅ URL corregida con API_URL
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://localhost:7202';
-      const response = await fetch(`${API_URL}/api/Velneo/create-poliza`, {
-        method: 'POST',
-        headers: getAuthHeaders(), // ✅ Usar utilidad estándar
-        body: JSON.stringify(createRequest),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        
-        // ✅ Manejo específico para 401
-        if (response.status === 401) {
-          handle401Error();
-          return false;
-        }
-        
-        throw new Error(errorData.message || `Error ${response.status}: ${response.statusText}`);
-      }
-
-      const result = await response.json();
-      console.log('=== RESPUESTA DE VELNEO ===', result);
-
-      if (result.success) {
-        updateState({
-          step3: {
-            status: 'completed',
-            velneoPolizaId: result.velneoPolizaId,
-            polizaNumber: result.polizaNumber,
-            createdAt: result.createdAt,
-            velneoUrl: result.velneoUrl,
-            warnings: result.warnings || [],
-            validation: result.validation || { isValid: true, errors: [], warnings: [] }
-          },
-          isLoading: false,
-        });
-
-        toast.success(`Póliza creada exitosamente: ${result.polizaNumber}`);
-        
-        if (result.velneoUrl) {
-          console.log('URL de Velneo disponible:', result.velneoUrl);
-        }
-        
-        return true;
-      } else {
-        throw new Error(result.message || 'Error creando póliza en Velneo');
-      }
-
-    } catch (error: any) {
-      console.error('Error sending to Velneo:', error);
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
       
+      if (response.status === 401) {
+        handle401Error();
+        return false;
+      }
+      
+      throw new Error(errorData.message || `Error ${response.status}: ${response.statusText}`);
+    }
+
+    const result = await response.json();
+    console.log('=== RESPUESTA DE VELNEO ===', result);
+
+    if (result.success) {
       updateState({
         step3: {
-          ...state.step3,
-          status: 'error',
-          errorMessage: error.message || 'Error creando póliza'
+          status: 'completed',
+          velneoPolizaId: result.velneoPolizaId,
+          polizaNumber: result.polizaNumber,
+          createdAt: result.createdAt,
+          velneoUrl: result.velneoUrl,
+          warnings: result.warnings || [],
+          validation: result.validation || { isValid: true, errors: [], warnings: [] }
         },
         isLoading: false,
       });
 
-      toast.error('Error creando póliza: ' + (error.message || 'Error desconocido'));
-      return false;
+      toast.success(`Póliza creada exitosamente: ${result.polizaNumber}`);
+      
+      if (result.velneoUrl) {
+        console.log('URL de Velneo disponible:', result.velneoUrl);
+      }
+      
+      return true;
+    } else {
+      throw new Error(result.message || 'Error creando póliza en Velneo');
     }
-  }, [state, canProceedToStep3, updateState]);
+
+  } catch (error: any) {
+    console.error('Error sending to Velneo:', error);
+    
+    updateState({
+      step3: {
+        ...state.step3,
+        status: 'error',
+        errorMessage: error.message || 'Error creando póliza'
+      },
+      isLoading: false,
+    });
+
+    toast.error('Error creando póliza: ' + (error.message || 'Error desconocido'));
+    return false;
+  }
+}, [state, canProceedToStep3, updateState]);
 
   // ✅ FUNCIÓN RESCAN CORREGIDA
   const rescanDocument = useCallback(async () => {

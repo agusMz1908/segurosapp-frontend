@@ -1,3 +1,6 @@
+// hooks/use-automapping.ts
+// ✅ CORREGIDO: Ahora incluye tarifas en la carga de datos
+
 import { useEffect, useState } from 'react';
 import { useMasterData } from './use-master-data';
 import { intelligentMapping, type MasterDataFormData, type MasterDataSets } from '@/utils/intelligent-mapping';
@@ -19,30 +22,44 @@ export function useAutoMapping({ extractedData, currentMasterData, onMappingComp
       try {
         console.log('🔄 Cargando datos maestros para auto-mapeo...');
         
+        // ✅ CORREGIDO: Incluir tarifas en la carga
         const [
           combustibles,
           destinos,
           departamentos,
           calidades,
-          categorias
+          categorias,
+          tarifas
         ] = await Promise.all([
           getMasterDataByType('combustibles'),
           getMasterDataByType('destinos'),
           getMasterDataByType('departamentos'),
           getMasterDataByType('calidades'),
-          getMasterDataByType('categorias')
+          getMasterDataByType('categorias'),
+          getMasterDataByType('tarifas') // ✅ CORREGIDO: Ahora se carga tarifas
         ]);
+
+        console.log('📊 Datos maestros cargados:', {
+          combustibles: combustibles.length,
+          destinos: destinos.length,
+          departamentos: departamentos.length,
+          calidades: calidades.length,
+          categorias: categorias.length,
+          tarifas: tarifas.length // ✅ CORREGIDO: Log de tarifas cargadas
+        });
 
         // Ejecutar mapeo inmediatamente si tenemos datos extraídos
         if (extractedData && Object.keys(extractedData).length > 0 && !hasExecuted) {
           console.log('🤖 Ejecutando auto-mapeo...');
           
+          // ✅ CORREGIDO: Incluir tarifas en masterDataSets
           const masterDataSets: MasterDataSets = {
             combustibles,
             destinos,
             departamentos,
             calidades,
-            categorias
+            categorias,
+            tarifas // ✅ CORREGIDO: Ahora se incluye tarifas
           };
 
           const mappedData = intelligentMapping(extractedData, currentMasterData, masterDataSets);

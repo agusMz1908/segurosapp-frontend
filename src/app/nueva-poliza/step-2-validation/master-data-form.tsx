@@ -72,6 +72,7 @@ export function MasterDataForm({ hookInstance }: MasterDataFormProps) {
   const [loadingData, setLoadingData] = useState(true);
   const [autoMappingExecuted, setAutoMappingExecuted] = useState(false);
 
+  // FIX: Acceder directamente a state.masterData para evitar problemas de referencia
   const formData = state.masterData || {
     combustibleId: '',
     categoriaId: '',
@@ -83,9 +84,15 @@ export function MasterDataForm({ hookInstance }: MasterDataFormProps) {
     observaciones: ''
   };
 
-  // Debug logs - FUERA del useEffect
+  // Debug logs mejorados
   console.log('🔍 RENDER - formData actual:', formData);
   console.log('🔍 RENDER - state.masterData:', state.masterData);
+  console.log('🔍 RENDER - autoMappingExecuted:', autoMappingExecuted);
+
+  // ✅ DEBUG AGREGADO: useEffect para monitorear cambios en state.masterData
+  useEffect(() => {
+    console.log('🔧 useEffect - state.masterData cambió:', state.masterData);
+  }, [state.masterData]);
 
   useEffect(() => {
     const loadMasterData = async () => {
@@ -136,6 +143,7 @@ export function MasterDataForm({ hookInstance }: MasterDataFormProps) {
 
   const executeIntelligentMapping = useCallback(() => {
     if (!state.scan?.extractedData || Object.keys(state.scan.extractedData).length === 0) {
+      console.log('⚠️ No hay datos extraídos para mapear');
       return;
     }
 
@@ -168,7 +176,8 @@ export function MasterDataForm({ hookInstance }: MasterDataFormProps) {
         destinos: destinos.length,
         departamentos: departamentos.length,
         calidades: calidades.length,
-        categorias: categorias.length
+        categorias: categorias.length,
+        tarifas: tarifas.length
       }
     });
 
@@ -187,14 +196,45 @@ export function MasterDataForm({ hookInstance }: MasterDataFormProps) {
     console.log('🔍 ¿Hay cambios?', hasChanges);
 
     if (hasChanges) {
+      // FIX: Crear objeto completo manteniendo valores existentes
       const updatedFormData = {
-        ...formData,
-        ...mappedData
+        ...formData, // Mantener todos los campos existentes
+        ...mappedData // Sobrescribir solo los mapeados
       };
       
       console.log('🔍 ANTES de updateState:', updatedFormData);
-      updateState({ masterData: updatedFormData });
+      
+      // ✅ DEBUG AGREGADO: Log antes de updateState
+      console.log('🔧 Estado del hook ANTES de updateState:', state);
+      
+      // FIX: Forzar un re-render usando una función de actualización
+      updateState((prevState: any) => {
+        console.log('🔧 updateState - prevState:', prevState);
+        const newState = {
+          ...prevState,
+          masterData: updatedFormData
+        };
+        console.log('🔧 updateState - newState:', newState);
+        return newState;
+      });
+      
       console.log('✅ updateState llamado con:', { masterData: updatedFormData });
+      
+      // ✅ DEBUG AGREGADO: Log después de updateState
+      setTimeout(() => {
+        console.log('🔧 Estado del hook DESPUÉS de updateState (timeout):', state);
+      }, 100);
+      
+      // Mostrar en consola qué campos se mapearon
+      const mappedFields = [];
+      if (mappedData.combustibleId !== currentFormData.combustibleId) mappedFields.push('Combustible');
+      if (mappedData.destinoId !== currentFormData.destinoId) mappedFields.push('Destino');
+      if (mappedData.departamentoId !== currentFormData.departamentoId) mappedFields.push('Departamento');
+      if (mappedData.calidadId !== currentFormData.calidadId) mappedFields.push('Calidad');
+      if (mappedData.categoriaId !== currentFormData.categoriaId) mappedFields.push('Categoría');
+      if (mappedData.tarifaId !== currentFormData.tarifaId) mappedFields.push('Tarifa');
+      
+      console.log('✅ Campos mapeados:', mappedFields);
     } else {
       console.log('ℹ️ Mapeo inteligente completado sin cambios');
     }
@@ -209,7 +249,8 @@ export function MasterDataForm({ hookInstance }: MasterDataFormProps) {
     calidades, 
     categorias, 
     tarifas, 
-    updateState
+    updateState,
+    state // ✅ AGREGADO: incluir state completo en las dependencias
   ]);
 
   // UseEffect que ejecuta el mapeo automático
@@ -221,14 +262,28 @@ export function MasterDataForm({ hookInstance }: MasterDataFormProps) {
                              departamentos.length > 0 && 
                              calidades.length > 0 &&
                              categorias.length > 0 &&
+                             tarifas.length > 0 &&
                              state.scan?.extractedData && 
                              Object.keys(state.scan.extractedData).length > 0;
 
     if (canExecuteMapping) {
       console.log('🎯 Condiciones cumplidas para mapeo automático');
+      // FIX: Aumentar el timeout para asegurar que el estado se haya estabilizado
       setTimeout(() => {
         executeIntelligentMapping();
-      }, 300);
+      }, 500);
+    } else {
+      console.log('⏳ Esperando condiciones para mapeo:', {
+        loadingData,
+        autoMappingExecuted,
+        combustiblesReady: combustibles.length > 0,
+        destinosReady: destinos.length > 0,
+        departamentosReady: departamentos.length > 0,
+        calidadesReady: calidades.length > 0,
+        categoriasReady: categorias.length > 0,
+        tarifasReady: tarifas.length > 0,
+        hasExtractedData: state.scan?.extractedData && Object.keys(state.scan.extractedData).length > 0
+      });
     }
   }, [
     loadingData, 
@@ -238,19 +293,37 @@ export function MasterDataForm({ hookInstance }: MasterDataFormProps) {
     departamentos.length, 
     calidades.length,
     categorias.length,
+    tarifas.length,
     state.scan?.extractedData, 
     executeIntelligentMapping
   ]);
 
   const handleFieldChange = (fieldName: string, value: string | number) => {
+    console.log(`🔧 handleFieldChange: ${fieldName} = ${value}`);
+    
     const newFormData = {
       ...formData,
       [fieldName]: value
     };
     
-    updateState({
-      masterData: newFormData
+    console.log('🔧 handleFieldChange - newFormData:', newFormData);
+    
+    // ✅ DEBUG AGREGADO: Log antes y después de updateState manual
+    console.log('🔧 handleFieldChange - Estado ANTES de updateState:', state);
+    
+    // FIX: Usar función de actualización para asegurar consistencia
+    updateState((prevState: any) => {
+      const newState = {
+        ...prevState,
+        masterData: newFormData
+      };
+      console.log('🔧 handleFieldChange - updateState newState:', newState);
+      return newState;
     });
+    
+    setTimeout(() => {
+      console.log('🔧 handleFieldChange - Estado DESPUÉS de updateState (timeout):', state);
+    }, 50);
   };
 
   return (
@@ -341,29 +414,10 @@ export function MasterDataForm({ hookInstance }: MasterDataFormProps) {
           />
         </div>
 
-        {/* Loading indicator */}
         {(masterDataLoading || loadingData) && (
           <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
             <Loader2 className="h-4 w-4 animate-spin" />
             Cargando datos maestros...
-          </div>
-        )}
-
-        {/* Debug info para desarrollo */}
-        {process.env.NODE_ENV === 'development' && (
-          <div className="mt-4 p-3 bg-gray-100 dark:bg-gray-800 rounded text-xs">
-            <strong>Debug:</strong>
-            <br />• Auto-mapping ejecutado: {autoMappingExecuted ? 'Sí' : 'No'}
-            <br />• Datos maestros cargados: {!loadingData ? 'Sí' : 'No'}
-            <br />• Datos extraídos: {state.scan?.extractedData ? 'Sí' : 'No'}
-            <br />• Combustibles: {combustibles.length}
-            <br />• Categorías: {categorias.length}
-            <br />• Destinos: {destinos.length}
-            <br />• Form Data: {JSON.stringify({
-              combustibleId: formData.combustibleId,
-              categoriaId: formData.categoriaId,
-              destinoId: formData.destinoId
-            })}
           </div>
         )}
       </CardContent>
