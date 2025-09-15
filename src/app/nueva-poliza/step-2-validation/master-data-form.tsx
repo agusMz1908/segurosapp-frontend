@@ -13,7 +13,6 @@ export function MasterDataForm({ hookInstance }: MasterDataFormProps) {
   const { state, updateState } = hookInstance;
   const { getMasterDataByType, loading: masterDataLoading } = useMasterData();
   
-  // Estados locales para datos maestros
   const [combustibles, setCombustibles] = useState<any[]>([]);
   const [categorias, setCategorias] = useState<any[]>([]);
   const [destinos, setDestinos] = useState<any[]>([]);
@@ -23,7 +22,6 @@ export function MasterDataForm({ hookInstance }: MasterDataFormProps) {
   const [mediospago, setMediosPago] = useState<any[]>([]);
   const [corredores, setCorredores] = useState<any[]>([]);
 
-  // Estado del formulario (sincronizado con el estado global)
   const formData = state.masterData || {
     combustibleId: '',
     categoriaId: '',
@@ -37,7 +35,6 @@ export function MasterDataForm({ hookInstance }: MasterDataFormProps) {
     observaciones: ''
   };
 
-  // Cargar datos maestros al montar
   useEffect(() => {
     const loadMasterData = async () => {
       try {
@@ -77,7 +74,6 @@ export function MasterDataForm({ hookInstance }: MasterDataFormProps) {
     loadMasterData();
   }, [getMasterDataByType]);
 
-  // Preseleccionar valores basados en sugerencias del backend
   useEffect(() => {
     if (state.scan.mappedData && Object.keys(state.scan.mappedData).length > 0) {
       const suggestions = state.scan.mappedData.suggestions || [];
@@ -90,7 +86,6 @@ export function MasterDataForm({ hookInstance }: MasterDataFormProps) {
         if (suggestion.fieldName === 'categoria' && suggestion.suggestedValue) {
           newFormData.categoriaId = suggestion.suggestedValue;
         }
-        // Agregar más campos según necesidades...
       });
 
       updateState({
@@ -105,17 +100,10 @@ export function MasterDataForm({ hookInstance }: MasterDataFormProps) {
       [fieldName]: value
     };
     
-    // Actualizar estado global directamente
     updateState({
       masterData: newFormData
     });
   };
-
-  // Opciones para cantidad de cuotas
-  const cuotasOptions = [1, 2, 3, 4, 6, 12].map(num => ({
-    id: num,
-    nombre: `${num} cuota${num > 1 ? 's' : ''}`
-  }));
 
   return (
     <Card>
@@ -126,52 +114,46 @@ export function MasterDataForm({ hookInstance }: MasterDataFormProps) {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        
-        {/* Tipo de Combustible - REQUERIDO */}
         <MasterDataSelector
           label="Tipo de Combustible"
           value={formData.combustibleId}
           onValueChange={(value) => handleFieldChange('combustibleId', value)}
           options={combustibles}
-          required={true}
+          required={false}
           loading={masterDataLoading}
           placeholder="Seleccionar combustible..."
         />
 
-        {/* Categoría - REQUERIDO */}
         <MasterDataSelector
           label="Categoría"
           value={formData.categoriaId}
           onValueChange={(value) => handleFieldChange('categoriaId', value)}
           options={categorias}
-          required={true}
+          required={false}
           loading={masterDataLoading}
           placeholder="Seleccionar categoría..."
         />
 
-        {/* Destino del Vehículo - REQUERIDO */}
         <MasterDataSelector
           label="Destino del Vehículo"
           value={formData.destinoId}
           onValueChange={(value) => handleFieldChange('destinoId', value)}
           options={destinos}
-          required={true}
+          required={false}
           loading={masterDataLoading}
           placeholder="Seleccionar destino..."
         />
 
-        {/* Departamento - REQUERIDO */}
         <MasterDataSelector
           label="Departamento"
           value={formData.departamentoId}
           onValueChange={(value) => handleFieldChange('departamentoId', value)}
           options={departamentos}
-          required={true}
+          required={false}
           loading={masterDataLoading}
           placeholder="Seleccionar departamento..."
         />
 
-        {/* Calidad - Opcional */}
         <MasterDataSelector
           label="Calidad"
           value={formData.calidadId}
@@ -182,7 +164,6 @@ export function MasterDataForm({ hookInstance }: MasterDataFormProps) {
           placeholder="Seleccionar calidad..."
         />
 
-        {/* Tarifa - Opcional */}
         <MasterDataSelector
           label="Tarifa"
           value={formData.tarifaId}
@@ -193,7 +174,6 @@ export function MasterDataForm({ hookInstance }: MasterDataFormProps) {
           placeholder="Seleccionar tarifa..."
         />
 
-        {/* Corredor - Opcional */}
         <MasterDataSelector
           label="Corredor"
           value={formData.corredorId}
@@ -207,7 +187,6 @@ export function MasterDataForm({ hookInstance }: MasterDataFormProps) {
           placeholder="Seleccionar corredor..."
         />
 
-        {/* Medio de Pago - Opcional */}
         <MasterDataSelector
           label="Medio de Pago"
           value={formData.medioPagoId}
@@ -222,17 +201,6 @@ export function MasterDataForm({ hookInstance }: MasterDataFormProps) {
           placeholder="Seleccionar medio de pago..."
         />
 
-        {/* Cantidad de Cuotas */}
-        <MasterDataSelector
-          label="Cantidad de Cuotas"
-          value={formData.cantidadCuotas.toString()}
-          onValueChange={(value) => handleFieldChange('cantidadCuotas', parseInt(value))}
-          options={cuotasOptions}
-          required={false}
-          placeholder="Seleccionar cantidad..."
-        />
-
-        {/* Observaciones - Mantener como textarea */}
         <div className="space-y-2">
           <Label htmlFor="observaciones">Observaciones</Label>
           <textarea
@@ -244,12 +212,7 @@ export function MasterDataForm({ hookInstance }: MasterDataFormProps) {
             onChange={(e) => handleFieldChange('observaciones', e.target.value)}
           />
         </div>
-
-        {/* Indicador de campos requeridos */}
-        <div className="text-xs text-gray-500 dark:text-gray-400 mt-4">
-          * Campos requeridos para poder crear la póliza
-        </div>
-
+        
         {masterDataLoading && (
           <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
             <Loader2 className="h-4 w-4 animate-spin" />

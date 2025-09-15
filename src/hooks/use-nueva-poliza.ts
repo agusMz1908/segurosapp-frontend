@@ -1,4 +1,3 @@
-// hooks/use-nueva-poliza.ts - VERSIÓN CORREGIDA
 "use client"
 
 import { useState, useCallback, useRef } from 'react';
@@ -23,7 +22,7 @@ export interface FileData {
 
 export interface ScanData {
   status: 'idle' | 'uploading' | 'scanning' | 'completed' | 'error';
-  extractedData: any;
+  extractedData: ExtractedData;  
   mappedData: any;
   completionPercentage: number;
   requiresAttention: any[];
@@ -137,32 +136,68 @@ export function useNuevaPoliza() {
                                  state.scan.extractedData?.vigenciaDesde &&
                                  state.scan.extractedData?.vigenciaHasta;
     
-    const hasRequiredMasterData = state.masterData.combustibleId &&
-                                 state.masterData.categoriaId &&
-                                 state.masterData.destinoId;
-    
-    return hasRequiredContext && hasExtractedData && hasRequiredPolicyData && hasRequiredMasterData;
+    return hasRequiredContext && hasExtractedData && hasRequiredPolicyData;
   }, [state]);
 
-  // Función auxiliar para mapear datos del backend al frontend
-const mapBackendDataToFrontend = (backendData: any) => {
+const mapBackendDataToFrontend = (backendData: any, rawData?: any) => {
+  const extractNumber = (str: string) => {
+    if (!str) return "";
+    const match = str.match(/[\d.,]+/);
+    if (!match) return "";
+    
+    let cleanNumber = match[0].replace(/[^\d.,]/g, '');
+
+    if (cleanNumber.includes('.') && cleanNumber.includes(',')) {
+      cleanNumber = cleanNumber.replace(/\./g, '').replace(',', '.');
+    } else if (cleanNumber.includes('.') && !cleanNumber.includes(',')) {
+      const parts = cleanNumber.split('.');
+      if (parts.length === 2 && parts[1].length > 2) {
+        cleanNumber = cleanNumber.replace(/\./g, '');
+      }
+    } else if (cleanNumber.includes(',')) {
+      cleanNumber = cleanNumber.replace(',', '.');
+    }
+    
+    const number = parseFloat(cleanNumber);
+    
+    if (isNaN(number)) return "";
+
+    return new Intl.NumberFormat('es-UY', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    }).format(number);
+  };
+
+  const extractCuotas = (str: string) => {
+    if (!str) return "";
+    const match = str.match(/(\d+)\s+cuotas/i);
+    return match ? match[1] : "";
+  };
+
   return {
-    polizaNumber: backendData.numeroPoliza || "", 
+    polizaNumber: backendData.numeroPoliza || "",
     vigenciaDesde: backendData.fechaDesde || "",
     vigenciaHasta: backendData.fechaHasta || "",
-    prima: backendData.premio?.toString() || "0",
+    prima: backendData.premio?.toString() || "",
+    
+    cantidadCuotas: backendData.cantidadCuotas?.toString() || 
+                   (rawData?.["pago.modo_facturacion"] ? extractCuotas(rawData["pago.modo_facturacion"]) : ""),
+    
+    valorPorCuota: backendData.valorPorCuota?.toString() || 
+                   (rawData?.["pago.cuotas[0].prima"] ? extractNumber(rawData["pago.cuotas[0].prima"]) : ""),
+    
+    premioTotal: backendData.premioTotal?.toString() || 
+                 (rawData?.["financiero.premio_total"] ? extractNumber(rawData["financiero.premio_total"]) : ""),
+    
     vehiculoMarca: backendData.vehiculoMarca || "",
     vehiculoModelo: backendData.vehiculoModelo || "",
     vehiculoAno: backendData.vehiculoAño?.toString() || "",
     vehiculoChasis: backendData.vehiculoChasis || "",
     vehiculoPatente: backendData.vehiculoMatricula || "",
     vehiculoMotor: backendData.vehiculoMotor || "",
-    aseguradoNombre: backendData.aseguradoNombre || "",
-    aseguradoDocumento: backendData.aseguradoDocumento || "",
   };
 };
 
-  // Función auxiliar para calcular porcentaje de completitud
   const calculateCompletionPercentage = (polizaMapping: any) => {
     if (polizaMapping.metrics?.completionPercentage) {
       return polizaMapping.metrics.completionPercentage;
@@ -206,32 +241,66 @@ const mapBackendDataToFrontend = (backendData: any) => {
     return fieldMap[backendField] || backendField;
   };
 
-  // ✅ FUNCIÓN UPLOAD CORREGIDA
-  const uploadWithContext = useCallback(async (file: File): Promise<boolean> => {
-    if (!isContextValid()) {
-      toast.error('Contexto incompleto. Selecciona cliente, compañía y sección.');
-      return false;
+const uploadWithContext = useCallback(async (file: File): Promise<boolean> => {
+  if (!isContextValid()) {
+    toast.error('Contexto incompleto. Selecciona cliente, compañía y sección.');
+    return false;
+  }
+
+  console.log('=== INICIANDO UPLOAD REAL ===');
+  console.log('Context:', state.context);
+
+  // Cancel previous request if exists
+  if (abortControllerRef.current) {
+    abortControllerRef.current.abort();
+  }
+
+  abortControllerRef.current = new AbortController();
+
+  updateState({
+    file: {
+      selected: file,
+      uploaded: false,
+      scanId: null,
+      uploadProgress: 0,
+    },
+    scan: {
+      status: 'uploading',
+      extractedData: {},
+      mappedData: {},
+      completionPercentage: 0,
+      requiresAttention: [],
+      errorMessage: undefined,
+    },
+    isLoading: true,
+  });
+
+  try {
+    // 1. Obtener token usando utilidad estándar
+    const token = getAuthToken();
+    
+    if (!token) {
+      throw new Error('No se encontró token de autenticación. Por favor, inicia sesión nuevamente.');
     }
 
-    console.log('=== INICIANDO UPLOAD REAL ===');
-    console.log('Context:', state.context);
+    // 2. Crear FormData para envío al backend
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('clienteId', state.context.clienteId?.toString() || '');
+    formData.append('companiaId', state.context.companiaId?.toString() || '');
+    formData.append('seccionId', state.context.seccionId?.toString() || '');
+    formData.append('notes', '');
 
-    // Cancel previous request if exists
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-    }
-
-    abortControllerRef.current = new AbortController();
-
+    // 3. Actualizar estado a scanning
     updateState({
       file: {
         selected: file,
         uploaded: false,
         scanId: null,
-        uploadProgress: 0,
+        uploadProgress: 50,
       },
       scan: {
-        status: 'uploading',
+        status: 'scanning',
         extractedData: {},
         mappedData: {},
         completionPercentage: 0,
@@ -241,149 +310,106 @@ const mapBackendDataToFrontend = (backendData: any) => {
       isLoading: true,
     });
 
-    try {
-      // ✅ 1. Obtener token usando utilidad estándar
-      const token = getAuthToken();
+    // 4. Llamada al backend
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://localhost:7202';
+    const response = await fetch(`${API_URL}/api/Document/upload-with-context`, {
+      method: 'POST',
+      headers: getAuthHeadersForFormData(),
+      body: formData,
+      signal: abortControllerRef.current.signal,
+    });
+
+    console.log('📡 Response status:', response.status);
+
+    if (!response.ok) {
+      let errorMessage = `Error ${response.status}: ${response.statusText}`;
       
-      if (!token) {
-        throw new Error('No se encontró token de autenticación. Por favor, inicia sesión nuevamente.');
-      }
-
-      // ✅ 2. Crear FormData para envío al backend
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('clienteId', state.context.clienteId?.toString() || '');
-      formData.append('companiaId', state.context.companiaId?.toString() || '');
-      formData.append('seccionId', state.context.seccionId?.toString() || '');
-      formData.append('notes', ''); // Opcional
-
-      // ✅ 3. Actualizar estado a scanning antes de la llamada
-      updateState({
-        file: {
-          selected: file,
-          uploaded: false,
-          scanId: null,
-          uploadProgress: 50,
-        },
-        scan: {
-          status: 'scanning',
-          extractedData: {},
-          mappedData: {},
-          completionPercentage: 0,
-          requiresAttention: [],
-          errorMessage: undefined,
-        },
-        isLoading: true,
-      });
-
-      // ✅ 4. Llamada real al backend con URL completa
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://localhost:7202';
-      const response = await fetch(`${API_URL}/api/Document/upload-with-context`, {
-        method: 'POST',
-        headers: getAuthHeadersForFormData(), // ✅ Usar utilidad estándar
-        body: formData,
-        signal: abortControllerRef.current.signal,
-      });
-
-      console.log('📡 Response status:', response.status);
-
-      if (!response.ok) {
-        let errorMessage = `Error ${response.status}: ${response.statusText}`;
-        
-        try {
-          const errorData = await response.json();
-          errorMessage = errorData.message || errorData.Message || errorMessage;
-          console.error('❌ Error del servidor:', errorData);
-        } catch {
-          const errorText = await response.text();
-          if (errorText) {
-            errorMessage = errorText;
-          }
+      try {
+        const errorData = await response.json();
+        errorMessage = errorData.message || errorData.Message || errorMessage;
+        console.error('❌ Error del servidor:', errorData);
+      } catch {
+        const errorText = await response.text();
+        if (errorText) {
+          errorMessage = errorText;
         }
-        
-        // ✅ Manejo específico para 401
-        if (response.status === 401) {
-          handle401Error(); // ✅ Usar utilidad estándar
-          return false;
-        }
-        
-        throw new Error(errorMessage);
       }
-
-      const result = await response.json();
-console.log('=== RESPUESTA DEL BACKEND ===', result);
-
-// Agrega estas líneas de debug:
-console.log('🔍 DEBUG - Estructura completa del result:', JSON.stringify(result, null, 2));
-console.log('🔍 DEBUG - result.scanResult:', result.scanResult);
-console.log('🔍 DEBUG - result.polizaMapping:', result.polizaMapping);
-console.log('🔍 DEBUG - result.extractedData:', result.extractedData);
-console.log('🔍 DEBUG - result.data:', result.data);
-console.log('🔍 DEBUG - Todas las propiedades de result:', Object.keys(result));
-
-      // ✅ 6. Extraer datos de la respuesta según estructura del backend
-      const scanResult = result.scanResult || {};
-      const polizaMapping = result.polizaMapping || {};
-
-      console.log('🔍 DEBUG - scanResult después de extraer:', scanResult);
-console.log('🔍 DEBUG - polizaMapping después de extraer:', polizaMapping);
-console.log('🔍 DEBUG - scanResult.extractedData:', scanResult.extractedData);
-console.log('🔍 DEBUG - polizaMapping.mappedData:', polizaMapping.mappedData);
       
-      // Mapear los datos extraídos a formato del frontend
-      const extractedData = mapBackendDataToFrontend(polizaMapping.mappedData || {});
-      
-      // ✅ 7. Actualizar estado con datos reales
-      updateState({
-        file: {
-          selected: file,
-          uploaded: true,
-          scanId: scanResult.scanId || scanResult.id || null,
-          uploadProgress: 100,
-        },
-        scan: {
-          status: 'completed',
-          extractedData: extractedData,
-          mappedData: polizaMapping.mappedData || {},
-          completionPercentage: calculateCompletionPercentage(polizaMapping),
-          requiresAttention: mapFieldIssues(polizaMapping.mappingIssues || []),
-          errorMessage: undefined,
-        },
-        isLoading: false,
-      });
-
-      toast.success(`Documento procesado exitosamente (${calculateCompletionPercentage(polizaMapping)}% de confianza)`);
-      return true;
-
-    } catch (error: any) {
-      if (error.name === 'AbortError') {
+      if (response.status === 401) {
+        handle401Error();
         return false;
       }
-
-      console.error('❌ Error uploading document:', error);
       
-      updateState({
-        file: {
-          selected: file,
-          uploaded: false,
-          scanId: null,
-          uploadProgress: 0,
-        },
-        scan: {
-          status: 'error',
-          extractedData: {},
-          mappedData: {},
-          completionPercentage: 0,
-          requiresAttention: [],
-          errorMessage: error.message || 'Error procesando documento'
-        },
-        isLoading: false,
-      });
+      throw new Error(errorMessage);
+    }
 
-      toast.error('Error procesando documento: ' + (error.message || 'Error desconocido'));
+    // 5. Procesar respuesta del backend
+    const result = await response.json();
+    console.log('=== RESPUESTA DEL BACKEND ===', result);
+
+    // 6. Extraer datos usando la función actualizada
+    const scanResult = result.scanResult || {};
+    const polizaMapping = result.polizaMapping || {};
+    
+    // CAMBIO IMPORTANTE: Pasar ambos parámetros a la función de mapeo
+    const extractedData = mapBackendDataToFrontend(
+      polizaMapping.mappedData || {}, 
+      scanResult.extractedData || {}
+    );
+    
+    console.log('🔍 Datos extraídos finales:', extractedData);
+    
+    // 7. Actualizar estado con datos reales
+    updateState({
+      file: {
+        selected: file,
+        uploaded: true,
+        scanId: scanResult.scanId || scanResult.id || null,
+        uploadProgress: 100,
+      },
+      scan: {
+        status: 'completed',
+        extractedData: extractedData,
+        mappedData: polizaMapping.mappedData || {},
+        completionPercentage: calculateCompletionPercentage(polizaMapping),
+        requiresAttention: mapFieldIssues(polizaMapping.mappingIssues || []),
+        errorMessage: undefined,
+      },
+      isLoading: false,
+    });
+
+    toast.success(`Documento procesado exitosamente (${calculateCompletionPercentage(polizaMapping)}% de confianza)`);
+    return true;
+
+  } catch (error: any) {
+    if (error.name === 'AbortError') {
       return false;
     }
-  }, [state.context, isContextValid, updateState, mapBackendDataToFrontend, calculateCompletionPercentage, mapFieldIssues]);
+
+    console.error('❌ Error uploading document:', error);
+    
+    updateState({
+      file: {
+        selected: file,
+        uploaded: false,
+        scanId: null,
+        uploadProgress: 0,
+      },
+      scan: {
+        status: 'error',
+        extractedData: {},
+        mappedData: {},
+        completionPercentage: 0,
+        requiresAttention: [],
+        errorMessage: error.message || 'Error procesando documento'
+      },
+      isLoading: false,
+    });
+
+    toast.error('Error procesando documento: ' + (error.message || 'Error desconocido'));
+    return false;
+  }
+}, [state.context, isContextValid, updateState, mapBackendDataToFrontend, calculateCompletionPercentage, mapFieldIssues]);
 
   // ✅ FUNCIÓN SEND TO VELNEO CORREGIDA
   const sendToVelneo = useCallback(async (): Promise<boolean> => {

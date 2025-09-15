@@ -183,12 +183,9 @@ export function useMasterData() {
       setLoading(true);
       setError(null);
 
-      // ✅ RUTA CORREGIDA: Usar el endpoint específico de compañías
       const response = await apiClient.get<any>('/api/MasterData/companias');
-
       let companias: CompaniaItem[] = [];
       
-      // Adaptarse a diferentes formatos de respuesta
       if (response && Array.isArray(response)) {
         companias = response;
       } else if (response && response.data && Array.isArray(response.data)) {
@@ -200,7 +197,6 @@ export function useMasterData() {
         return [];
       }
 
-      // Filtrar solo activas y mapear
       const companiasMapeadas = companias
         .filter((c: CompaniaItem) => c.isActive)
         .map(mapCompaniaItemToCompania);
