@@ -64,6 +64,7 @@ export function PolizaSearchForm({ hookInstance }: PolizaSearchFormProps) {
   const [searchResults, setSearchResults] = useState<PolizaSearchResult[]>([]);
   const [selectedPoliza, setSelectedPoliza] = useState<PolizaSearchResult | null>(null);
   const [numeroPoliza, setNumeroPoliza] = useState('');
+  const [isConfirming, setIsConfirming] = useState(false);
 
   const handleSearch = useCallback(async () => {
     if (!numeroPoliza.trim()) {
@@ -121,15 +122,41 @@ export function PolizaSearchForm({ hookInstance }: PolizaSearchFormProps) {
     setSelectedPoliza(poliza);
   };
 
-  const handleConfirmSelection = async () => {
-    if (!selectedPoliza) return;
+ const handleConfirmSelection = async () => {
+    if (!selectedPoliza) {
+      toast.error('No hay póliza seleccionada');
+      return;
+    }
     
     try {
-      // Pasar el número de póliza, no el ID interno
+      console.log('🔄 Iniciando confirmación de selección:', selectedPoliza.conpol);
+      
+      // Mostrar loading del botón
+      setIsConfirming(true);
+      
+      // Llamar a la función del hook
       await selectPolizaAnterior(selectedPoliza.conpol);
+      
+      console.log('✅ Póliza seleccionada exitosamente');
+      
+      // Si llegamos aquí, la selección fue exitosa
+      toast.success('Póliza seleccionada correctamente');
+      
+      // Limpiar el estado local después de la selección exitosa
+      setSelectedPoliza(null);
+      setSearchResults([]);
+      
     } catch (error: any) {
-      console.error('Error seleccionando póliza:', error);
-      toast.error('Error seleccionando póliza');
+      console.error('❌ Error seleccionando póliza:', error);
+      
+      // Mostrar error específico si está disponible
+      const errorMessage = error?.response?.data?.message || 
+                           error?.message || 
+                           'Error seleccionando póliza';
+      
+      toast.error(errorMessage);
+    } finally {
+      setIsConfirming(false);
     }
   };
 
@@ -171,52 +198,37 @@ export function PolizaSearchForm({ hookInstance }: PolizaSearchFormProps) {
     }
   };
 
-  return (
-    <div className="space-y-6 p-6">
-      {/* Header */}
-      <div className="text-center mb-6">
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">
-          Buscar Póliza a Renovar
-        </h2>
-        <p className="text-gray-600 dark:text-gray-300">
-          Ingresa el número de la póliza que deseas renovar
-        </p>
-      </div>
-
-      {/* Formulario de búsqueda */}
+return (
+    <div className="space-y-6">
+      {/* Card de búsqueda existente */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Search className="h-5 w-5" />
-            Criterios de Búsqueda
+            Buscar Póliza a Renovar
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
-          {/* Búsqueda simplificada */}
+        <CardContent>
           <div className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="numeroPoliza">Número de Póliza</Label>
               <Input
                 id="numeroPoliza"
-                placeholder="Ej: 1989630"
+                type="text"
+                placeholder="Ingresa el número exacto de la póliza que deseas renovar"
                 value={numeroPoliza}
                 onChange={(e) => setNumeroPoliza(e.target.value)}
                 onKeyPress={handleKeyPress}
-                className="font-mono text-lg"
                 disabled={isSearching}
+                className="text-lg"
               />
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                Ingresa el número exacto de la póliza que deseas renovar
-              </p>
             </div>
 
-            {/* Botones de acción */}
-            <div className="flex justify-between items-center">
+            <div className="flex gap-3">
               <Button
                 onClick={handleSearch}
                 disabled={isSearching || !numeroPoliza.trim()}
-                className="min-w-[120px]"
-                size="lg"
+                className="flex-1"
               >
                 {isSearching ? (
                   <>
@@ -240,7 +252,7 @@ export function PolizaSearchForm({ hookInstance }: PolizaSearchFormProps) {
         </CardContent>
       </Card>
 
-      {/* Resultados de búsqueda */}
+      {/* Resultados de búsqueda existentes */}
       {searchResults.length > 0 && (
         <Card>
           <CardHeader>
@@ -272,6 +284,7 @@ export function PolizaSearchForm({ hookInstance }: PolizaSearchFormProps) {
                   `}
                   onClick={() => handleSelectPoliza(poliza)}
                 >
+                  {/* Contenido de la póliza existente */}
                   <div className="flex justify-between items-start mb-3">
                     <div className="flex-1">
                       <div className="flex items-center gap-3 mb-1">
@@ -279,117 +292,48 @@ export function PolizaSearchForm({ hookInstance }: PolizaSearchFormProps) {
                           Póliza: {poliza.conpol}
                         </h3>
                         {renovable ? (
-                          <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                          <Badge variant="default" className="bg-green-500">
                             <CheckCircle className="h-3 w-3 mr-1" />
                             Renovable
                           </Badge>
                         ) : (
                           <Badge variant="destructive">
                             <AlertTriangle className="h-3 w-3 mr-1" />
-                            No renovable
-                          </Badge>
-                        )}
-                        {isSelected && (
-                          <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
-                            Seleccionada
-                          </Badge>
-                        )}
-                        {poliza.activo && (
-                          <Badge variant="outline" className="bg-green-50 text-green-700 dark:bg-green-900/20">
-                            Activa
+                            No Renovable
                           </Badge>
                         )}
                       </div>
-                      
-                      <div className="grid md:grid-cols-2 gap-4 text-sm text-gray-600 dark:text-gray-400">
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-2">
-                            <User className="h-4 w-4" />
-                            <span>
-                              <strong>Cliente:</strong> {poliza.cliente_nombre || `ID: ${poliza.clinro}`}
-                            </span>
-                          </div>
-                          {poliza.cliente_documento && (
-                            <div className="text-xs pl-6">
-                              Documento: {poliza.cliente_documento}
-                            </div>
-                          )}
-                          <div className="flex items-center gap-2">
-                            <Building2 className="h-4 w-4" />
-                            <span>
-                              <strong>Compañía:</strong> {poliza.compania_nombre || `ID: ${poliza.comcod}`}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <FileText className="h-4 w-4" />
-                            <span>
-                              <strong>Sección:</strong> {poliza.seccion_nombre || `ID: ${poliza.seccod}`}
-                            </span>
-                          </div>
-                        </div>
-                        
-                        <div className="space-y-1">
-                          {poliza.confchdes && poliza.confchhas && (
-                            <div className="flex items-center gap-2">
-                              <Clock className="h-4 w-4" />
-                              <span>
-                                <strong>Vigencia:</strong> {formatDate(poliza.confchdes)} - {formatDate(poliza.confchhas)}
-                              </span>
-                            </div>
-                          )}
-                          {poliza.confchhas && (
-                            <div className="flex items-center gap-2">
-                              <Clock className="h-4 w-4" />
-                              <span>
-                                <strong>Vencimiento:</strong> 
-                                {diasVencimiento >= 0 
-                                  ? ` en ${diasVencimiento} días`
-                                  : ` hace ${Math.abs(diasVencimiento)} días`
-                                }
-                              </span>
-                            </div>
-                          )}
+
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                        <div className="flex items-center gap-2">
+                          <User className="h-4 w-4 text-gray-500" />
                           <div>
-                            <span><strong>Premio:</strong> {formatCurrency(poliza.conpremio)}</span>
+                            <span className="font-medium">Cliente:</span> {poliza.cliente_nombre || 'N/A'}
                           </div>
-                          <div className="text-xs text-gray-500">
-                            <strong>Última actualización:</strong> {formatDate(poliza.last_update)}
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <Building2 className="h-4 w-4 text-gray-500" />
+                          <div>
+                            <span className="font-medium">Compañía:</span> {poliza.compania_nombre || 'N/A'}
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <Clock className="h-4 w-4 text-gray-500" />
+                          <div>
+                            <span className="font-medium">Vigencia:</span> {formatDate(poliza.confchhas)}
                           </div>
                         </div>
                       </div>
-
-                      {/* Información del vehículo si está disponible */}
-                      {(poliza.vehiculo_marca || poliza.vehiculo_modelo || poliza.vehiculo_matricula) && (
-                        <div className="mt-2 text-sm text-gray-600 dark:text-gray-400">
-                          <strong>Vehículo:</strong> 
-                          {poliza.vehiculo_marca && ` ${poliza.vehiculo_marca}`}
-                          {poliza.vehiculo_modelo && ` ${poliza.vehiculo_modelo}`}
-                          {poliza.vehiculo_anio && ` ${poliza.vehiculo_anio}`}
-                          {poliza.vehiculo_matricula && ` - ${poliza.vehiculo_matricula}`}
-                        </div>
-                      )}
-
-                      {/* Observaciones si existen */}
-                      {poliza.observaciones && (
-                        <div className="mt-2">
-                          <details className="text-sm">
-                            <summary className="cursor-pointer text-gray-600 dark:text-gray-400 font-medium">
-                              Ver observaciones
-                            </summary>
-                            <div className="mt-1 p-2 bg-gray-50 dark:bg-gray-800 rounded text-xs max-h-32 overflow-y-auto">
-                              {poliza.observaciones}
-                            </div>
-                          </details>
-                        </div>
-                      )}
                     </div>
                   </div>
 
-                  {!renovable && poliza.confchhas && (
-                    <Alert variant="destructive" className="mt-2">
+                  {!renovable && (
+                    <Alert variant="destructive" className="mt-3">
                       <AlertTriangle className="h-4 w-4" />
-                      <AlertDescription className="text-sm">
-                        Esta póliza no puede ser renovada. 
+                      <AlertDescription>
+                        Esta póliza no se puede renovar.
                         {diasVencimiento > 60 
                           ? ` Vence en ${diasVencimiento} días (máximo 60 días antes).`
                           : ` Venció hace ${Math.abs(diasVencimiento)} días (máximo 30 días después).`
@@ -404,7 +348,7 @@ export function PolizaSearchForm({ hookInstance }: PolizaSearchFormProps) {
         </Card>
       )}
 
-      {/* Confirmación de selección */}
+      {/* ✅ BOTÓN ACTUALIZADO con isConfirming */}
       {selectedPoliza && (
         <Card>
           <CardContent className="pt-6">
@@ -418,9 +362,22 @@ export function PolizaSearchForm({ hookInstance }: PolizaSearchFormProps) {
                 </p>
               </div>
               
-              <Button onClick={handleConfirmSelection} size="lg">
-                <CheckCircle className="h-4 w-4 mr-2" />
-                Confirmar Selección
+              <Button 
+                onClick={handleConfirmSelection} 
+                size="lg"
+                disabled={isConfirming}
+              >
+                {isConfirming ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Confirmando...
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle className="h-4 w-4 mr-2" />
+                    Confirmar Selección
+                  </>
+                )}
               </Button>
             </div>
           </CardContent>

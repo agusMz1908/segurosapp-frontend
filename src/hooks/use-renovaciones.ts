@@ -1,5 +1,6 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { toast } from 'react-hot-toast';
+import { getAuthToken, getAuthHeadersForFormData, getAuthHeaders, handle401Error } from '@/utils/auth-utils';
 import { apiClient } from '@/lib/api';
 
 interface PolizaAnterior {
@@ -46,7 +47,7 @@ interface RenovacionState {
     seccionInfo?: any;
   };
   scan: {
-    status: 'idle' | 'uploading' | 'processing' | 'completed' | 'error';
+    status: 'idle' | 'uploading' | 'scanning' | 'processing' | 'completed' | 'error';
     scanId?: number;
     extractedData: any;
     confidence?: number;
@@ -59,6 +60,18 @@ interface RenovacionState {
     result?: any;
     observaciones?: string;
     validarVencimiento: boolean;
+  };
+  masterData: {  // ← CAMBIAR de opcional a requerido
+    combustibleId: string;
+    categoriaId: string;
+    destinoId: string;
+    departamentoId: string;
+    calidadId: string;
+    tarifaId: string;
+    cantidadCuotas: number;
+    medioPagoId: string;
+    corredorId: string;
+    observaciones: string;
   };
 }
 
@@ -76,8 +89,24 @@ export function useRenovaciones() {
     renovacion: {
       status: 'idle',
       validarVencimiento: true
+    },
+    // ✅ AGREGAR ESTADO INICIAL PARA MASTER DATA
+    masterData: {
+      combustibleId: '',
+      categoriaId: '',
+      destinoId: '',
+      departamentoId: '',
+      calidadId: '',
+      tarifaId: '',
+      cantidadCuotas: 1,
+      medioPagoId: '',
+      corredorId: '',
+      observaciones: ''
     }
   });
+
+
+  const abortControllerRef = useRef<AbortController>(new AbortController());
 
   // Funciones de navegación
   const nextStep = useCallback(() => {
@@ -101,80 +130,259 @@ export function useRenovaciones() {
     }));
   }, []);
 
-  // Selección de póliza anterior
-  const selectPolizaAnterior = useCallback(async (numeroPoliza: string) => {
-    try {
-      setState(prev => ({
-        ...prev,
-        polizaAnterior: null
-      }));
+const selectPolizaAnterior = useCallback(async (numeroPoliza: string) => {
+  try {
+    // Limpiar estado anterior
+    setState(prev => ({
+      ...prev,
+      polizaAnterior: null,
+      context: {} // Limpiar contexto
+    }));
 
-      console.log('🔍 Obteniendo póliza con número:', numeroPoliza);
+    console.log('🔍 Obteniendo póliza con número:', numeroPoliza);
 
-      const response = await apiClient.get<any>(`/api/MasterData/polizas/search?numeroPoliza=${numeroPoliza}&limit=1`);
-      
-      console.log('📡 Respuesta selectPolizaAnterior:', response);
-      
-      // CORRECCIÓN: El apiClient devuelve directamente el array de datos
-      if (!Array.isArray(response) || response.length === 0) {
-        throw new Error('Póliza no encontrada');
-      }
-      
-      const poliza = response[0];
-
-      // Mapear datos de la API a nuestro formato interno
-      const polizaAnterior: PolizaAnterior = {
-        id: poliza.id,
-        numero: poliza.conpol,
-        cliente: {
-          id: poliza.clinro,
-          nombre: poliza.cliente_nombre || `Cliente ID: ${poliza.clinro}`,
-          documento: poliza.cliente_documento || '',
-          email: ''
-        },
-        compania: {
-          id: poliza.comcod,
-          nombre: poliza.compania_nombre || `Compañía ID: ${poliza.comcod}`,
-          codigo: poliza.comcod.toString()
-        },
-        seccion: {
-          id: poliza.seccod,
-          nombre: poliza.seccion_nombre || `Sección ID: ${poliza.seccod}`,
-          ramo: poliza.seccion_nombre || 'Ramo no especificado'
-        },
-        fechaDesde: poliza.confchdes,
-        fechaHasta: poliza.confchhas,
-        estado: poliza.activo ? 'Activa' : 'Inactiva',
-        premio: poliza.conpremio || 0,
-        montoTotal: poliza.conpremio || 0, // En este caso usamos el premio como total
-        vehiculo: {
-          marca: poliza.vehiculo_marca || '',
-          modelo: poliza.vehiculo_modelo || '',
-          anio: poliza.vehiculo_anio || 0,
-          patente: poliza.vehiculo_matricula || ''
-        }
-      };
-
-      setState(prev => ({
-        ...prev,
-        polizaAnterior,
-        // Heredar contexto automáticamente
-        context: {
-          clienteId: polizaAnterior.cliente.id,
-          companiaId: polizaAnterior.compania.id,
-          seccionId: polizaAnterior.seccion.id,
-          clienteInfo: polizaAnterior.cliente,
-          companiaInfo: polizaAnterior.compania,
-          seccionInfo: polizaAnterior.seccion
-        }
-      }));
-
-      toast.success(`Póliza ${poliza.conpol} seleccionada`);
-    } catch (error: any) {
-      console.error('Error obteniendo póliza:', error);
-      toast.error(error.response?.data?.message || 'Error obteniendo información de la póliza');
+    // ✅ USAR apiClient en lugar de fetch directo
+    const response = await apiClient.get<any>(`/api/MasterData/polizas/search?numeroPoliza=${numeroPoliza}&limit=1`);
+    
+    console.log('📡 Respuesta selectPolizaAnterior:', response);
+    
+    // ✅ CONSISTENTE: apiClient ya extrae los datos del wrapper
+    if (!Array.isArray(response) || response.length === 0) {
+      throw new Error('Póliza no encontrada');
     }
-  }, []);
+    
+    const poliza = response[0];
+
+    // Mapear datos de la API a nuestro formato interno
+    const polizaAnterior: PolizaAnterior = {
+      id: poliza.id,
+      numero: poliza.conpol,
+      cliente: {
+        id: poliza.clinro,
+        nombre: poliza.cliente_nombre || `Cliente ID: ${poliza.clinro}`,
+        documento: poliza.cliente_documento || '',
+        email: ''
+      },
+      compania: {
+        id: poliza.comcod,
+        nombre: poliza.compania_nombre || `Compañía ID: ${poliza.comcod}`,
+        codigo: poliza.comcod.toString()
+      },
+      seccion: {
+        id: poliza.seccod,
+        nombre: poliza.seccion_nombre || `Sección ID: ${poliza.seccod}`,
+        ramo: poliza.seccion_nombre || 'Ramo no especificado'
+      },
+      fechaDesde: poliza.confchdes,
+      fechaHasta: poliza.confchhas,
+      estado: poliza.activo ? 'Activa' : 'Inactiva',
+      premio: poliza.conpremio || 0,
+      montoTotal: poliza.conpremio || 0,
+      vehiculo: {
+        marca: poliza.vehiculo_marca || '',
+        modelo: poliza.vehiculo_modelo || '',
+        anio: poliza.vehiculo_anio || 0,
+        patente: poliza.vehiculo_matricula || ''
+      }
+    };
+
+    // Actualizar estado de una sola vez
+    setState(prev => ({
+      ...prev,
+      polizaAnterior,
+      // Heredar contexto automáticamente
+      context: {
+        clienteId: polizaAnterior.cliente.id,
+        companiaId: polizaAnterior.compania.id,
+        seccionId: polizaAnterior.seccion.id,
+        clienteInfo: polizaAnterior.cliente,
+        companiaInfo: polizaAnterior.compania,
+        seccionInfo: polizaAnterior.seccion
+      },
+      // ✅ AVANZAR automáticamente al siguiente paso
+      currentStep: 2
+    }));
+
+    console.log('✅ Póliza seleccionada y contexto configurado:', polizaAnterior);
+    
+    // NO hacer toast aquí, dejarlo para el componente
+    return polizaAnterior;
+
+  } catch (error: any) {
+    console.error('❌ Error obteniendo póliza:', error);
+    
+    // Limpiar estado en caso de error
+    setState(prev => ({
+      ...prev,
+      polizaAnterior: null,
+      context: {}
+    }));
+    
+    // Re-lanzar el error para que el componente lo maneje
+    throw error;
+  }
+}, []);
+
+  // Upload usando el patrón exacto de nueva-poliza
+  const uploadDocument = useCallback(async (file: File): Promise<boolean> => {
+    if (!state.context.clienteId || !state.context.companiaId || !state.context.seccionId) {
+      toast.error('Error: Contexto no válido para la renovación');
+      return false;
+    }
+
+    try {
+      // Abortar request anterior si existe
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+      abortControllerRef.current = new AbortController();
+
+      console.log('🔍 Iniciando upload para renovación:', {
+        file: file.name,
+        clienteId: state.context.clienteId,
+        companiaId: state.context.companiaId,
+        seccionId: state.context.seccionId,
+        polizaAnterior: state.polizaAnterior?.numero
+      });
+
+      setState(prev => ({
+        ...prev,
+        scan: {
+          ...prev.scan,
+          status: 'uploading',
+          fileName: file.name,
+          errors: []
+        }
+      }));
+
+      // ← USAR LA MISMA LÓGICA QUE NUEVA-POLIZA
+      const token = getAuthToken();
+      
+      if (!token) {
+        throw new Error('No se encontró token de autenticación. Por favor, inicia sesión nuevamente.');
+      }
+
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('clienteId', state.context.clienteId.toString());
+      formData.append('companiaId', state.context.companiaId.toString());
+      formData.append('seccionId', state.context.seccionId.toString());
+      formData.append('notes', `Renovación de póliza ${state.polizaAnterior?.numero}`);
+
+      setState(prev => ({
+        ...prev,
+        scan: {
+          ...prev.scan,
+          status: 'scanning'
+        }
+      }));
+
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://localhost:7202';
+      const response = await fetch(`${API_URL}/api/Document/upload-with-context`, {
+        method: 'POST',
+        headers: getAuthHeadersForFormData(), // ← USAR LA MISMA FUNCIÓN
+        body: formData,
+        signal: abortControllerRef.current.signal,
+      });
+
+      if (!response.ok) {
+        let errorMessage = `Error ${response.status}: ${response.statusText}`;
+        
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.message || errorData.Message || errorMessage;
+        } catch {
+          const errorText = await response.text();
+          if (errorText) {
+            errorMessage = errorText;
+          }
+        }
+        
+        if (response.status === 401) {
+          handle401Error(); // ← USAR LA MISMA FUNCIÓN
+          return false;
+        }
+        
+        throw new Error(errorMessage);
+      }
+
+      const result = await response.json();
+      
+      console.log('🔍 Resultado upload renovación:', result);
+      
+      const scanResult = result.scanResult || {};
+      const polizaMapping = result.polizaMapping || {};
+
+      if (result.success) {
+        setState(prev => ({
+          ...prev,
+          scan: {
+            ...prev.scan,
+            status: 'completed',
+            scanId: scanResult.scanId,
+extractedData: {
+  // Conservar todos los datos existentes
+  ...polizaMapping.mappedData,
+  ...scanResult.extractedData,
+  
+  // Mapeo mejorado para campos financieros
+  valorPorCuota: polizaMapping.mappedData?.valorPorCuota || 
+                polizaMapping.mappedData?.valorCuota ||
+                scanResult.extractedData?.valorPorCuota ||
+                scanResult.extractedData?.valorCuota ||
+                (polizaMapping.mappedData?.prima && polizaMapping.mappedData?.cantidadCuotas ? 
+                  (parseFloat(polizaMapping.mappedData.prima) / parseFloat(polizaMapping.mappedData.cantidadCuotas)).toString() : '') ||
+                '',
+                
+  premioTotal: polizaMapping.mappedData?.premioTotal ||
+               polizaMapping.mappedData?.montoTotal ||
+               polizaMapping.mappedData?.premio ||
+               scanResult.extractedData?.premioTotal ||
+               scanResult.extractedData?.montoTotal ||
+               polizaMapping.mappedData?.prima || '',
+               
+  // Asegurar que la prima se mapee correctamente
+  prima: polizaMapping.mappedData?.prima || 
+         polizaMapping.mappedData?.premio ||
+         scanResult.extractedData?.prima || 
+         scanResult.extractedData?.premio || '',
+         
+  // Campos básicos con fallbacks
+  numeroPoliza: polizaMapping.mappedData?.numeroPoliza ||
+                scanResult.extractedData?.numeroPoliza ||
+                scanResult.extractedData?.polizaNumber || '',
+},
+            confidence: polizaMapping.completionPercentage || 0,
+            requiresAttention: polizaMapping.requiresAttention || []
+          }
+        }));
+
+        toast.success('Documento de renovación procesado exitosamente');
+        return true;
+      } else {
+        throw new Error(result.errorMessage || 'Error procesando documento');
+      }
+    } catch (error: any) {
+      console.error('Error uploading document for renewal:', error);
+      
+      // No mostrar error si fue abortado intencionalmente
+      if (error.name === 'AbortError') {
+        return false;
+      }
+
+      setState(prev => ({
+        ...prev,
+        scan: {
+          ...prev.scan,
+          status: 'error',
+          errors: [error.message || 'Error desconocido']
+        }
+      }));
+      
+      toast.error(error.message || 'Error procesando documento de renovación');
+      return false;
+    }
+  }, [state.context, state.polizaAnterior]);
 
   // Validaciones de paso
   const canProceedToStep2 = useCallback(() => {
@@ -211,70 +419,7 @@ export function useRenovaciones() {
     return Math.ceil((fechaVencimiento.getTime() - hoy.getTime()) / (1000 * 60 * 60 * 24));
   }, [state.polizaAnterior]);
 
-  // Manejo de escaneo (reutilizar lógica de nueva póliza)
-  const uploadDocument = useCallback(async (file: File) => {
-    if (!state.context.clienteId || !state.context.companiaId || !state.context.seccionId) {
-      toast.error('Error: Contexto no válido');
-      return;
-    }
-
-    try {
-      setState(prev => ({
-        ...prev,
-        scan: {
-          ...prev.scan,
-          status: 'uploading',
-          fileName: file.name
-        }
-      }));
-
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('clienteId', state.context.clienteId.toString());
-      formData.append('companiaId', state.context.companiaId.toString());
-      formData.append('seccionId', state.context.seccionId.toString());
-      formData.append('notes', `Renovación de póliza ${state.polizaAnterior?.numero}`);
-
-      const response = await apiClient.request<any>('/api/document/upload-with-context', {
-        method: 'POST',
-        body: formData,
-        headers: {} // No establecer Content-Type para que el browser lo haga automáticamente con multipart
-      });
-
-      const result = response;
-
-      if (result.success) {
-        setState(prev => ({
-          ...prev,
-          scan: {
-            ...prev.scan,
-            status: 'completed',
-            scanId: result.scanResult.scanId,
-            extractedData: result.polizaMapping.mappedData || {},
-            confidence: result.polizaMapping.completionPercentage || 0,
-            requiresAttention: result.polizaMapping.requiresAttention || []
-          }
-        }));
-
-        toast.success('Documento procesado exitosamente');
-      } else {
-        throw new Error(result.errorMessage || 'Error procesando documento');
-      }
-    } catch (error: any) {
-      console.error('Error uploading document:', error);
-      setState(prev => ({
-        ...prev,
-        scan: {
-          ...prev.scan,
-          status: 'error',
-          errors: [error.response?.data?.message || error.message || 'Error desconocido']
-        }
-      }));
-      toast.error(error.response?.data?.message || 'Error procesando documento');
-    }
-  }, [state.context, state.polizaAnterior]);
-
-  // Enviar renovación
+  // Enviar renovación usando fetch directo
   const submitRenovacion = useCallback(async () => {
     if (!state.scan.scanId || !state.polizaAnterior) {
       toast.error('Faltan datos para procesar la renovación');
@@ -296,21 +441,36 @@ export function useRenovaciones() {
         validarVencimiento: state.renovacion.validarVencimiento
       };
 
-      const response = await apiClient.post<any>(`/api/document/${state.scan.scanId}/renew-in-velneo`, request);
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://localhost:7202';
+      const response = await fetch(`${API_URL}/api/document/${state.scan.scanId}/renew-in-velneo`, {
+        method: 'POST',
+        headers: getAuthHeaders(), // ← USAR LA MISMA FUNCIÓN
+        body: JSON.stringify(request),
+      });
 
-      if (response.success) {
+      if (!response.ok) {
+        if (response.status === 401) {
+          handle401Error();
+          return;
+        }
+        throw new Error(`Error ${response.status}: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+
+      if (result.success) {
         setState(prev => ({
           ...prev,
           renovacion: {
             ...prev.renovacion,
             status: 'completed',
-            result: response
+            result: result
           }
         }));
 
         toast.success('Renovación procesada exitosamente en Velneo');
       } else {
-        throw new Error(response.message || 'Error en renovación');
+        throw new Error(result.message || 'Error en renovación');
       }
     } catch (error: any) {
       console.error('Error en renovación:', error);
@@ -321,7 +481,7 @@ export function useRenovaciones() {
           status: 'error'
         }
       }));
-      toast.error(error.response?.data?.message || 'Error procesando renovación');
+      toast.error(error.message || 'Error procesando renovación');
     }
   }, [state.scan.scanId, state.polizaAnterior, state.renovacion.observaciones, state.renovacion.validarVencimiento]);
 
@@ -360,26 +520,63 @@ export function useRenovaciones() {
     }));
   }, []);
 
-  // Reset
-  const reset = useCallback(() => {
-    setState({
-      currentStep: 1,
-      polizaAnterior: null,
-      context: {},
-      scan: {
-        status: 'idle',
-        extractedData: {},
-        requiresAttention: [],
-        errors: []
-      },
-      renovacion: {
-        status: 'idle',
-        validarVencimiento: true
-      }
-    });
+    const updateState = useCallback((updates: any) => {
+    if (typeof updates === 'function') {
+      setState(updates);
+    } else {
+      setState(prev => ({
+        ...prev,
+        ...updates
+      }));
+    }
   }, []);
 
-  return {
+  // Función para actualizar master data específicamente
+  const updateMasterData = useCallback((updates: any) => {
+    setState(prev => ({
+      ...prev,
+      masterData: {
+        ...prev.masterData,
+        ...updates
+      }
+    }));
+  }, []);
+
+const reset = useCallback(() => {
+  abortControllerRef.current.abort();
+  abortControllerRef.current = new AbortController();
+  
+  setState({
+    currentStep: 1,
+    polizaAnterior: null,
+    context: {},
+    scan: {
+      status: 'idle',
+      extractedData: {},
+      requiresAttention: [],
+      errors: []
+    },
+    renovacion: {
+      status: 'idle',
+      validarVencimiento: true
+    },
+    // ✅ AGREGAR masterData al reset
+    masterData: {
+      combustibleId: '',
+      categoriaId: '',
+      destinoId: '',
+      departamentoId: '',
+      calidadId: '',
+      tarifaId: '',
+      cantidadCuotas: 1,
+      medioPagoId: '',
+      corredorId: '',
+      observaciones: ''
+    }
+  });
+}, []);
+
+return {
     state,
     // Navegación
     nextStep,
@@ -399,7 +596,9 @@ export function useRenovaciones() {
     submitRenovacion,
     updateObservaciones,
     updateValidarVencimiento,
-    updateExtractedData,
+    updateExtractedData,  // ✅ NUEVA
+    updateMasterData,     // ✅ NUEVA  
+    updateState,          // ✅ NUEVA
     reset
   };
 }

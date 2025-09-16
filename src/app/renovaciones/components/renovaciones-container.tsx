@@ -18,19 +18,11 @@ import {
 } from 'lucide-react';
 import { useRenovaciones } from '../../../hooks/use-renovaciones';
 
-// Importar componentes de pasos
+// Importar componentes de pasos (los crearemos después)
 import { PolizaSearchForm } from '../step-1-search/poliza-search-form';
 import { PolizaInfoView } from '../step-2-info/poliza-info-view';
-// import { ValidationForm } from '../step-3-validation/validation-form';
+import { ValidationForm } from '../step-3-validation/validation-form';
 // import { RenovacionConfirmationForm } from '../step-4-confirmation/renovacion-confirmation-form';
-
-const ValidationForm = ({ hookInstance }: { hookInstance: any }) => (
-  <div className="p-8 text-center">
-    <FileText className="h-16 w-16 mx-auto text-gray-400 mb-4" />
-    <h3 className="text-lg font-semibold mb-2">Paso 3: Validación</h3>
-    <p className="text-gray-600">Reutilizar de nueva póliza...</p>
-  </div>
-);
 
 const RenovacionConfirmationForm = ({ hookInstance }: { hookInstance: any }) => (
   <div className="p-8 text-center">
