@@ -89,6 +89,7 @@ export function ExtractedDataForm({ hookInstance }: ExtractedDataFormProps) {
             value={editedData.polizaNumber || ''}
             onChange={(e) => handleFieldChange('polizaNumber', e.target.value)}
             placeholder="Ingresa número de póliza"
+            maxLength={50}
           />
         </div>
 

@@ -111,19 +111,19 @@ export function useNuevaPoliza() {
   const [state, setState] = useState<NuevaPolizaState>(initialState);
   const abortControllerRef = useRef<AbortController | null>(null);
 
-const updateState = useCallback((updates: Partial<NuevaPolizaState> | ((prev: NuevaPolizaState) => Partial<NuevaPolizaState>)) => {
-  console.log('🔧 updateState recibido:', updates);
-  
-  setState(prev => {
-    console.log('🔧 setState - prevState:', prev);
+  const updateState = useCallback((updates: Partial<NuevaPolizaState> | ((prev: NuevaPolizaState) => Partial<NuevaPolizaState>)) => {
+    console.log('🔧 updateState recibido:', updates);
     
-    const newUpdates = typeof updates === 'function' ? updates(prev) : updates;
-    const newState = { ...prev, ...newUpdates };
-    
-    console.log('🔧 setState - newState:', newState);
-    return newState;
-  });
-}, []);
+    setState(prev => {
+      console.log('🔧 setState - prevState:', prev);
+      
+      const newUpdates = typeof updates === 'function' ? updates(prev) : updates;
+      const newState = { ...prev, ...newUpdates };
+      
+      console.log('🔧 setState - newState:', newState);
+      return newState;
+    });
+  }, []);
 
   // Validaciones
   const isContextValid = useCallback(() => {
@@ -149,69 +149,309 @@ const updateState = useCallback((updates: Partial<NuevaPolizaState> | ((prev: Nu
     return hasRequiredContext && hasExtractedData && hasRequiredPolicyData;
   }, [state]);
 
-const mapBackendDataToFrontend = (backendData: any, rawData?: any) => {
-  const extractNumber = (str: string) => {
-    if (!str) return "";
-    const match = str.match(/[\d.,]+/);
-    if (!match) return "";
-    
-    let cleanNumber = match[0].replace(/[^\d.,]/g, '');
+  // Función de mapeo universal (sin referencias específicas a compañías)
+  const mapBackendDataToFrontend = (backendData: any, rawData?: any) => {
+    console.log('🔍 MAPEO UNIVERSAL - backendData:', backendData);
+    console.log('🔍 MAPEO UNIVERSAL - rawData:', rawData);
 
-    if (cleanNumber.includes('.') && cleanNumber.includes(',')) {
-      cleanNumber = cleanNumber.replace(/\./g, '').replace(',', '.');
-    } else if (cleanNumber.includes('.') && !cleanNumber.includes(',')) {
-      const parts = cleanNumber.split('.');
-      if (parts.length === 2 && parts[1].length > 2) {
-        cleanNumber = cleanNumber.replace(/\./g, '');
-      }
-    } else if (cleanNumber.includes(',')) {
-      cleanNumber = cleanNumber.replace(',', '.');
+    if (!rawData || Object.keys(rawData).length === 0) {
+      console.log('❌ rawData vacío o undefined');
+      return {};
     }
-    
-    const number = parseFloat(cleanNumber);
-    
-    if (isNaN(number)) return "";
 
-    return new Intl.NumberFormat('es-UY', {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2
-    }).format(number);
-  };
+    const cleanText = (str: string) => {
+      if (!str) return "";
+      return str.replace(/\n/g, ' ').replace(/\r/g, ' ').trim();
+    };
 
-  const extractCuotas = (str: string) => {
-    if (!str) return "";
-    const match = str.match(/(\d+)\s+cuotas/i);
-    return match ? match[1] : "";
-  };
+    const extractNumber = (str: string) => {
+      if (!str) return "";
+      
+      const cleanStr = cleanText(str);
+      console.log('🔍 Extrayendo número de:', cleanStr);
+      
+      const match = cleanStr.match(/\$?\s*([\d.,]+)/);
+      if (!match) return "";
+      
+      let cleanNumber = match[1];
 
-  return {
-    polizaNumber: backendData.numeroPoliza || "",
-    vigenciaDesde: backendData.fechaDesde || "",
-    vigenciaHasta: backendData.fechaHasta || "",
-    prima: backendData.premio?.toString() || "",
-    
-    cantidadCuotas: backendData.cantidadCuotas?.toString() || 
-                   (rawData?.["pago.modo_facturacion"] ? extractCuotas(rawData["pago.modo_facturacion"]) : ""),
-    
-    valorPorCuota: backendData.valorPorCuota?.toString() || 
-                   (rawData?.["pago.cuotas[0].prima"] ? extractNumber(rawData["pago.cuotas[0].prima"]) : ""),
-    
-    premioTotal: backendData.premioTotal?.toString() || 
-                 (rawData?.["financiero.premio_total"] ? extractNumber(rawData["financiero.premio_total"]) : ""),
+      if (cleanNumber.includes('.') && cleanNumber.includes(',')) {
+        cleanNumber = cleanNumber.replace(/\./g, '').replace(',', '.');
+      } else if (cleanNumber.includes(',')) {
+        cleanNumber = cleanNumber.replace(',', '.');
+      }
+      
+      const number = parseFloat(cleanNumber);
+      if (isNaN(number)) return "";
 
-    formaPago: backendData.formaPago || 
-               rawData?.["pago.forma_pago"] || 
-               rawData?.["pago.metodo_pago"] || 
-               "",
-    
-    vehiculoMarca: backendData.vehiculoMarca || "",
-    vehiculoModelo: backendData.vehiculoModelo || "",
-    vehiculoAno: backendData.vehiculoAño?.toString() || "",
-    vehiculoChasis: backendData.vehiculoChasis || "",
-    vehiculoPatente: backendData.vehiculoMatricula || "",
-    vehiculoMotor: backendData.vehiculoMotor || "",
-  };
+      return new Intl.NumberFormat('es-UY', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      }).format(number);
+    };
+
+    const extractDate = (dateStr: string) => {
+      if (!dateStr) return "";
+      
+      const cleanDateStr = cleanText(dateStr);
+      console.log('🔍 Extrayendo fecha de:', cleanDateStr);
+
+      const match = cleanDateStr.match(/(\d{1,2})-(\d{1,2})-(\d{4})/);
+      if (match) {
+        const [, day, month, year] = match;
+        const formattedDate = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+        console.log('✅ Fecha extraída:', formattedDate);
+        return formattedDate;
+      }
+      
+      console.log('❌ No se pudo extraer fecha de:', cleanDateStr);
+      return "";
+    };
+
+const cleanVehicleField = (str: string) => {
+  if (!str) return "";
+  
+  const cleaned = str.replace(/\n/g, ' ').replace(/\r/g, ' ').trim();
+  
+  // Prefijos más completos para MAPFRE y otras compañías
+  const prefixes = [
+    'Marca\n', 'Marca ', 'MARCA\n', 'MARCA ',
+    'Modelo\n', 'Modelo ', 'MODELO\n', 'MODELO ',
+    'Chasis\n', 'Chasis ', 'CHASIS\n', 'CHASIS ',
+    'Motor\n', 'Motor ', 'MOTOR\n', 'MOTOR ',
+    'Año\n', 'Año ', 'AÑO\n', 'AÑO ',
+    'Color\n', 'Color ', 'COLOR\n', 'COLOR ',
+    'Tipo\n', 'Tipo ', 'TIPO\n', 'TIPO ',
+    'Riesgo nro.\n', 'Riesgo nro. ', 'RIESGO NRO.\n', 'RIESGO NRO. ',
+    'Tipo de uso\n', 'Tipo de uso ', 'TIPO DE USO\n', 'TIPO DE USO '
+  ];
+  
+  for (const prefix of prefixes) {
+    if (cleaned.startsWith(prefix)) {
+      return cleaned.substring(prefix.length).trim();
+    }
+  }
+  
+  return cleaned;
 };
+
+    const cleanPatenteField = (str: string) => {
+      if (!str) return "";
+      
+      const cleaned = str.replace(/\n/g, ' ').replace(/\r/g, ' ').trim();
+      
+      if (cleaned.startsWith('Patente ')) {
+        return cleaned.substring('Patente '.length).trim();
+      }
+      
+      return cleaned;
+    };
+
+    const extractPolizaNumber = (str: string) => {
+      if (!str) return "";
+      const cleanStr = cleanText(str);
+      
+      // Buscar patrones comunes de número de póliza
+      const patterns = [
+        /0040\d+(?:-\d+)?/,           // MAPFRE format
+        /\d{7,12}(?:-\d+)?/,         // BSE format  
+        /AP\d{7,}/,                  // SURA format
+        /\d{4,}-\d{1,}/              // General format
+      ];
+      
+      for (const pattern of patterns) {
+        const match = cleanStr.match(pattern);
+        if (match) {
+          return match[0];
+        }
+      }
+      
+      return cleanStr.replace(/^Póliza\s+(nro\.?\s*|Número:\s*)?/i, '');
+    };
+
+    const countCuotas = (data: any) => {
+      if (!data) return "";
+      
+      // Buscar diferentes formatos de cuotas según la compañía
+      const cuotasCount = Object.keys(data)
+        .filter(key => 
+          key.startsWith("pago.vencimiento_cuota[") ||      // MAPFRE
+          key.startsWith("pago.cuotas[") ||                 // BSE
+          key.startsWith("pago.numero_cuota[")              // SURA
+        )
+        .length;
+      
+      console.log('🔍 Cuotas encontradas:', cuotasCount);
+      return cuotasCount > 0 ? cuotasCount.toString() : "";
+    };
+
+    // Función para buscar un campo en múltiples ubicaciones posibles
+    const findFieldValue = (possibleFields: string[]) => {
+      for (const field of possibleFields) {
+        if (rawData[field]) {
+          return rawData[field];
+        }
+      }
+      return null;
+    };
+
+    return {
+      // Número de póliza - buscar en diferentes formatos
+      polizaNumber: extractPolizaNumber(
+        findFieldValue([
+          "poliza.numero",           // BSE
+          "poliza.numero_poliza",    // BSE alt
+          "poliza_numero"            // Generic
+        ]) || ""
+      ) || backendData.numeroPoliza || "",
+      
+      // Fechas - priorizar backend (ya normalizado), fallback a rawData
+      vigenciaDesde: backendData.fechaDesde || 
+                     extractDate(findFieldValue([
+                       "poliza.fecha_desde",        // MAPFRE
+                       "poliza.vigencia.desde",     // BSE
+                       "poliza.fecha-desde"         // SURA
+                     ]) || "") || "",
+      
+      vigenciaHasta: backendData.fechaHasta || 
+                     extractDate(findFieldValue([
+                       "poliza.fecha_hasta",        // MAPFRE
+                       "poliza.vigencia.hasta",     // BSE  
+                       "poliza.fecha-hasta"         // SURA
+                     ]) || "") || "",
+
+      fechaEmision: extractDate(findFieldValue([
+        "poliza.fecha_emision",      // MAPFRE
+        "poliza.fecha_emision",      // BSE
+        "poliza.fecha_emision"       // Generic
+      ]) || "") || "",
+
+      // Montos - priorizar backend, fallback a campos específicos
+      prima: backendData.premio?.toString() || 
+             extractNumber(findFieldValue([
+               "poliza.prima_comercial",    // BSE
+               "costo.costo",               // MAPFRE cost
+               "premio.premio"              // SURA
+             ]) || "") || "",
+      
+      premioTotal: backendData.premioTotal?.toString() || 
+                   extractNumber(findFieldValue([
+                     "financiero.premio_total",   // BSE
+                     "costo.premio_total",        // MAPFRE
+                     "premio.total"               // SURA
+                   ]) || "") || "",
+
+      iva: extractNumber(findFieldValue([
+        "costo.iva",                 // MAPFRE
+        "poliza.iva",                // BSE
+        "premio.iva"                 // SURA
+      ]) || "") || "",
+
+      // Cuotas - usar lógica inteligente
+      cantidadCuotas: backendData.cantidadCuotas?.toString() || 
+                      countCuotas(rawData) || "",
+      
+      valorPorCuota: backendData.valorPorCuota?.toString() || 
+                     extractNumber(findFieldValue([
+                       "pago.cuotas[0].prima",      // BSE
+                       "pago.cuota_monto[1]",       // MAPFRE
+                       "pago.prima_cuota[1]"        // SURA
+                     ]) || "") || "",
+
+      formaPago: backendData.formaPago || 
+                 cleanText(findFieldValue([
+                   "pago.forma_pago",           // SURA
+                   "modo_de_pago",              // MAPFRE
+                   "pago.medio"                 // BSE
+                 ]) || "") || "",
+
+      // Vehículo
+      vehiculoMarca: backendData.vehiculoMarca || 
+                     cleanVehicleField(findFieldValue([
+                       "vehiculo.marca"           // Universal
+                     ]) || "") || "",
+      
+      vehiculoModelo: backendData.vehiculoModelo || 
+                      cleanVehicleField(findFieldValue([
+                        "vehiculo.modelo"         // Universal
+                      ]) || "") || "",
+      
+      vehiculoAno: backendData.vehiculoAño?.toString() || 
+                   cleanVehicleField(findFieldValue([
+                     "vehiculo.anio",           // BSE/MAPFRE
+                     "vehiculo.año"             // BSE alt
+                   ]) || "") || "",
+      
+      vehiculoChasis: backendData.vehiculoChasis || 
+                      cleanVehicleField(findFieldValue([
+                        "vehiculo.chasis"         // Universal
+                      ]) || "") || "",
+      
+      vehiculoMotor: backendData.vehiculoMotor || 
+                     cleanVehicleField(findFieldValue([
+                       "vehiculo.motor"           // Universal
+                     ]) || "") || "",
+
+      vehiculoColor: cleanVehicleField(findFieldValue([
+        "vehiculo.color"              // Universal
+      ]) || "") || "",
+      
+      vehiculoTipo: cleanVehicleField(findFieldValue([
+        "vehiculo.tipo",              // MAPFRE
+        "vehiculo.tipo_vehiculo"      // BSE
+      ]) || "") || "",
+
+      // Patente/Matrícula
+      vehiculoPatente: backendData.vehiculoMatricula || 
+                       cleanPatenteField(findFieldValue([
+                         "vehiculo.matricula",    // MAPFRE/SURA
+                         "vehiculo.patente"       // BSE
+                       ]) || "") || "",
+
+      // Asegurado
+      aseguradoNombre: backendData.aseguradoNombre || 
+                       cleanText(findFieldValue([
+                         "asegurado.nombre"       // Universal
+                       ]) || "") || "",
+      
+      aseguradoDocumento: backendData.aseguradoDocumento || 
+                          cleanText(findFieldValue([
+                            "conductor.cedula",     // MAPFRE
+                            "asegurado.documento",  // BSE
+                            "asegurado.ci"          // Generic
+                          ]) || "") || "",
+      
+      aseguradoTelefono: cleanText(findFieldValue([
+        "asegurado.telefono"          // Universal
+      ]) || "") || "",
+      
+      aseguradoDireccion: cleanText(findFieldValue([
+        "asegurado.direccion"         // Universal
+      ]) || "") || "",
+      
+      aseguradoDepartamento: cleanText(findFieldValue([
+        "asegurado.departamento"      // Universal
+      ]) || "") || "",
+
+      // Campos adicionales
+      modalidad: cleanText(findFieldValue([
+        "poliza.modalidad"            // Universal
+      ]) || "") || "",
+      
+      tipoMovimiento: cleanText(findFieldValue([
+        "poliza.tipo_de_movimiento",  // MAPFRE
+        "poliza.tipo_movimiento"      // BSE
+      ]) || "") || "",
+      
+      moneda: cleanText(findFieldValue([
+        "poliza.moneda"               // Universal
+      ]) || "") || "",
+
+      tipoUso: cleanText(findFieldValue([
+        "vehiculo.tipo_de_uso"        // Universal
+      ]) || "") || "",
+    };
+  };
 
   const calculateCompletionPercentage = (polizaMapping: any) => {
     if (polizaMapping.metrics?.completionPercentage) {
@@ -237,7 +477,6 @@ const mapBackendDataToFrontend = (backendData: any, rawData?: any) => {
     }));
   };
 
-  // Mapear nombres de campos del backend al frontend
   const mapBackendFieldToFrontend = (backendField: string) => {
     const fieldMap: { [key: string]: string } = {
       'NumeroPoliza': 'polizaNumber',
@@ -256,66 +495,27 @@ const mapBackendDataToFrontend = (backendData: any, rawData?: any) => {
     return fieldMap[backendField] || backendField;
   };
 
-const uploadWithContext = useCallback(async (file: File): Promise<boolean> => {
-  if (!isContextValid()) {
-    toast.error('Contexto incompleto. Selecciona cliente, compañía y sección.');
-    return false;
-  }
-
-  console.log('=== INICIANDO UPLOAD REAL ===');
-  console.log('Context:', state.context);
-
-  // Cancel previous request if exists
-  if (abortControllerRef.current) {
-    abortControllerRef.current.abort();
-  }
-
-  abortControllerRef.current = new AbortController();
-
-  updateState({
-    file: {
-      selected: file,
-      uploaded: false,
-      scanId: null,
-      uploadProgress: 0,
-    },
-    scan: {
-      status: 'uploading',
-      extractedData: {},
-      mappedData: {},
-      completionPercentage: 0,
-      requiresAttention: [],
-      errorMessage: undefined,
-    },
-    isLoading: true,
-  });
-
-  try {
-    // 1. Obtener token usando utilidad estándar
-    const token = getAuthToken();
-    
-    if (!token) {
-      throw new Error('No se encontró token de autenticación. Por favor, inicia sesión nuevamente.');
+  const uploadWithContext = useCallback(async (file: File): Promise<boolean> => {
+    if (!isContextValid()) {
+      toast.error('Contexto incompleto. Selecciona cliente, compañía y sección.');
+      return false;
     }
 
-    // 2. Crear FormData para envío al backend
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('clienteId', state.context.clienteId?.toString() || '');
-    formData.append('companiaId', state.context.companiaId?.toString() || '');
-    formData.append('seccionId', state.context.seccionId?.toString() || '');
-    formData.append('notes', '');
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
 
-    // 3. Actualizar estado a scanning
+    abortControllerRef.current = new AbortController();
+
     updateState({
       file: {
         selected: file,
         uploaded: false,
         scanId: null,
-        uploadProgress: 50,
+        uploadProgress: 0,
       },
       scan: {
-        status: 'scanning',
+        status: 'uploading' as const,
         extractedData: {},
         mappedData: {},
         completionPercentage: 0,
@@ -325,247 +525,252 @@ const uploadWithContext = useCallback(async (file: File): Promise<boolean> => {
       isLoading: true,
     });
 
-    // 4. Llamada al backend
-    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://localhost:7202';
-    const response = await fetch(`${API_URL}/api/Document/upload-with-context`, {
-      method: 'POST',
-      headers: getAuthHeadersForFormData(),
-      body: formData,
-      signal: abortControllerRef.current.signal,
-    });
-
-    console.log('📡 Response status:', response.status);
-
-    if (!response.ok) {
-      let errorMessage = `Error ${response.status}: ${response.statusText}`;
+    try {
+      const token = getAuthToken();
       
-      try {
-        const errorData = await response.json();
-        errorMessage = errorData.message || errorData.Message || errorMessage;
-        console.error('❌ Error del servidor:', errorData);
-      } catch {
-        const errorText = await response.text();
-        if (errorText) {
-          errorMessage = errorText;
-        }
+      if (!token) {
+        throw new Error('No se encontró token de autenticación. Por favor, inicia sesión nuevamente.');
       }
-      
-      if (response.status === 401) {
-        handle401Error();
-        return false;
-      }
-      
-      throw new Error(errorMessage);
-    }
 
-    // 5. Procesar respuesta del backend
-    const result = await response.json();
-    console.log('=== RESPUESTA DEL BACKEND ===', result);
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('clienteId', state.context.clienteId?.toString() || '');
+      formData.append('companiaId', state.context.companiaId?.toString() || '');
+      formData.append('seccionId', state.context.seccionId?.toString() || '');
+      formData.append('notes', '');
 
-    // 6. Extraer datos del escaneo
-    const scanResult = result.scanResult || {};
-    const polizaMapping = result.polizaMapping || {};
-    
-    // CAMBIO CRÍTICO: Preservar los datos originales del escaneo
-    const originalExtractedData = scanResult.extractedData || {};
-    console.log('🔍 Datos originales del escaneo:', originalExtractedData);
-    
-    // Mapear para el formulario de visualización
-    const displayData = mapBackendDataToFrontend(
-      polizaMapping.mappedData || {}, 
-      originalExtractedData
-    );
-    
-    console.log('🔍 Datos para formulario:', displayData);
-    
-    // 7. SOLUCIÓN: Combinar datos originales + datos del formulario
-    const combinedExtractedData = {
-      ...originalExtractedData,  // Datos originales para el mapeo inteligente
-      ...displayData             // Datos formateados para el formulario
-    };
-    
-    console.log('🔍 Datos combinados finales:', combinedExtractedData);
-    
-    // 8. Actualizar estado con datos combinados
-    updateState({
-      file: {
-        selected: file,
-        uploaded: true,
-        scanId: scanResult.scanId || scanResult.id || null,
-        uploadProgress: 100,
-      },
-      scan: {
-        status: 'completed',
-        extractedData: combinedExtractedData, // ✅ AQUÍ ESTÁ EL FIX
-        mappedData: polizaMapping.mappedData || {},
-        completionPercentage: calculateCompletionPercentage(polizaMapping),
-        requiresAttention: mapFieldIssues(polizaMapping.mappingIssues || []),
-        errorMessage: undefined,
-      },
-      isLoading: false,
-    });
-
-    toast.success(`Documento procesado exitosamente (${calculateCompletionPercentage(polizaMapping)}% de confianza)`);
-    return true;
-
-  } catch (error: any) {
-    if (error.name === 'AbortError') {
-      return false;
-    }
-
-    console.error('❌ Error uploading document:', error);
-    
-    updateState({
-      file: {
-        selected: file,
-        uploaded: false,
-        scanId: null,
-        uploadProgress: 0,
-      },
-      scan: {
-        status: 'error',
-        extractedData: {},
-        mappedData: {},
-        completionPercentage: 0,
-        requiresAttention: [],
-        errorMessage: error.message || 'Error procesando documento'
-      },
-      isLoading: false,
-    });
-
-    toast.error('Error procesando documento: ' + (error.message || 'Error desconocido'));
-    return false;
-  }
-}, [state.context, isContextValid, updateState, mapBackendDataToFrontend, calculateCompletionPercentage, mapFieldIssues]);
-
-  // ✅ FUNCIÓN SEND TO VELNEO CORREGIDA
-const sendToVelneo = useCallback(async (): Promise<boolean> => {
-  if (!canProceedToStep3()) {
-    toast.error('Faltan datos requeridos para crear la póliza');
-    return false;
-  }
-
-  if (!state.file.scanId) {
-    toast.error('No hay documento escaneado para procesar');
-    return false;
-  }
-
-  updateState({
-    isLoading: true,
-    step3: {
-      ...state.step3,
-      status: 'creating'
-    }
-  });
-
-  try {
-    // ✅ CORREGIDO: Construir request sin incluir scanId en el body
-    const createRequest = {
-      scanId: state.file.scanId,
-      clienteId: state.context.clienteId,
-      companiaId: state.context.companiaId,
-      seccionId: state.context.seccionId,
-      
-      // CAMBIAR ESTOS NOMBRES para que coincidan con el DTO:
-      fuelCodeOverride: state.masterData.combustibleId || "",        // era: fuelId
-      tariffIdOverride: parseInt(state.masterData.tarifaId) || 0,    // era: tariffId
-      departmentIdOverride: parseInt(state.masterData.departamentoId) || 0,  // era: departmentId
-      destinationIdOverride: parseInt(state.masterData.destinoId) || 0,      // era: destinationId
-      categoryIdOverride: parseInt(state.masterData.categoriaId) || 0,       // era: categoryId
-      qualityIdOverride: parseInt(state.masterData.calidadId) || 0,          // era: qualityId
-      brokerIdOverride: parseInt(state.masterData.corredorId) || 0,          // era: brokerId
-      
-      // Datos de la póliza (estos nombres ya coinciden)
-      policyNumber: state.scan.extractedData?.polizaNumber || "",
-      startDate: state.scan.extractedData?.vigenciaDesde || "",
-      endDate: state.scan.extractedData?.vigenciaHasta || "",
-      premium: parseFloat(state.scan.extractedData?.prima || "0"),
-      
-      // Datos del vehículo
-      vehicleBrand: state.scan.extractedData?.vehiculoMarca || "",
-      vehicleModel: state.scan.extractedData?.vehiculoModelo || "",
-      vehicleYear: parseInt(state.scan.extractedData?.vehiculoAno || "0"),
-      motorNumber: state.scan.extractedData?.vehiculoMotor || "",
-      chassisNumber: state.scan.extractedData?.vehiculoChasis || "",
-      
-      // Forma de pago
-      paymentMethod: state.masterData.medioPagoId || "",
-      installmentCount: state.masterData.cantidadCuotas || 1,
-      
-      // Observaciones
-      notes: state.masterData.observaciones || "",
-      correctedFields: []
-    };
-
-    console.log('=== ENVIANDO A VELNEO ===');
-    console.log('ScanId:', state.file.scanId);
-    console.log('Request body:', createRequest);
-
-    // ✅ CORREGIDO: URL con scanId como parámetro de ruta
-    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://localhost:7202';
-    const response = await fetch(`${API_URL}/api/Document/${state.file.scanId}/create-in-velneo`, {
-      method: 'POST',
-      headers: getAuthHeaders(),
-      body: JSON.stringify(createRequest),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      
-      if (response.status === 401) {
-        handle401Error();
-        return false;
-      }
-      
-      throw new Error(errorData.message || `Error ${response.status}: ${response.statusText}`);
-    }
-
-    const result = await response.json();
-    console.log('=== RESPUESTA DE VELNEO ===', result);
-
-    if (result.success) {
       updateState({
-        step3: {
-          status: 'completed',
-          velneoPolizaId: result.velneoPolizaId,
-          polizaNumber: result.polizaNumber,
-          createdAt: result.createdAt,
-          velneoUrl: result.velneoUrl,
-          warnings: result.warnings || [],
-          validation: result.validation || { isValid: true, errors: [], warnings: [] }
+        file: {
+          selected: file,
+          uploaded: false,
+          scanId: null,
+          uploadProgress: 50,
+        },
+        scan: {
+          status: 'scanning' as const,
+          extractedData: {},
+          mappedData: {},
+          completionPercentage: 0,
+          requiresAttention: [],
+          errorMessage: undefined,
+        },
+        isLoading: true,
+      });
+
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://localhost:7202';
+      const response = await fetch(`${API_URL}/api/Document/upload-with-context`, {
+        method: 'POST',
+        headers: getAuthHeadersForFormData(),
+        body: formData,
+        signal: abortControllerRef.current.signal,
+      });
+
+      if (!response.ok) {
+        let errorMessage = `Error ${response.status}: ${response.statusText}`;
+        
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.message || errorData.Message || errorMessage;
+        } catch {
+          const errorText = await response.text();
+          if (errorText) {
+            errorMessage = errorText;
+          }
+        }
+        
+        if (response.status === 401) {
+          handle401Error();
+          return false;
+        }
+        
+        throw new Error(errorMessage);
+      }
+
+      const result = await response.json();
+      
+      console.log('🔍 === DEBUG UNIVERSAL - RESULTADO COMPLETO ===');
+      console.log('🔍 result completo:', result);
+      
+      const scanResult = result.scanResult || {};
+      const polizaMapping = result.polizaMapping || {};
+      
+      const originalExtractedData = scanResult.extractedData || {};
+      console.log('🔍 originalExtractedData:', originalExtractedData);
+      
+      const displayData = mapBackendDataToFrontend(
+        polizaMapping.mappedData || {}, 
+        originalExtractedData
+      );
+      
+      console.log('🔧 displayData resultado:', displayData);
+
+      const combinedExtractedData = {
+        ...originalExtractedData, 
+        ...displayData             
+      };
+      
+      updateState({
+        file: {
+          selected: file,
+          uploaded: true,
+          scanId: scanResult.scanId || scanResult.id || null,
+          uploadProgress: 100,
+        },
+        scan: {
+          status: 'completed' as const,
+          extractedData: combinedExtractedData,
+          mappedData: polizaMapping.mappedData || {},
+          completionPercentage: calculateCompletionPercentage(polizaMapping),
+          requiresAttention: mapFieldIssues(polizaMapping.mappingIssues || []),
+          errorMessage: undefined,
         },
         isLoading: false,
       });
 
-      toast.success(`Póliza creada exitosamente: ${result.polizaNumber}`);
-      
-      if (result.velneoUrl) {
-        console.log('URL de Velneo disponible:', result.velneoUrl);
-      }
-      
+      toast.success(`Documento procesado exitosamente (${calculateCompletionPercentage(polizaMapping)}% de confianza)`);
       return true;
-    } else {
-      throw new Error(result.message || 'Error creando póliza en Velneo');
+
+    } catch (error: any) {
+      console.log('❌ === ERROR EN uploadWithContext ===');
+      console.log('❌ Error:', error);
+      
+      if (error.name === 'AbortError') {
+        return false;
+      }
+
+      updateState({
+        file: {
+          selected: file,
+          uploaded: false,
+          scanId: null,
+          uploadProgress: 0,
+        },
+        scan: {
+          status: 'error' as const,
+          extractedData: {},
+          mappedData: {},
+          completionPercentage: 0,
+          requiresAttention: [],
+          errorMessage: error.message || 'Error procesando documento'
+        },
+        isLoading: false,
+      });
+
+      toast.error('Error procesando documento: ' + (error.message || 'Error desconocido'));
+      return false;
+    }
+  }, [state.context, isContextValid, updateState, mapBackendDataToFrontend, calculateCompletionPercentage, mapFieldIssues]);
+
+  // Resto de las funciones sin cambios...
+  const sendToVelneo = useCallback(async (): Promise<boolean> => {
+    if (!canProceedToStep3()) {
+      toast.error('Faltan datos requeridos para crear la póliza');
+      return false;
     }
 
-  } catch (error: any) {
-    console.error('Error sending to Velneo:', error);
-    
+    if (!state.file.scanId) {
+      toast.error('No hay documento escaneado para procesar');
+      return false;
+    }
+
     updateState({
+      isLoading: true,
       step3: {
         ...state.step3,
-        status: 'error',
-        errorMessage: error.message || 'Error creando póliza'
-      },
-      isLoading: false,
+        status: 'creating'
+      }
     });
 
-    toast.error('Error creando póliza: ' + (error.message || 'Error desconocido'));
-    return false;
-  }
-}, [state, canProceedToStep3, updateState]);
+    try {
+      const createRequest = {
+        scanId: state.file.scanId,
+        clienteId: state.context.clienteId,
+        companiaId: state.context.companiaId,
+        seccionId: state.context.seccionId,
+        
+        fuelCodeOverride: state.masterData.combustibleId || "",
+        tariffIdOverride: parseInt(state.masterData.tarifaId) || 0,
+        departmentIdOverride: parseInt(state.masterData.departamentoId) || 0,
+        destinationIdOverride: parseInt(state.masterData.destinoId) || 0,
+        categoryIdOverride: parseInt(state.masterData.categoriaId) || 0,
+        qualityIdOverride: parseInt(state.masterData.calidadId) || 0,
+        brokerIdOverride: parseInt(state.masterData.corredorId) || 0,
+        
+        policyNumber: state.scan.extractedData?.polizaNumber || "",
+        startDate: state.scan.extractedData?.vigenciaDesde || "",
+        endDate: state.scan.extractedData?.vigenciaHasta || "",
+        premium: parseFloat(state.scan.extractedData?.prima || "0"),
+        
+        vehicleBrand: state.scan.extractedData?.vehiculoMarca || "",
+        vehicleModel: state.scan.extractedData?.vehiculoModelo || "",
+        vehicleYear: parseInt(state.scan.extractedData?.vehiculoAno || "0"),
+        motorNumber: state.scan.extractedData?.vehiculoMotor || "",
+        chassisNumber: state.scan.extractedData?.vehiculoChasis || "",
+        
+        paymentMethod: state.masterData.medioPagoId || "",
+        installmentCount: state.masterData.cantidadCuotas || 1,
+        
+        notes: state.masterData.observaciones || "",
+        correctedFields: []
+      };
 
-  // ✅ FUNCIÓN RESCAN CORREGIDA
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://localhost:7202';
+      const response = await fetch(`${API_URL}/api/Document/${state.file.scanId}/create-in-velneo`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify(createRequest),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        
+        if (response.status === 401) {
+          handle401Error();
+          return false;
+        }
+        
+        throw new Error(errorData.message || `Error ${response.status}: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+
+      if (result.success) {
+        updateState({
+          step3: {
+            status: 'completed',
+            velneoPolizaId: result.velneoPolizaId,
+            polizaNumber: result.polizaNumber,
+            createdAt: result.createdAt,
+            velneoUrl: result.velneoUrl,
+            warnings: result.warnings || [],
+            validation: result.validation || { isValid: true, errors: [], warnings: [] }
+          },
+          isLoading: false,
+        });
+
+        toast.success(`Póliza creada exitosamente: ${result.polizaNumber}`);
+        return true;
+      } else {
+        throw new Error(result.message || 'Error creando póliza en Velneo');
+      }
+
+    } catch (error: any) {
+      console.error('Error sending to Velneo:', error);
+      
+      updateState({
+        step3: {
+          ...state.step3,
+          status: 'error',
+          errorMessage: error.message || 'Error creando póliza'
+        },
+        isLoading: false,
+      });
+
+      toast.error('Error creando póliza: ' + (error.message || 'Error desconocido'));
+      return false;
+    }
+  }, [state, canProceedToStep3, updateState]);
+
   const rescanDocument = useCallback(async () => {
     if (!state.file.scanId) {
       toast.error('No hay documento para reescanear');
@@ -578,16 +783,14 @@ const sendToVelneo = useCallback(async (): Promise<boolean> => {
         isLoading: true
       });
 
-      // ✅ URL corregida
       const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://localhost:7202';
       const response = await fetch(`${API_URL}/api/Document/${state.file.scanId}/reprocess`, {
         method: 'POST',
-        headers: getAuthHeaders(), // ✅ Usar utilidad estándar
+        headers: getAuthHeaders(),
         body: JSON.stringify({ forceReprocess: true }),
       });
 
       if (!response.ok) {
-        // ✅ Manejo específico para 401
         if (response.status === 401) {
           handle401Error();
           return false;
@@ -598,8 +801,6 @@ const sendToVelneo = useCallback(async (): Promise<boolean> => {
       }
 
       const result = await response.json();
-
-      // Mapear los datos según la estructura real
       const extractedData = mapBackendDataToFrontend(result.extractedData || {});
 
       updateState({
@@ -663,7 +864,6 @@ const sendToVelneo = useCallback(async (): Promise<boolean> => {
       context: newContext
     });
 
-    // Limpiar archivo si se cambia el contexto después de haber subido
     if (state.file.uploaded && 
         (contextUpdates.clienteId !== undefined || 
          contextUpdates.companiaId !== undefined || 
