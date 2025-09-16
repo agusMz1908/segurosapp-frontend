@@ -333,33 +333,53 @@ export const intelligentMapping = (
     }
   }
 
-if (tarifas.length > 0 && !newFormData.tarifaId) {
-  let tarifaMatch: MasterDataItem | null = null;
-  
-  const modalidad = findValueInFields([
-    "poliza.modalidad_normalizada",   // Usar campo normalizado del backend
-    "poliza.modalidad",               // Fallback al original
-    "modalidad",
-    "cobertura"
-  ]);
-  
-  if (modalidad) {
-    console.log(`🔍 Buscando tarifa para modalidad: "${modalidad}"`);
+  // ✅ MAPEAR TARIFA - VERSIÓN CORREGIDA
+  if (tarifas.length > 0 && !newFormData.tarifaId) {
+    let tarifaMatch: MasterDataItem | null = null;
     
-    // Mapeos específicos de modalidades a tarifas
-    const modalidadToTarifa: { [key: string]: string[] } = {
-      'TODO RIESGO TOTAL': ['TODO RIESGO', 'TOTAL', 'COMPLETA', 'INTEGRAL', 'PREMIUM'],
-      'TODO RIESGO': ['TODO RIESGO', 'TOTAL', 'COMPLETA', 'INTEGRAL'],
-      'TOTAL': ['TODO RIESGO', 'TOTAL', 'COMPLETA'],
-      'TERCEROS': ['TERCEROS', 'RC', 'RESPONSABILIDAD CIVIL'],
-      'BASICA': ['BASICA', 'MINIMA', 'STANDARD'],
-      'PREMIUM': ['PREMIUM', 'SUPERIOR', 'PLUS']
-    };
+    const modalidad = findValueInFields([
+      "poliza.modalidad_normalizada",   // Usar campo normalizado del backend
+      "poliza.modalidad",               // Fallback al original
+      "modalidad",
+      "cobertura"
+    ]);
     
-    for (const [key, tarifaNames] of Object.entries(modalidadToTarifa)) {
-      if (modalidad.toUpperCase().includes(key)) {
-        console.log(`🎯 Modalidad detectada: "${key}" para "${modalidad}"`);
+    if (modalidad) {
+      console.log(`🔍 Buscando tarifa para modalidad: "${modalidad}"`);
+      
+      // ✅ MEJORA: Procesar modalidades con prioridad
+      const modalidadUpper = modalidad.toUpperCase();
+      let modalidadDetectada = '';
+      
+      // Buscar la modalidad más específica primero
+      if (modalidadUpper.includes('TODO RIESGO') && modalidadUpper.includes('TOTAL')) {
+        modalidadDetectada = 'TODO RIESGO TOTAL';
+      } else if (modalidadUpper.includes('TODO RIESGO')) {
+        modalidadDetectada = 'TODO RIESGO';
+      } else if (modalidadUpper.includes('TOTAL') && !modalidadUpper.includes('BASICO')) {
+        modalidadDetectada = 'TOTAL';
+      } else if (modalidadUpper.includes('TERCEROS') || modalidadUpper.includes('RC')) {
+        modalidadDetectada = 'TERCEROS';
+      } else if (modalidadUpper.includes('PREMIUM')) {
+        modalidadDetectada = 'PREMIUM';
+      } else if (modalidadUpper.includes('BASICA') || modalidadUpper.includes('MINIMA')) {
+        modalidadDetectada = 'BASICA';
+      }
+      
+      if (modalidadDetectada) {
+        console.log(`🎯 Modalidad detectada: "${modalidadDetectada}" para "${modalidad}"`);
         
+        // Mapeos específicos de modalidades a tarifas
+        const modalidadToTarifa: { [key: string]: string[] } = {
+          'TODO RIESGO TOTAL': ['TODO RIESGO', 'TOTAL', 'COMPLETA', 'INTEGRAL', 'PREMIUM'],
+          'TODO RIESGO': ['TODO RIESGO', 'TOTAL', 'COMPLETA', 'INTEGRAL'],
+          'TOTAL': ['TODO RIESGO', 'TOTAL', 'COMPLETA'],
+          'TERCEROS': ['TERCEROS', 'RC', 'RESPONSABILIDAD CIVIL'],
+          'BASICA': ['BASICA', 'MINIMA', 'STANDARD'],
+          'PREMIUM': ['PREMIUM', 'SUPERIOR', 'PLUS']
+        };
+        
+        const tarifaNames = modalidadToTarifa[modalidadDetectada];
         for (const tarifaName of tarifaNames) {
           tarifaMatch = tarifas.find(t => 
             t.nombre.toUpperCase().includes(tarifaName)
@@ -369,43 +389,63 @@ if (tarifas.length > 0 && !newFormData.tarifaId) {
             break;
           }
         }
-        if (tarifaMatch) break;
+      }
+      
+      // Si no encontró por mapeo específico, usar similitud
+      if (!tarifaMatch) {
+        tarifaMatch = findBestMatch(modalidad, tarifas, 0.6);
+        if (tarifaMatch) {
+          console.log(`✅ Tarifa encontrada por similitud: "${modalidad}" → "${tarifaMatch.nombre}"`);
+        }
       }
     }
     
-    // Si no encontró por mapeo específico, usar similitud
+    // ✅ CRÍTICO: Solo aplicar estrategias alternativas si NO se encontró tarifa por modalidad
     if (!tarifaMatch) {
-      tarifaMatch = findBestMatch(modalidad, tarifas, 0.6);
-      if (tarifaMatch) {
-        console.log(`✅ Tarifa encontrada por similitud: "${modalidad}" → "${tarifaMatch.nombre}"`);
+      console.log(`⚠️ No se encontró tarifa por modalidad, aplicando estrategias alternativas...`);
+      
+      // Estrategia 2: Si hay categoría seleccionada, buscar tarifa relacionada
+      if (newFormData.categoriaId) {
+        const categoriaSeleccionada = categorias.find(c => c.id.toString() === newFormData.categoriaId);
+        if (categoriaSeleccionada) {
+          tarifaMatch = findBestMatch(categoriaSeleccionada.nombre, tarifas, 0.7);
+          if (tarifaMatch) {
+            console.log(`✅ Tarifa encontrada por categoría: "${categoriaSeleccionada.nombre}" → "${tarifaMatch.nombre}"`);
+          }
+        }
+      }
+      
+      // Estrategia 3: Fallback a tarifa por defecto (SOLO si no hay nada)
+      if (!tarifaMatch && tarifas.length > 0) {
+        console.log(`⚠️ Aplicando fallback para tarifa por defecto`);
+        tarifaMatch = tarifas.find(t => 
+          t.nombre.toLowerCase().includes('general') || 
+          t.nombre.toLowerCase().includes('estandar') ||
+          t.nombre.toLowerCase().includes('normal')
+        ) || tarifas[0]; // Evitar 'basica' en el fallback
+        
+        if (tarifaMatch) {
+          console.log(`🔄 Tarifa fallback seleccionada: "${tarifaMatch.nombre}"`);
+        }
       }
     }
-  }
-  
-  // Estrategia 2: Si hay categoría seleccionada, buscar tarifa relacionada
-  if (!tarifaMatch && newFormData.categoriaId) {
-    const categoriaSeleccionada = categorias.find(c => c.id.toString() === newFormData.categoriaId);
-    if (categoriaSeleccionada) {
-      tarifaMatch = findBestMatch(categoriaSeleccionada.nombre, tarifas, 0.7);
+    
+    // ✅ APLICAR TARIFA SOLO SI SE ENCONTRÓ UNA
+    if (tarifaMatch) {
+      newFormData.tarifaId = tarifaMatch.id.toString();
+      hasChanges = true;
+      console.log(`💰 Tarifa FINAL mapeada: "${tarifaMatch.nombre}" (ID: ${tarifaMatch.id})`);
+    } else {
+      console.log(`❌ No se pudo mapear ninguna tarifa para modalidad: "${modalidad || 'N/A'}"`);
     }
   }
-  
-  // Estrategia 3: Fallback a tarifa por defecto
-  if (!tarifaMatch && tarifas.length > 0) {
-    tarifaMatch = tarifas.find(t => 
-      t.nombre.toLowerCase().includes('general') || 
-      t.nombre.toLowerCase().includes('estandar') ||
-      t.nombre.toLowerCase().includes('basica') ||
-      t.nombre.toLowerCase().includes('normal')
-    ) || tarifas[0];
+
+  // ✅ DEBUG FINAL: Estado de tarifaId después del mapeo
+  console.log('🔍 ESTADO FINAL newFormData.tarifaId:', newFormData.tarifaId);
+  if (newFormData.tarifaId) {
+    const tarifaFinal = tarifas.find(t => t.id.toString() === newFormData.tarifaId);
+    console.log('🔍 TARIFA FINAL SELECCIONADA:', tarifaFinal?.nombre || 'NO ENCONTRADA');
   }
-  
-  if (tarifaMatch) {
-    newFormData.tarifaId = tarifaMatch.id.toString();
-    hasChanges = true;
-    console.log(`💰 Tarifa mapeada: "${tarifaMatch.nombre}"`);
-  }
-}
 
   // Aplicar cambios si los hay
   if (hasChanges) {

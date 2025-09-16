@@ -293,102 +293,118 @@ export function useMasterData() {
 
   // =================== DATOS MAESTROS ESPECÍFICOS ===================
 
-const getMasterDataByType = useCallback(async (type: string): Promise<MasterDataItem[]> => {
-  try {
-    setLoading(true);
-    setError(null);
+  // ✅ MODIFICADO: Agregar parámetro opcional companiaId
+  const getMasterDataByType = useCallback(async (type: string, companiaId?: number): Promise<MasterDataItem[]> => {
+    try {
+      setLoading(true);
+      setError(null);
 
-    const endpointMap: Record<string, string> = {
-      'combustibles': '/api/MasterData/combustibles',
-      'categorias': '/api/MasterData/categorias',
-      'departamentos': '/api/MasterData/departamentos',
-      'destinos': '/api/MasterData/destinos',
-      'calidades': '/api/MasterData/calidades',
-      'tarifas': '/api/MasterData/tarifas'
-    };
+      const endpointMap: Record<string, string> = {
+        'combustibles': '/api/MasterData/combustibles',
+        'categorias': '/api/MasterData/categorias',
+        'departamentos': '/api/MasterData/departamentos',
+        'destinos': '/api/MasterData/destinos',
+        'calidades': '/api/MasterData/calidades',
+        'tarifas': '/api/MasterData/tarifas'
+      };
 
-    const endpoint = endpointMap[type];
-    if (!endpoint) {
-      console.warn(`Tipo de master data '${type}' no soportado`);
+      const endpoint = endpointMap[type];
+      if (!endpoint) {
+        console.warn(`Tipo de master data '${type}' no soportado`);
+        return [];
+      }
+
+      // ✅ NUEVO: Agregar filtro por compañía para tarifas
+      let url = endpoint;
+      if (type === 'tarifas' && companiaId) {
+        url = `${endpoint}?companiaId=${companiaId}`;
+        console.log(`🏢 Cargando tarifas filtradas por compañía: ${companiaId}`);
+      }
+
+      const response = await apiClient.get<any>(url);
+      let items: any[] = Array.isArray(response) ? response : response?.data || [];
+      
+      // ✅ NUEVO: Filtro adicional en frontend para tarifas
+      if (type === 'tarifas' && companiaId && items.length > 0) {
+        // Filtrar por companias (campo del JSON)
+        const itemsBeforeFilter = items.length;
+        items = items.filter((item: any) => item.companias === companiaId);
+        console.log(`🔍 Tarifas filtradas para compañía ${companiaId}: ${items.length}/${itemsBeforeFilter} encontradas`);
+      }
+      
+      // Mapeo específico por tipo de dato maestro
+      const mappedItems: MasterDataItem[] = items
+        .filter((item: any) => {
+          // Filtrar items vacíos o inactivos
+          if (type === 'categorias') {
+            return item.catdsc && item.catdsc.trim() !== '';
+          }
+          return true;
+        })
+        .map((item: any) => {
+          let nombre = '';
+          let codigo = '';
+          let id = item.id;
+
+          // Mapeo específico según el tipo
+          switch (type) {
+            case 'combustibles':
+              nombre = item.name || '';
+              codigo = item.id || ''; // En combustibles, el id es el código
+              id = item.id; // Mantener el id como string para combustibles
+              break;
+            
+            case 'categorias':
+              nombre = item.catdsc || '';
+              codigo = item.catcod || '';
+              break;
+            
+            case 'departamentos':
+              nombre = item.dptnom || '';
+              codigo = item.sc_cod || '';
+              break;
+            
+            case 'destinos':
+              nombre = item.desnom || '';
+              codigo = item.descod || '';
+              break;
+            
+            case 'calidades':
+              nombre = item.caldsc || '';
+              codigo = item.calcod || '';
+              break;
+            
+            case 'tarifas':
+              nombre = item.tarnom || '';
+              codigo = item.tarcod || '';
+              break;
+            
+            default:
+              nombre = item.nombre || item.name || 'Sin nombre';
+              codigo = item.codigo || item.code || '';
+          }
+
+          return {
+            id: id,
+            nombre: nombre,
+            codigo: codigo,
+            valor: item.valor || item.value,
+            activo: true
+          };
+        });
+
+      console.log(`✅ Master data '${type}': ${mappedItems.length} items mapeados correctamente`);
+      return mappedItems;
+
+    } catch (error: any) {
+      console.error(`❌ Error getting master data '${type}':`, error);
+      const errorMessage = error.message || `Error obteniendo master data '${type}'`;
+      setError(errorMessage);
       return [];
+    } finally {
+      setLoading(false);
     }
-
-    const response = await apiClient.get<any>(endpoint);
-    let items: any[] = Array.isArray(response) ? response : response?.data || [];
-    
-    // Mapeo específico por tipo de dato maestro
-    const mappedItems: MasterDataItem[] = items
-      .filter((item: any) => {
-        // Filtrar items vacíos o inactivos
-        if (type === 'categorias') {
-          return item.catdsc && item.catdsc.trim() !== '';
-        }
-        return true;
-      })
-      .map((item: any) => {
-        let nombre = '';
-        let codigo = '';
-        let id = item.id;
-
-        // Mapeo específico según el tipo
-        switch (type) {
-          case 'combustibles':
-            nombre = item.name || '';
-            codigo = item.id || ''; // En combustibles, el id es el código
-            id = item.id; // Mantener el id como string para combustibles
-            break;
-          
-          case 'categorias':
-            nombre = item.catdsc || '';
-            codigo = item.catcod || '';
-            break;
-          
-          case 'departamentos':
-            nombre = item.dptnom || '';
-            codigo = item.sc_cod || '';
-            break;
-          
-          case 'destinos':
-            nombre = item.desnom || '';
-            codigo = item.descod || '';
-            break;
-          
-          case 'calidades':
-            nombre = item.caldsc || '';
-            codigo = item.calcod || '';
-            break;
-          
-          case 'tarifas':
-            nombre = item.tarnom || '';
-            codigo = item.tarcod || '';
-            break;
-          
-          default:
-            nombre = item.nombre || item.name || 'Sin nombre';
-            codigo = item.codigo || item.code || '';
-        }
-
-        return {
-          id: id,
-          nombre: nombre,
-          codigo: codigo,
-          valor: item.valor || item.value,
-          activo: true
-        };
-      });
-
-    console.log(`✅ Master data '${type}': ${mappedItems.length} items mapeados correctamente`);
-    return mappedItems;
-
-  } catch (error: any) {
-    console.error(`❌ Error getting master data '${type}':`, error);
-    const errorMessage = error.message || `Error obteniendo master data '${type}'`;
-    setError(errorMessage);
-    return [];
-  } finally {
-    setLoading(false);
-  }
-}, []);
+  }, []);
 
   // =================== UTILIDADES ===================
 
@@ -465,7 +481,7 @@ const getMasterDataByType = useCallback(async (type: string): Promise<MasterData
     getSecciones,
     getSeccionById,
     
-    // Datos maestros
+    // Datos maestros - ✅ ACTUALIZADO con parámetro companiaId
     getMasterDataByType,
     
     // Utilidades

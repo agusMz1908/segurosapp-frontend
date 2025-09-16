@@ -495,7 +495,7 @@ const cleanVehicleField = (str: string) => {
     return fieldMap[backendField] || backendField;
   };
 
-  const uploadWithContext = useCallback(async (file: File): Promise<boolean> => {
+const uploadWithContext = useCallback(async (file: File): Promise<boolean> => {
     if (!isContextValid()) {
       toast.error('Contexto incompleto. Selecciona cliente, compañía y sección.');
       return false;
@@ -594,19 +594,60 @@ const cleanVehicleField = (str: string) => {
       const scanResult = result.scanResult || {};
       const polizaMapping = result.polizaMapping || {};
       
+      // ✅ NUEVO: Obtener datos normalizados y originales
       const originalExtractedData = scanResult.extractedData || {};
-      console.log('🔍 originalExtractedData:', originalExtractedData);
+      const normalizedData = polizaMapping.normalizedData || {}; // ✅ NUEVO: Datos limpiados del backend
+
+      console.log('🔍 originalExtractedData (Azure crudo):', originalExtractedData);
+      console.log('🔍 normalizedData (limpiado por backend):', normalizedData); // ✅ NUEVO
+
+      // ✅ NUEVO: Usar normalizedData si está disponible, fallback a original
+      const dataForDisplay = Object.keys(normalizedData).length > 0 ? normalizedData : originalExtractedData;
+
+      console.log('🔍 dataForDisplay elegido:', Object.keys(normalizedData).length > 0 ? 'normalizedData' : 'originalExtractedData');
+
+      // ✅ NUEVO: Log específico para verificar limpieza de campos del vehículo
+      if (Object.keys(normalizedData).length > 0) {
+        console.log('🔄 === COMPARACIÓN ANTES/DESPUÉS DE LIMPIEZA ===');
+        
+        const vehicleFields = ['vehiculo.marca', 'vehiculo.modelo', 'vehiculo.matricula', 'vehiculo.motor', 'vehiculo.chasis', 'vehiculo.anio'];
+        
+        vehicleFields.forEach(field => {
+          const original = originalExtractedData[field];
+          const normalized = normalizedData[field];
+          
+          if (original && normalized && original !== normalized) {
+            console.log(`✅ ${field}:`);
+            console.log(`   Antes (Azure): "${original}"`);
+            console.log(`   Después (Backend): "${normalized}"`);
+          } else if (original === normalized && original) {
+            console.log(`➡️ ${field}: Sin cambios - "${original}"`);
+          } else if (!original && normalized) {
+            console.log(`🆕 ${field}: Solo en normalizado - "${normalized}"`);
+          } else if (original && !normalized) {
+            console.log(`⚠️ ${field}: Solo en original - "${original}"`);
+          }
+        });
+      }
       
       const displayData = mapBackendDataToFrontend(
         polizaMapping.mappedData || {}, 
-        originalExtractedData
+        dataForDisplay // ✅ CAMBIO CRÍTICO: Usar datos normalizados en lugar de originales
       );
       
-      console.log('🔧 displayData resultado:', displayData);
+      console.log('🔧 displayData resultado (lo que ve el usuario):', displayData);
+
+      // ✅ NUEVO: Verificación final de datos del vehículo en displayData
+      if (dataForDisplay['vehiculo.matricula']) {
+        console.log('🚗 vehiculo.matricula final para UI:', dataForDisplay['vehiculo.matricula']);
+      }
+      if (dataForDisplay['vehiculo.marca']) {
+        console.log('🚗 vehiculo.marca final para UI:', dataForDisplay['vehiculo.marca']);
+      }
 
       const combinedExtractedData = {
-        ...originalExtractedData, 
-        ...displayData             
+        ...dataForDisplay,     // ✅ CAMBIO: Usar datos normalizados primero
+        ...displayData         // Los datos procesados por mapBackendDataToFrontend
       };
       
       updateState({
@@ -618,7 +659,7 @@ const cleanVehicleField = (str: string) => {
         },
         scan: {
           status: 'completed' as const,
-          extractedData: combinedExtractedData,
+          extractedData: combinedExtractedData, // ✅ CAMBIO: Incluye datos normalizados
           mappedData: polizaMapping.mappedData || {},
           completionPercentage: calculateCompletionPercentage(polizaMapping),
           requiresAttention: mapFieldIssues(polizaMapping.mappingIssues || []),
@@ -627,6 +668,7 @@ const cleanVehicleField = (str: string) => {
         isLoading: false,
       });
 
+      console.log('✅ Estado actualizado con datos normalizados');
       toast.success(`Documento procesado exitosamente (${calculateCompletionPercentage(polizaMapping)}% de confianza)`);
       return true;
 

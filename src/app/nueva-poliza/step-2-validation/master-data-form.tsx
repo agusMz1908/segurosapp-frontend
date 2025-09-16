@@ -94,11 +94,16 @@ export function MasterDataForm({ hookInstance }: MasterDataFormProps) {
     console.log('🔧 useEffect - state.masterData cambió:', state.masterData);
   }, [state.masterData]);
 
+  // ✅ MODIFICADO: Agregar companiaId como dependencia y pasarlo a tarifas
   useEffect(() => {
     const loadMasterData = async () => {
       try {
         setLoadingData(true);
         console.log('🔄 Cargando datos maestros...');
+        
+        // ✅ NUEVO: Obtener companiaId del contexto
+        const companiaId = state.context?.companiaId;
+        console.log('🏢 CompaniaId del contexto:', companiaId);
         
         const [
           combustiblesData, 
@@ -113,7 +118,7 @@ export function MasterDataForm({ hookInstance }: MasterDataFormProps) {
           getMasterDataByType('destinos'),
           getMasterDataByType('departamentos'),
           getMasterDataByType('calidades'),
-          getMasterDataByType('tarifas')
+          getMasterDataByType('tarifas', companiaId) // ✅ NUEVO: Pasar companiaId
         ]);
         
         setCombustibles(combustiblesData);
@@ -129,7 +134,8 @@ export function MasterDataForm({ hookInstance }: MasterDataFormProps) {
           destinos: destinosData.length,
           departamentos: departamentosData.length,
           calidades: calidadesData.length,
-          tarifas: tarifasData.length
+          tarifas: tarifasData.length,
+          tarifasParaCompania: companiaId // ✅ NUEVO: Log de compañía
         });
       } catch (error) {
         console.error('❌ Error loading master data:', error);
@@ -139,7 +145,7 @@ export function MasterDataForm({ hookInstance }: MasterDataFormProps) {
     };
 
     loadMasterData();
-  }, [getMasterDataByType]);
+  }, [getMasterDataByType, state.context?.companiaId]); // ✅ NUEVO: Agregar companiaId como dependencia
 
   const executeIntelligentMapping = useCallback(() => {
     if (!state.scan?.extractedData || Object.keys(state.scan.extractedData).length === 0) {
@@ -147,7 +153,9 @@ export function MasterDataForm({ hookInstance }: MasterDataFormProps) {
       return;
     }
 
-    console.log('🤖 Ejecutando mapeo inteligente mejorado...');
+    // ✅ NUEVO: Log de compañía al ejecutar mapeo
+    const companiaId = state.context?.companiaId;
+    console.log('🤖 Ejecutando mapeo inteligente con compañía:', companiaId);
     console.log('🔍 ANTES del mapeo - formData actual:', formData);
 
     const currentFormData: MasterDataFormData = {
@@ -171,6 +179,7 @@ export function MasterDataForm({ hookInstance }: MasterDataFormProps) {
     console.log('🔍 Datos para mapeo:', {
       extractedData: state.scan.extractedData,
       currentFormData,
+      companiaId, // ✅ NUEVO: Log de compañía
       masterDataSets: {
         combustibles: combustibles.length,
         destinos: destinos.length,
@@ -241,7 +250,8 @@ export function MasterDataForm({ hookInstance }: MasterDataFormProps) {
 
     setAutoMappingExecuted(true);
   }, [
-    state.scan?.extractedData, 
+    state.scan?.extractedData,
+    state.context?.companiaId, // ✅ NUEVO: Agregar companiaId como dependencia
     formData, 
     combustibles, 
     destinos, 
@@ -250,7 +260,7 @@ export function MasterDataForm({ hookInstance }: MasterDataFormProps) {
     categorias, 
     tarifas, 
     updateState,
-    state // ✅ AGREGADO: incluir state completo en las dependencias
+    state
   ]);
 
   // UseEffect que ejecuta el mapeo automático
@@ -337,6 +347,12 @@ export function MasterDataForm({ hookInstance }: MasterDataFormProps) {
               • Mapeo automático aplicado
             </span>
           )}
+          {/* ✅ NUEVO: Mostrar compañía en descripción */}
+          {state.context?.companiaInfo && (
+            <span className="text-blue-600 dark:text-blue-400 ml-2">
+              • {state.context.companiaInfo.nombre}
+            </span>
+          )}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -391,9 +407,9 @@ export function MasterDataForm({ hookInstance }: MasterDataFormProps) {
           loading={loadingData}
         />
 
-        {/* Tarifa */}
+        {/* Tarifa - ✅ NUEVO: Mostrar número de opciones filtradas */}
         <ControlledSelect
-          label="Tarifa"
+          label={`Tarifa ${tarifas.length > 0 ? `(${tarifas.length} opciones)` : ''}`}
           value={formData.tarifaId}
           onChange={(value) => handleFieldChange('tarifaId', value)}
           options={tarifas}
