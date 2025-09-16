@@ -1,70 +1,123 @@
+// app/renovaciones/components/renovaciones-container.tsx
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { 
   CheckCircle, 
   Circle, 
   Search, 
-  Info, 
+  Upload, 
   FileText, 
   Send,
   ArrowLeft,
   ArrowRight,
   AlertTriangle,
-  RotateCcw,
-  RefreshCw
+  RotateCcw
 } from 'lucide-react';
 import { useRenovaciones } from '../../../hooks/use-renovaciones';
+import { useNuevaPoliza } from '../../../hooks/use-nueva-poliza';
 
-// Importar componentes de pasos (los crearemos después)
-import { PolizaSearchForm } from '../step-1-search/poliza-search-form';
-import { PolizaInfoView } from '../step-2-info/poliza-info-view';
-import { ValidationForm } from '../step-3-validation/validation-form';
-// import { RenovacionConfirmationForm } from '../step-4-confirmation/renovacion-confirmation-form';
+// Importar componentes nuevos específicos para renovaciones
+import { ClientePolizasSearchForm } from '../step-1-search/cliente-polizas-search-form';
+import { RenovacionConfirmationForm } from '../step-4-confirmation/renovacion-confirmation-form';
 
-const RenovacionConfirmationForm = ({ hookInstance }: { hookInstance: any }) => (
-  <div className="p-8 text-center">
-    <Send className="h-16 w-16 mx-auto text-gray-400 mb-4" />
-    <h3 className="text-lg font-semibold mb-2">Paso 4: Confirmación</h3>
-    <p className="text-gray-600">Componente en desarrollo...</p>
-  </div>
-);
+// Importar componentes reutilizados de Nueva Póliza
+import { FileUpload } from '../../nueva-poliza/step-1-context/file-upload';
+import { ExtractedDataForm } from '../../nueva-poliza/step-2-validation/extracted-data-form';
+import { MasterDataForm } from '../../nueva-poliza/step-2-validation/master-data-form';
 
 export function RenovacionesContainer() {
-  const hookInstance = useRenovaciones();
+  const renovacionesHook = useRenovaciones();
   const {
     state,
     canProceedToStep2,
     canProceedToStep3,
     canProceedToStep4,
-    isPolizaRenovable,
-    getDiasParaVencimiento,
     nextStep,
     prevStep,
-    reset
-  } = hookInstance;
+    reset,
+  } = renovacionesHook;
+
+  // Crear una instancia de Nueva Póliza para los pasos 2-3
+  const nuevaPolizaHook = useNuevaPoliza();
+
+  // Crear wrapper para upload que funcione sin compañía inicial
+  const handleFileUpload = async (file: File): Promise<boolean> => {
+    // Para renovaciones, necesitamos cliente y sección, la compañía se detectará del documento
+    if (!state.context.clienteId || !state.context.seccionId) {
+      console.error('Contexto incompleto para renovación:', state.context);
+      return false;
+    }
+    
+    // Temporalmente establecer una compañía dummy para pasar la validación
+    // La compañía real se detectará del documento escaneado
+    const tempContext = {
+      clienteId: state.context.clienteId,
+      companiaId: 1, // Compañía temporal para pasar validación
+      seccionId: state.context.seccionId,
+      clienteInfo: state.context.clienteInfo,
+      companiaInfo: { id: 1, nombre: 'Detectando...', codigo: 'TEMP' },
+      seccionInfo: state.context.seccionInfo,
+    };
+    
+    // Actualizar temporalmente el contexto de nueva póliza
+    nuevaPolizaHook.updateContext(tempContext);
+    
+    // Hacer el upload
+    const result = await nuevaPolizaHook.uploadWithContext(file);
+    
+    return result;
+  };
+
+  // ✅ NUEVO: useEffect para sincronizar la compañía detectada después del escaneo
+  React.useEffect(() => {
+    // Cuando el escaneo se complete exitosamente y tengamos contexto de nueva póliza
+    if (nuevaPolizaHook.state.scan.status === 'completed' && 
+        nuevaPolizaHook.state.context.companiaId &&
+        nuevaPolizaHook.state.context.companiaId !== 1) { // No es la compañía temporal
+      
+      console.log('🔄 Sincronizando compañía detectada:', {
+        companiaDetectada: nuevaPolizaHook.state.context.companiaInfo,
+        contextoAnterior: state.context.companiaInfo
+      });
+      
+      // Actualizar el contexto de renovaciones con la compañía detectada
+      renovacionesHook.updateState({
+        context: {
+          ...state.context,
+          companiaId: nuevaPolizaHook.state.context.companiaId,
+          companiaInfo: nuevaPolizaHook.state.context.companiaInfo,
+        }
+      });
+    }
+  }, [
+    nuevaPolizaHook.state.scan.status,
+    nuevaPolizaHook.state.context.companiaId,
+    nuevaPolizaHook.state.context.companiaInfo,
+    state.context,
+    renovacionesHook
+  ]);
 
   const steps = [
     { 
       number: 1, 
       title: "Buscar Póliza", 
-      description: "Seleccionar póliza a renovar",
-      icon: Search,
+      description: "Cliente y póliza a renovar",
+      icon: Circle,
       isValid: canProceedToStep2
     },
     { 
       number: 2, 
-      title: "Información", 
-      description: "Revisar datos heredados",
-      icon: Info,
+      title: "Documento", 
+      description: "Escanear nueva póliza",
+      icon: Upload,
       isValid: canProceedToStep3
     },
     { 
       number: 3, 
       title: "Validación", 
-      description: "Escanear nueva póliza",
+      description: "Datos y maestros",
       icon: FileText,
       isValid: canProceedToStep4
     },
@@ -103,9 +156,7 @@ export function RenovacionesContainer() {
                   
                   <div className="text-center">
                     <h3 className={`font-semibold text-sm mb-1 ${
-                      isActive ? 'text-blue-600 dark:text-blue-400' 
-                      : isCompleted ? 'text-green-600 dark:text-green-400' 
-                      : 'text-gray-500 dark:text-gray-400'
+                      isActive ? 'text-blue-600 dark:text-blue-400' : isCompleted ? 'text-green-600 dark:text-green-400' : 'text-gray-500 dark:text-gray-400'
                     }`}>
                       {step.title}
                     </h3>
@@ -132,52 +183,141 @@ export function RenovacionesContainer() {
   const renderCurrentStep = () => {
     switch (state.currentStep) {
       case 1:
-        return <PolizaSearchForm hookInstance={hookInstance} />;       
+        return <ClientePolizasSearchForm hookInstance={renovacionesHook} />;
+      
       case 2:
-        return <PolizaInfoView hookInstance={hookInstance} />;     
+        return (
+          <div className="space-y-6">
+            <div className="text-center mb-6">
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">
+                Escanear Nueva Póliza
+              </h2>
+              <p className="text-gray-600 dark:text-gray-300">
+                Sube el documento de la nueva póliza renovada
+              </p>
+            </div>
+
+            <Alert>
+              <Search className="h-4 w-4" />
+              <AlertDescription>
+                <strong>Renovando póliza:</strong> {state.cliente.selectedPoliza?.conpol} - 
+                Cliente: {state.context.clienteInfo?.nombre} - 
+                Sección: {state.context.seccionInfo?.nombre} - 
+                La compañía se detectará automáticamente del documento escaneado
+              </AlertDescription>
+            </Alert>
+
+            <Card>
+              <CardContent className="pt-6">
+                <FileUpload
+                  disabled={false} // En renovaciones, habilitamos el upload si tenemos cliente y sección
+                  onFileUpload={handleFileUpload} // Usar nuestra función wrapper
+                  uploadProgress={nuevaPolizaHook.state.file.uploadProgress}
+                  uploadStatus={
+                    nuevaPolizaHook.state.file.uploaded ? 'completed' : 
+                    nuevaPolizaHook.state.scan.status === 'scanning' ? 'uploading' : 
+                    'idle'
+                  }
+                  scanStatus={
+                    nuevaPolizaHook.state.scan.status === 'uploading' ? 'scanning' : 
+                    nuevaPolizaHook.state.scan.status
+                  }
+                  scanResult={{
+                    completionPercentage: nuevaPolizaHook.state.scan.completionPercentage,
+                    extractedData: nuevaPolizaHook.state.scan.extractedData,
+                    requiresAttention: nuevaPolizaHook.state.scan.requiresAttention,
+                    errorMessage: nuevaPolizaHook.state.scan.errorMessage,
+                  }}
+                  acceptedFile={nuevaPolizaHook.state.file.selected}
+                />
+              </CardContent>
+            </Card>
+          </div>
+        );
+      
       case 3:
-        return <ValidationForm hookInstance={hookInstance} />;   
+        return (
+          <div className="space-y-6">
+            <div className="text-center mb-6">
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">
+                Validar Información de Renovación
+              </h2>
+              <p className="text-gray-600 dark:text-gray-400">
+                Revisa los datos extraídos y completa la información maestra
+              </p>
+            </div>
+
+            <Alert>
+              <Search className="h-4 w-4" />
+              <AlertDescription>
+                <strong>Renovando:</strong> {state.cliente.selectedPoliza?.conpol} → Nueva póliza escaneada
+              </AlertDescription>
+            </Alert>
+
+            <div className="grid lg:grid-cols-3 gap-6">
+              <div className="lg:col-span-2">
+                <Card>
+                  <CardContent className="pt-6">
+                    <ExtractedDataForm hookInstance={nuevaPolizaHook} />
+                  </CardContent>
+                </Card>
+              </div>
+
+              <div className="space-y-4">
+                <MasterDataForm hookInstance={nuevaPolizaHook} />
+                
+                <Card>
+                  <CardContent className="pt-6">
+                    <div className="space-y-3">
+                      <h4 className="font-medium">Póliza Original</h4>
+                      <div className="text-sm space-y-1">
+                        <p><strong>Número:</strong> {state.cliente.selectedPoliza?.conpol}</p>
+                        <p><strong>Vencimiento:</strong> {new Date(state.cliente.selectedPoliza?.confchhas).toLocaleDateString()}</p>
+                        <p><strong>Premio:</strong> ${state.cliente.selectedPoliza?.conpremio?.toLocaleString()}</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+          </div>
+        );
+      
       case 4:
-        return <RenovacionConfirmationForm hookInstance={hookInstance} />;
+        return (
+          <RenovacionConfirmationForm 
+            renovacionesHook={renovacionesHook}
+            nuevaPolizaHook={nuevaPolizaHook}
+          />
+        );
+      
       default:
         return null;
     }
   };
 
   const renderNavigation = () => {
-    // No mostrar navegación si la renovación está completada
+    // No mostrar navegación si estamos en estado de éxito
     if (state.renovacion.status === 'completed') {
-      return (
-        <Card className="mt-6">
-          <CardContent className="pt-6">
-            <div className="text-center space-y-4">
-              <div className="flex items-center justify-center space-x-2 text-green-600">
-                <CheckCircle className="h-6 w-6" />
-                <span className="font-semibold text-lg">¡Renovación Completada!</span>
-              </div>
-              
-              {state.renovacion.result && (
-                <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg">
-                  <p className="text-sm text-green-800 dark:text-green-200">
-                    <strong>Nueva póliza:</strong> {state.renovacion.result.polizaNumber}
-                  </p>
-                  {state.renovacion.result.velneoPolizaId && (
-                    <p className="text-sm text-green-800 dark:text-green-200">
-                      <strong>ID Velneo:</strong> {state.renovacion.result.velneoPolizaId}
-                    </p>
-                  )}
-                </div>
-              )}
-              
-              <Button onClick={reset} className="mt-4">
-                <RotateCcw className="h-4 w-4 mr-2" />
-                Procesar Nueva Renovación
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      );
+      return null;
     }
+
+    const canProceed = () => {
+      switch (state.currentStep) {
+        case 1: return canProceedToStep2;
+        case 2: return nuevaPolizaHook.state.scan.status === 'completed';
+        case 3: return nuevaPolizaHook.canProceedToStep3;
+        case 4: return false; // Última pantalla
+        default: return false;
+      }
+    };
+
+    const getNextButtonText = () => {
+      switch (state.currentStep) {
+        case 4: return 'Procesar Renovación';
+        default: return 'Siguiente';
+      }
+    };
 
     return (
       <Card className="mt-6">
@@ -189,59 +329,28 @@ export function RenovacionesContainer() {
                 onClick={prevStep}
                 disabled={state.currentStep === 1}
               >
-                <ArrowLeft className="h-4 w-4 mr-2" />
+                <ArrowLeft className="mr-2 h-4 w-4" />
                 Anterior
               </Button>
               
               <Button 
                 variant="outline" 
                 onClick={reset}
-                className="text-gray-600 dark:text-gray-400"
+                className="text-red-600 border-red-300 hover:bg-red-50 dark:hover:bg-red-900/20"
               >
-                <RefreshCw className="h-4 w-4 mr-2" />
+                <RotateCcw className="mr-2 h-4 w-4" />
                 Reiniciar
               </Button>
             </div>
 
-            {/* Información del estado actual */}
-            <div className="flex items-center space-x-4">
-              {state.polizaAnterior && (
-                <div className="text-right">
-                  <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                    Póliza: {state.polizaAnterior.numero}
-                  </p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">
-                    {state.polizaAnterior.cliente.nombre}
-                  </p>
-                </div>
-              )}
-
-              {state.polizaAnterior && !isPolizaRenovable() && (
-                <Badge variant="destructive" className="animate-pulse">
-                  <AlertTriangle className="h-3 w-3 mr-1" />
-                  Fuera del rango de renovación
-                </Badge>
-              )}
-
-              {state.polizaAnterior && isPolizaRenovable() && (
-                <Badge variant="default" className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
-                  <CheckCircle className="h-3 w-3 mr-1" />
-                  {getDiasParaVencimiento() >= 0 
-                    ? `${getDiasParaVencimiento()} días para vencer`
-                    : `Vencida hace ${Math.abs(getDiasParaVencimiento())} días`
-                  }
-                </Badge>
-              )}
-            </div>
-
-            <div className="flex gap-2">
+            <div className="flex items-center gap-4">
               <Button 
                 onClick={nextStep}
-                disabled={!canProceedToNextStep()}
-                className={canProceedToNextStep() ? '' : 'opacity-50'}
+                disabled={!canProceed()}
+                className="min-w-[120px]"
               >
-                {state.currentStep === 4 ? 'Finalizar' : 'Siguiente'}
-                <ArrowRight className="h-4 w-4 ml-2" />
+                {getNextButtonText()}
+                <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </div>
           </div>
@@ -250,135 +359,24 @@ export function RenovacionesContainer() {
     );
   };
 
-  const canProceedToNextStep = () => {
-    switch (state.currentStep) {
-      case 1:
-        return canProceedToStep2();
-      case 2:
-        return canProceedToStep3();
-      case 3:
-        return canProceedToStep4();
-      case 4:
-        return false; // No hay paso siguiente
-      default:
-        return false;
-    }
-  };
-
-  const renderAlerts = () => {
-    const alerts = [];
-
-    // Alerta si la póliza no es renovable
-    if (state.polizaAnterior && !isPolizaRenovable()) {
-      const diasVencimiento = getDiasParaVencimiento();
-      alerts.push(
-        <Alert key="no-renovable" variant="destructive" className="mb-4">
-          <AlertTriangle className="h-4 w-4" />
-          <AlertDescription>
-            Esta póliza no puede ser renovada. 
-            {diasVencimiento > 60 
-              ? ` Vence en ${diasVencimiento} días (máximo 60 días antes).`
-              : ` Venció hace ${Math.abs(diasVencimiento)} días (máximo 30 días después).`
-            }
-          </AlertDescription>
-        </Alert>
-      );
-    }
-
-    // Alerta de estado de procesamiento
-    if (state.renovacion.status === 'processing') {
-      alerts.push(
-        <Alert key="processing" className="mb-4">
-          <RefreshCw className="h-4 w-4 animate-spin" />
-          <AlertDescription>
-            Procesando renovación en Velneo... Esto puede tomar unos momentos.
-          </AlertDescription>
-        </Alert>
-      );
-    }
-
-    // Alerta de errores
-    if (state.renovacion.status === 'error') {
-      alerts.push(
-        <Alert key="error" variant="destructive" className="mb-4">
-          <AlertTriangle className="h-4 w-4" />
-          <AlertDescription>
-            Error procesando la renovación. Por favor, revisa los datos e intenta nuevamente.
-          </AlertDescription>
-        </Alert>
-      );
-    }
-
-    // Alerta de scan con errores
-    if (state.scan.errors && state.scan.errors.length > 0) {
-      alerts.push(
-        <Alert key="scan-errors" variant="destructive" className="mb-4">
-          <AlertTriangle className="h-4 w-4" />
-          <AlertDescription>
-            Errores en el escaneo: {state.scan.errors.join(', ')}
-          </AlertDescription>
-        </Alert>
-      );
-    }
-
-    return alerts;
-  };
-
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8">
-      <div className="container mx-auto px-4 max-w-6xl">
-        {/* Header */}
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-2">
-            Renovación de Pólizas
-          </h1>
-          <p className="text-gray-600 dark:text-gray-300 max-w-2xl mx-auto">
-            Renueva pólizas existentes manteniendo el contexto original y actualizando la información necesaria
-          </p>
-        </div>
-
-        {/* Alertas */}
-        {renderAlerts()}
-
-        {/* Indicador de pasos */}
-        {renderStepIndicator()}
-
-        {/* Contenido del paso actual */}
-        <Card className="mb-6">
-          <CardContent className="p-0">
-            {renderCurrentStep()}
-          </CardContent>
-        </Card>
-
-        {/* Navegación */}
-        {renderNavigation()}
-
-        {/* Información de debug (solo en desarrollo) */}
-        {process.env.NODE_ENV === 'development' && (
-          <Card className="mt-6 border-dashed border-gray-300">
-            <CardContent className="pt-6">
-              <details className="text-sm text-gray-500">
-                <summary className="cursor-pointer font-medium mb-2">Debug Info</summary>
-                <pre className="mt-2 p-2 bg-gray-100 dark:bg-gray-800 rounded text-xs overflow-auto">
-                  {JSON.stringify({
-                    currentStep: state.currentStep,
-                    polizaAnteriorId: state.polizaAnterior?.id,
-                    scanStatus: state.scan.status,
-                    renovacionStatus: state.renovacion.status,
-                    canProceed: {
-                      step2: canProceedToStep2(),
-                      step3: canProceedToStep3(),
-                      step4: canProceedToStep4()
-                    },
-                    isRenovable: isPolizaRenovable(),
-                    diasVencimiento: getDiasParaVencimiento()
-                  }, null, 2)}
-                </pre>
-              </details>
-            </CardContent>
-          </Card>
-        )}
+    <div className="container mx-auto py-6 space-y-6 max-w-6xl">
+      <div className="text-center mb-8">
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-2">
+          Renovación de Pólizas
+        </h1>
+        <p className="text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
+          Proceso guiado para renovar pólizas existentes con nuevo documento PDF
+        </p>
       </div>
+
+      {renderStepIndicator()}
+      
+      <div className="min-h-[600px]">
+        {renderCurrentStep()}
+      </div>
+
+      {renderNavigation()}
     </div>
   );
 }
