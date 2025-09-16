@@ -35,10 +35,16 @@ const navigationItems = [
     notifications: 0,
   },
   {
-    title: "Renovar/Modificar",
-    href: "/renovar",
+    title: "Renovaciones", 
+    href: "/renovaciones", 
     icon: RotateCcw,
     notifications: 3,
+  },
+  {
+    title: "Cambios", 
+    href: "/cambios", 
+    icon: FileText, 
+    notifications: 0,
   },
   {
     title: "Pólizas",

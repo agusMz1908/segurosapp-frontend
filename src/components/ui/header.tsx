@@ -34,7 +34,8 @@ import { useTheme } from "next-themes"
 const breadcrumbMap: Record<string, string[]> = {
   "/": ["Dashboard"],
   "/nueva-poliza": ["Nueva Póliza"],
-  "/renovar": ["Renovar", "Modificar"],
+  "/renovaciones": ["Renovaciones"], 
+  "/cambios": ["Cambios"], 
   "/polizas": ["Pólizas"],
   "/clientes": ["Clientes"],
   "/metricas": ["Métricas"],
