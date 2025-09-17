@@ -1,4 +1,3 @@
-// app/renovaciones/components/renovaciones-container.tsx
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -12,17 +11,12 @@ import {
   Send,
   ArrowLeft,
   ArrowRight,
-  AlertTriangle,
   RotateCcw
 } from 'lucide-react';
 import { useRenovaciones } from '../../../hooks/use-renovaciones';
 import { useNuevaPoliza } from '../../../hooks/use-nueva-poliza';
-
-// Importar componentes nuevos específicos para renovaciones
 import { ClientePolizasSearchForm } from '../step-1-search/cliente-polizas-search-form';
 import { RenovacionConfirmationForm } from '../step-4-confirmation/renovacion-confirmation-form';
-
-// Importar componentes reutilizados de Nueva Póliza
 import { FileUpload } from '../../nueva-poliza/step-1-context/file-upload';
 import { ExtractedDataForm } from '../../nueva-poliza/step-2-validation/extracted-data-form';
 import { MasterDataForm } from '../../nueva-poliza/step-2-validation/master-data-form';
@@ -39,50 +33,39 @@ export function RenovacionesContainer() {
     reset,
   } = renovacionesHook;
 
-  // Crear una instancia de Nueva Póliza para los pasos 2-3
   const nuevaPolizaHook = useNuevaPoliza();
 
-  // Crear wrapper para upload que funcione sin compañía inicial
   const handleFileUpload = async (file: File): Promise<boolean> => {
-    // Para renovaciones, necesitamos cliente y sección, la compañía se detectará del documento
     if (!state.context.clienteId || !state.context.seccionId) {
       console.error('Contexto incompleto para renovación:', state.context);
       return false;
     }
     
-    // Temporalmente establecer una compañía dummy para pasar la validación
-    // La compañía real se detectará del documento escaneado
     const tempContext = {
       clienteId: state.context.clienteId,
-      companiaId: 1, // Compañía temporal para pasar validación
+      companiaId: 1, 
       seccionId: state.context.seccionId,
       clienteInfo: state.context.clienteInfo,
       companiaInfo: { id: 1, nombre: 'Detectando...', codigo: 'TEMP' },
       seccionInfo: state.context.seccionInfo,
     };
     
-    // Actualizar temporalmente el contexto de nueva póliza
     nuevaPolizaHook.updateContext(tempContext);
-    
-    // Hacer el upload
+
     const result = await nuevaPolizaHook.uploadWithContext(file);
-    
     return result;
   };
 
-  // ✅ NUEVO: useEffect para sincronizar la compañía detectada después del escaneo
   React.useEffect(() => {
-    // Cuando el escaneo se complete exitosamente y tengamos contexto de nueva póliza
     if (nuevaPolizaHook.state.scan.status === 'completed' && 
         nuevaPolizaHook.state.context.companiaId &&
-        nuevaPolizaHook.state.context.companiaId !== 1) { // No es la compañía temporal
+        nuevaPolizaHook.state.context.companiaId !== 1) { 
       
       console.log('🔄 Sincronizando compañía detectada:', {
         companiaDetectada: nuevaPolizaHook.state.context.companiaInfo,
         contextoAnterior: state.context.companiaInfo
       });
       
-      // Actualizar el contexto de renovaciones con la compañía detectada
       renovacionesHook.updateState({
         context: {
           ...state.context,
@@ -210,8 +193,8 @@ export function RenovacionesContainer() {
             <Card>
               <CardContent className="pt-6">
                 <FileUpload
-                  disabled={false} // En renovaciones, habilitamos el upload si tenemos cliente y sección
-                  onFileUpload={handleFileUpload} // Usar nuestra función wrapper
+                  disabled={false}
+                  onFileUpload={handleFileUpload} 
                   uploadProgress={nuevaPolizaHook.state.file.uploadProgress}
                   uploadStatus={
                     nuevaPolizaHook.state.file.uploaded ? 'completed' : 
@@ -297,7 +280,6 @@ export function RenovacionesContainer() {
   };
 
   const renderNavigation = () => {
-    // No mostrar navegación si estamos en estado de éxito
     if (state.renovacion.status === 'completed') {
       return null;
     }
@@ -307,7 +289,7 @@ export function RenovacionesContainer() {
         case 1: return canProceedToStep2;
         case 2: return nuevaPolizaHook.state.scan.status === 'completed';
         case 3: return nuevaPolizaHook.canProceedToStep3;
-        case 4: return false; // Última pantalla
+        case 4: return false; 
         default: return false;
       }
     };

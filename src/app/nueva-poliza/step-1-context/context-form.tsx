@@ -1,4 +1,3 @@
-// step-1-context/context-form.tsx
 import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -21,7 +20,7 @@ interface ContextFormProps {
 }
 
 export function ContextForm({ hookInstance }: ContextFormProps) {
-  const { state, updateContext, isContextValid, uploadWithContext } = hookInstance;
+  const { state, updateContext, isContextValid, uploadWithContext, removeSelectedFile } = hookInstance;
   const { 
     getCompanias, 
     getSecciones, 
@@ -133,7 +132,7 @@ export function ContextForm({ hookInstance }: ContextFormProps) {
       </div>
 
       {/* Formulario de selección */}
-      <Card className="bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700">
+      <Card className="border-gray-200 dark:border-gray-700">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-gray-900 dark:text-gray-100">
             <User className="h-5 w-5" />
@@ -173,7 +172,7 @@ export function ContextForm({ hookInstance }: ContextFormProps) {
                 {state.context.companiaId && <CheckCircle className="h-4 w-4 text-green-500" />}
               </label>
               <select
-                className={`w-full p-2 border rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 ${
+                className={`w-full p-2 border rounded-md text-gray-900 dark:text-gray-100 ${
                   state.context.companiaId 
                     ? 'border-green-500 dark:border-green-400' 
                     : 'border-gray-300 dark:border-gray-600'
@@ -182,11 +181,11 @@ export function ContextForm({ hookInstance }: ContextFormProps) {
                 onChange={(e) => handleCompaniaSelect(parseInt(e.target.value))}
                 disabled={masterDataLoading}
               >
-                <option value="" className="text-gray-500 dark:text-gray-400">
+                <option value="" className="bg-black text-gray-500 dark:text-gray-400">
                   Seleccionar compañía...
                 </option>
                 {companias.map((compania) => (
-                  <option key={compania.id} value={compania.id} className="text-gray-900 dark:text-gray-100">
+                  <option key={compania.id} value={compania.id} className="bg-black text-gray-900 dark:text-gray-100">
                     {compania.displayName || compania.nombre}
                   </option>
                 ))}
@@ -205,7 +204,7 @@ export function ContextForm({ hookInstance }: ContextFormProps) {
                 {state.context.seccionId && <CheckCircle className="h-4 w-4 text-green-500" />}
               </label>
               <select
-                className={`w-full p-2 border rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 ${
+                className={`w-full p-2 border rounded-md text-gray-900 dark:text-gray-100 ${
                   state.context.seccionId 
                     ? 'border-green-500 dark:border-green-400' 
                     : 'border-gray-300 dark:border-gray-600'
@@ -214,11 +213,11 @@ export function ContextForm({ hookInstance }: ContextFormProps) {
                 onChange={(e) => handleSeccionSelect(parseInt(e.target.value))}
                 disabled={masterDataLoading}
               >
-                <option value="" className="text-gray-500 dark:text-gray-400">
+                <option value="" className="bg-black text-gray-500 dark:text-gray-400">
                   Seleccionar sección...
                 </option>
                 {seccionesFiltradas.map((seccion) => (
-                  <option key={seccion.id} value={seccion.id} className="text-gray-900 dark:text-gray-100">
+                  <option key={seccion.id} value={seccion.id} className="bg-black text-gray-900 dark:text-gray-100">
                     {seccion.displayName || seccion.nombre}
                   </option>
                 ))}
@@ -250,7 +249,7 @@ export function ContextForm({ hookInstance }: ContextFormProps) {
       )}
 
       {/* Área de carga de archivos */}
-      <Card className="bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700">
+      <Card className="border-gray-200 dark:border-gray-700">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-gray-900 dark:text-gray-100">
             <FileText className="h-5 w-5" />
@@ -262,20 +261,20 @@ export function ContextForm({ hookInstance }: ContextFormProps) {
         </CardHeader>
         <CardContent>
           <FileUpload
-            disabled={!isContextValid}
-            onFileUpload={uploadWithContext}
-            uploadProgress={state.file.uploadProgress}
-            uploadStatus={state.file.uploaded ? 'completed' : state.scan.status === 'scanning' ? 'uploading' : 'idle'}
-            scanStatus={state.scan.status}
-            scanResult={{
-              completionPercentage: state.scan.completionPercentage,
-              extractedData: state.scan.extractedData,
-              requiresAttention: state.scan.requiresAttention,
-              errorMessage: state.scan.errorMessage,
-            }}
-            acceptedFile={state.file.selected}
-          />
-
+              disabled={!isContextValid}
+              onFileUpload={uploadWithContext}
+              onFileRemove={removeSelectedFile}  // ← AGREGAR ESTA LÍNEA
+              uploadProgress={state.file.uploadProgress}
+              uploadStatus={state.file.uploaded ? 'completed' : state.scan.status === 'scanning' ? 'uploading' : 'idle'}
+              scanStatus={state.scan.status}
+              scanResult={{
+                completionPercentage: state.scan.completionPercentage,
+                extractedData: state.scan.extractedData,
+                requiresAttention: state.scan.requiresAttention,
+                errorMessage: state.scan.errorMessage,
+              }}
+              acceptedFile={state.file.selected}
+            />
           {/* Alertas contextuales */}
           {!isContextValid && (
             <Alert className="mt-4 bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-700">

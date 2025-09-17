@@ -336,26 +336,27 @@ export function MasterDataForm({ hookInstance }: MasterDataFormProps) {
     }, 50);
   };
 
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-lg">Datos Maestros</CardTitle>
-        <CardDescription>
-          Completa la información requerida para crear la póliza
-          {autoMappingExecuted && (
-            <span className="text-green-600 dark:text-green-400 ml-2">
-              • Mapeo automático aplicado
-            </span>
-          )}
-          {/* ✅ NUEVO: Mostrar compañía en descripción */}
-          {state.context?.companiaInfo && (
-            <span className="text-blue-600 dark:text-blue-400 ml-2">
-              • {state.context.companiaInfo.nombre}
-            </span>
-          )}
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
+return (
+  <Card>
+    <CardHeader>
+      <CardTitle className="text-lg">Datos Maestros</CardTitle>
+      <CardDescription>
+        Completa la información requerida para crear la póliza
+        {autoMappingExecuted && (
+          <span className="text-green-600 dark:text-green-400 ml-2">
+            • Mapeo automático aplicado
+          </span>
+        )}
+        {state.context?.companiaInfo && (
+          <span className="text-blue-600 dark:text-blue-400 ml-2">
+            • {state.context.companiaInfo.nombre}
+          </span>
+        )}
+      </CardDescription>
+    </CardHeader>
+    <CardContent>
+      {/* CAMBIO: Grid de 2 columnas en lugar de columna única */}
+      <div className="grid md:grid-cols-2 gap-x-6 gap-y-4">
         
         {/* Tipo de Combustible */}
         <ControlledSelect
@@ -407,7 +408,7 @@ export function MasterDataForm({ hookInstance }: MasterDataFormProps) {
           loading={loadingData}
         />
 
-        {/* Tarifa - ✅ NUEVO: Mostrar número de opciones filtradas */}
+        {/* Tarifa */}
         <ControlledSelect
           label={`Tarifa ${tarifas.length > 0 ? `(${tarifas.length} opciones)` : ''}`}
           value={formData.tarifaId}
@@ -416,27 +417,15 @@ export function MasterDataForm({ hookInstance }: MasterDataFormProps) {
           placeholder="Seleccionar tarifa..."
           loading={loadingData}
         />
+      </div>
 
-        {/* Observaciones */}
-        <div className="space-y-2">
-          <Label htmlFor="observaciones">Observaciones</Label>
-          <textarea
-            id="observaciones"
-            className="w-full p-2 border rounded-md resize-none dark:bg-gray-800 dark:border-gray-600"
-            rows={3}
-            placeholder="Observaciones adicionales..."
-            value={formData.observaciones}
-            onChange={(e) => handleFieldChange('observaciones', e.target.value)}
-          />
+      {(masterDataLoading || loadingData) && (
+        <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 mt-4">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          Cargando datos maestros...
         </div>
-
-        {(masterDataLoading || loadingData) && (
-          <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
-            <Loader2 className="h-4 w-4 animate-spin" />
-            Cargando datos maestros...
-          </div>
-        )}
-      </CardContent>
-    </Card>
-  );
+      )}
+    </CardContent>
+  </Card>
+);
 }

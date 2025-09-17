@@ -116,22 +116,14 @@ export function ReviewState({ hookInstance }: ReviewStateProps) {
       </div>
 
       <Card>
-        <CardContent className="pt-6">
+        <CardContent className="">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <FileText className="h-6 w-6 text-blue-600" />
               <div>
                 <p className="font-medium">Archivo procesado: {state.file.selected?.name}</p>
-                <p className="text-sm text-gray-600">
-                  Escaneado con Azure Document Intelligence • 
-                  {state.scan.completionPercentage}% de confianza
-                </p>
               </div>
             </div>
-            
-            <Badge variant="outline" className="text-green-600 border-green-300">
-              Validado
-            </Badge>
           </div>
         </CardContent>
       </Card>
@@ -141,21 +133,9 @@ export function ReviewState({ hookInstance }: ReviewStateProps) {
           <div className="text-center space-y-4">
             <div className="mb-6">
               <h3 className="text-lg font-semibold mb-2">Todo listo para enviar</h3>
-              <p className="text-gray-600">
-                Una vez enviada, la póliza será creada en tu sistema Velneo y no podrá modificarse desde aquí.
-              </p>
             </div>
 
-            <div className="flex gap-4 justify-center">
-              <Button 
-                variant="outline" 
-                size="lg"
-                onClick={() => window.history.back()}
-              >
-                <AlertTriangle className="mr-2 h-5 w-5" />
-                Revisar Datos
-              </Button>
-              
+            <div className="flex gap-4 justify-center">             
               <Button 
                 onClick={handleSendToVelneo}
                 size="lg"
