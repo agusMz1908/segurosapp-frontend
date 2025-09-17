@@ -1,5 +1,7 @@
-// nueva-poliza-container.tsx - Corregido para usar step3 en lugar de velneo
+"use client";
+
 import React from 'react';
+import { CreatePolizaHandler } from '@/components/poliza/create-poliza-handler';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';

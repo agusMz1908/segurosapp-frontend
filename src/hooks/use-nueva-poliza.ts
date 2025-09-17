@@ -1047,6 +1047,22 @@ const removeSelectedFile = useCallback(() => {
     }
   }, [state.file.scanId, state.scan, updateState, mapBackendDataToFrontend, mapFieldIssues]);
 
+  const updateStep3Status = (status: 'idle' | 'creating' | 'completed' | 'error', message?: string, additionalData?: any) => {
+    setState(prev => ({
+      ...prev,
+      step3: {
+        ...prev.step3,
+        status,
+        errorMessage: status === 'error' ? message : undefined,
+        successMessage: status === 'completed' ? message : undefined,
+        velneoPolizaId: additionalData?.velneoPolizaId || prev.step3.velneoPolizaId,
+        polizaNumber: additionalData?.polizaNumber || prev.step3.polizaNumber,
+        createdAt: additionalData?.createdAt || prev.step3.createdAt
+      },
+      isLoading: status === 'creating'
+    }));
+  };
+
   // Navegación entre pasos
   const nextStep = useCallback(() => {
     if (state.currentStep === 1) {
@@ -1120,29 +1136,18 @@ const removeSelectedFile = useCallback(() => {
     toast('Operación cancelada', { icon: '⏹️' });
   }, [updateState]);
 
-  return {
-    // Estado
+return {
     state,
-    
-    // Validaciones
-    isContextValid: isContextValid(),
-    canProceedToStep2: canProceedToStep2(),
-    canProceedToStep3: canProceedToStep3(),
-    
-    // Navegación
+    isContextValid,
+    canProceedToStep2,
+    canProceedToStep3,
     nextStep,
     prevStep,
-    
-    // Acciones principales
-    updateContext,
-    uploadWithContext,
-    rescanDocument,
-    removeSelectedFile,     // ← AGREGAR ESTA LÍNEA
-    sendToVelneo,
     reset,
     cancelOperation,
-    
-    // Utils
-    updateState,
+    updateStep3Status,
+    updateContext,        
+    uploadWithContext,
+    updateState         
   };
 }
