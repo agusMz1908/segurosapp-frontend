@@ -125,10 +125,16 @@ export function useNuevaPoliza() {
     });
   }, []);
 
-  // Validaciones
-  const isContextValid = useCallback(() => {
-    return !!(state.context.clienteId && state.context.companiaId && state.context.seccionId);
-  }, [state.context]);
+const isContextValid = useCallback(() => {
+  const valid = !!(state.context.clienteId && state.context.companiaId && state.context.seccionId);
+  console.log('🔍 DEBUG - isContextValid check:', {
+    clienteId: state.context.clienteId,
+    companiaId: state.context.companiaId, 
+    seccionId: state.context.seccionId,
+    result: valid
+  });
+  return valid;
+}, [state.context]);
 
   const canProceedToStep2 = useCallback(() => {
     return state.scan.status === 'completed';
@@ -164,31 +170,52 @@ export function useNuevaPoliza() {
       return str.replace(/\n/g, ' ').replace(/\r/g, ' ').trim();
     };
 
-    const extractNumber = (str: string) => {
-      if (!str) return "";
-      
-      const cleanStr = cleanText(str);
-      console.log('🔍 Extrayendo número de:', cleanStr);
-      
-      const match = cleanStr.match(/\$?\s*([\d.,]+)/);
-      if (!match) return "";
-      
-      let cleanNumber = match[1];
+const extractNumber = (str: string) => {
+  if (!str) return "";
+  
+  const cleanStr = cleanText(str);
+  console.log('🔍 Extrayendo número de:', cleanStr);
+  
+  const match = cleanStr.match(/\$?\s*([\d.,]+)/);
+  if (!match) return "";
+  
+  let cleanNumber = match[1];
 
-      if (cleanNumber.includes('.') && cleanNumber.includes(',')) {
-        cleanNumber = cleanNumber.replace(/\./g, '').replace(',', '.');
-      } else if (cleanNumber.includes(',')) {
-        cleanNumber = cleanNumber.replace(',', '.');
-      }
-      
-      const number = parseFloat(cleanNumber);
-      if (isNaN(number)) return "";
+  // FORMATO SURA/INTERNACIONAL: "2,475.25" (coma = miles, punto = decimal)
+  if (cleanNumber.includes(',') && cleanNumber.includes('.')) {
+    // Si el punto viene después de la coma, es formato SURA
+    const comaIndex = cleanNumber.lastIndexOf(',');
+    const puntoIndex = cleanNumber.lastIndexOf('.');
+    
+    if (puntoIndex > comaIndex) {
+      // Formato SURA: "2,475.25" -> remover comas de miles
+      cleanNumber = cleanNumber.replace(/,/g, '');
+    } else {
+      // Formato uruguayo: "2.475,25" -> convertir
+      cleanNumber = cleanNumber.replace(/\./g, '').replace(',', '.');
+    }
+  } 
+  // FORMATO SIMPLE CON COMA: podría ser decimal uruguayo
+  else if (cleanNumber.includes(',') && !cleanNumber.includes('.')) {
+    // Si tiene más de 3 dígitos antes de la coma, probablemente es separador de miles
+    const parts = cleanNumber.split(',');
+    if (parts[0].length > 3 || parts[1].length !== 2) {
+      // No es formato decimal estándar, mantener la coma como separador de miles
+      cleanNumber = cleanNumber.replace(',', '');
+    } else {
+      // Formato decimal uruguayo: "123,45"
+      cleanNumber = cleanNumber.replace(',', '.');
+    }
+  }
+  
+  const number = parseFloat(cleanNumber);
+  if (isNaN(number)) return "";
 
-      return new Intl.NumberFormat('es-UY', {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2
-      }).format(number);
-    };
+  return new Intl.NumberFormat('es-UY', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  }).format(number);
+};
 
 const extractPrimeraCuota = (data: any) => {
   if (!data) return "";
@@ -1141,6 +1168,7 @@ return {
     isContextValid,
     canProceedToStep2,
     canProceedToStep3,
+    removeSelectedFile,
     nextStep,
     prevStep,
     reset,

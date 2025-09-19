@@ -162,11 +162,6 @@ export function ExtractedDataForm({ hookInstance }: ExtractedDataFormProps) {
             onChange={(e) => handleFieldChange('valorPorCuota', e.target.value)}
             placeholder="0"
           />
-          {editedData.valorPorCuota && (
-            <p className="text-xs text-muted-foreground">
-              {formatCurrency(editedData.valorPorCuota)}
-            </p>
-          )}
         </div>
 
         <div className="space-y-2">
@@ -179,11 +174,6 @@ export function ExtractedDataForm({ hookInstance }: ExtractedDataFormProps) {
             onChange={(e) => handleFieldChange('premioTotal', e.target.value)}
             placeholder="0"
           />
-          {editedData.premioTotal && (
-            <p className="text-xs text-muted-foreground">
-              {formatCurrency(editedData.premioTotal)}
-            </p>
-          )}
         </div>
       </div>
 

@@ -12,7 +12,6 @@ import { useMasterData } from '../../../hooks/use-master-data';
 import { ClienteSearchCombobox } from '@/components/clientes/ClienteSearchCombobox';
 import { formatDocument, getClienteContactText } from '@/lib/mappers';
 import { FileUpload } from './file-upload';
-import { ContextSummary } from './context-summary';
 import type { Cliente, Compania, Seccion } from '@/types/master-data';
 
 interface ContextFormProps {
@@ -20,6 +19,8 @@ interface ContextFormProps {
 }
 
 export function ContextForm({ hookInstance }: ContextFormProps) {
+  console.log('🔍 DEBUG - Context State:', hookInstance.state.context);
+  console.log('🔍 DEBUG - isContextValid:', hookInstance.isContextValid());
   const { state, updateContext, isContextValid, uploadWithContext, removeSelectedFile } = hookInstance;
   const { 
     getCompanias, 
@@ -121,6 +122,7 @@ export function ContextForm({ hookInstance }: ContextFormProps) {
 
   return (
     <div className="space-y-6">
+      
       {/* Header del paso */}
       <div className="text-center mb-6">
         <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">
@@ -230,11 +232,6 @@ export function ContextForm({ hookInstance }: ContextFormProps) {
               )}
             </div>
           </div>
-
-          {/* Resumen de selección - Solo si el contexto es válido */}
-          {isContextValid && (
-            <ContextSummary context={state.context} />
-          )}
         </CardContent>
       </Card>
 
@@ -281,15 +278,6 @@ export function ContextForm({ hookInstance }: ContextFormProps) {
               <AlertTriangle className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />
               <AlertDescription className="text-yellow-800 dark:text-yellow-200">
                 Completa la configuración del contexto para habilitar la carga de archivos.
-              </AlertDescription>
-            </Alert>
-          )}
-
-          {isContextValid && !state.file.uploaded && (
-            <Alert className="mt-4 bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-700">
-              <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
-              <AlertDescription className="text-green-800 dark:text-green-200">
-                ¡Perfecto! El contexto está configurado. Ahora puedes cargar el archivo PDF.
               </AlertDescription>
             </Alert>
           )}

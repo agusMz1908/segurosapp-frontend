@@ -141,7 +141,7 @@ export function ClienteSearchCombobox({
             <div className="flex items-center border-b">
               <Search className="h-4 w-4 ml-3 mr-2 flex-shrink-0 opacity-50" />
               <CommandInput
-                placeholder="Buscar por nombre, documento o email..."
+                placeholder="Buscar por nombre"
                 value={searchQuery}
                 onValueChange={setSearchQuery}
                 className="flex-1"
@@ -269,7 +269,7 @@ export function ClienteSearchCombobox({
                   <Search className="h-8 w-8 mx-auto mb-2 opacity-30" />
                   <p>Escribe al menos 2 caracteres para buscar clientes</p>
                   <p className="text-xs mt-1">
-                    Puedes buscar por nombre, documento o email
+                    Puedes buscar por nombre
                   </p>
                 </div>
               )}

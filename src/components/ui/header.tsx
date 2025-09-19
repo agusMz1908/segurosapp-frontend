@@ -112,20 +112,6 @@ export function Header() {
           </nav>
         </div>
 
-        {/* Center Section - Search Bar */}
-        <div className="hidden md:flex flex-1 max-w-md mx-4">
-          <div className="relative w-full">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-            <Input
-              type="search"
-              placeholder="Buscar pólizas, clientes..."
-              className="pl-10 bg-background"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-          </div>
-        </div>
-
         {/* Right Section - Actions + User Menu */}
         <div className="flex items-center gap-2">
           {/* Mobile Search */}

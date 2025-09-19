@@ -21,9 +21,10 @@ import { useNuevaPoliza } from '../../../hooks/use-nueva-poliza';
 import { ContextForm } from '../step-1-context/context-form';
 import { ValidationForm } from '../step-2-validation/validation-form';
 import { ConfirmationForm } from '../step-3-confirmation/confirmation-form';
+import { SuccessState } from '../step-3-confirmation/success-state';
 
 export function NuevaPolizaContainer() {
-  const hookInstance = useNuevaPoliza(); // Una sola instancia
+  const hookInstance = useNuevaPoliza();
   const {
     state,
     isContextValid,
@@ -58,71 +59,99 @@ export function NuevaPolizaContainer() {
       isValid: canProceedToStep3
     }
   ];
+  
 
-  const renderStepIndicator = () => (
-    <Card className="mb-6">
-      <CardContent className="pt-6">
-        <div className="flex items-center justify-between">
-          {steps.map((step, index) => {
-            const isActive = state.currentStep === step.number;
-            const isCompleted = state.currentStep > step.number;
-            const Icon = isCompleted ? CheckCircle : step.icon;
-            
-            return (
-              <React.Fragment key={step.number}>
-                <div className="flex flex-col items-center min-w-0 flex-1">
-                  <div className={`
-                    w-12 h-12 rounded-full flex items-center justify-center border-2 transition-all duration-300 mb-3
-                    ${isCompleted 
-                      ? 'bg-green-500 border-green-500 text-white shadow-lg' 
-                      : isActive 
-                        ? 'bg-blue-500 border-blue-500 text-white shadow-lg scale-110'
-                        : 'border-gray-300 text-gray-400 bg-white dark:bg-gray-800 dark:border-gray-600'
-                    }
-                  `}>
-                    <Icon className="h-5 w-5" />
+  const renderStepIndicator = () => {
+    // En estado de éxito, forzar que todos los pasos se vean completados
+    const isSuccessState = state.currentStep === 3 && state.step3.status === 'completed';
+    
+    return (
+      <Card className="mb-6">
+        <CardContent className="pt-6">
+          <div className="flex items-center justify-between">
+            {steps.map((step, index) => {
+              const isActive = !isSuccessState && state.currentStep === step.number;
+              const isCompleted = isSuccessState || state.currentStep > step.number;
+              const Icon = isCompleted ? CheckCircle : step.icon;
+              
+              return (
+                <React.Fragment key={step.number}>
+                  <div className="flex flex-col items-center min-w-0 flex-1">
+                    <div className={`
+                      w-12 h-12 rounded-full flex items-center justify-center border-2 transition-all duration-300 mb-3
+                      ${isCompleted 
+                        ? 'bg-green-500 border-green-500 text-white shadow-lg' 
+                        : isActive 
+                          ? 'bg-blue-500 border-blue-500 text-white shadow-lg scale-110'
+                          : 'border-gray-300 text-gray-400 bg-white dark:bg-gray-800 dark:border-gray-600'
+                      }
+                    `}>
+                      <Icon className="h-5 w-5" />
+                    </div>
+                    
+                    <div className="text-center">
+                      <h3 className={`font-semibold text-sm mb-1 ${
+                        isActive ? 'text-blue-600 dark:text-blue-400' : isCompleted ? 'text-green-600 dark:text-green-400' : 'text-gray-500 dark:text-gray-400'
+                      }`}>
+                        {step.title}
+                      </h3>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 hidden sm:block">
+                        {step.description}
+                      </p>
+                    </div>
                   </div>
                   
-                  <div className="text-center">
-                    <h3 className={`font-semibold text-sm mb-1 ${
-                      isActive ? 'text-blue-600 dark:text-blue-400' : isCompleted ? 'text-green-600 dark:text-green-400' : 'text-gray-500 dark:text-gray-400'
-                    }`}>
-                      {step.title}
-                    </h3>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 hidden sm:block">
-                      {step.description}
-                    </p>
-                  </div>
-                </div>
-                
-                {index < steps.length - 1 && (
-                  <div className={`
-                    flex-1 h-0.5 mx-4 transition-colors duration-300
-                    ${isCompleted ? 'bg-green-500' : 'bg-gray-200 dark:bg-gray-700'}
-                  `} />
-                )}
-              </React.Fragment>
-            );
-          })}
-        </div>
-      </CardContent>
-    </Card>
-  );
+                  {index < steps.length - 1 && (
+                    <div className={`
+                      flex-1 h-0.5 mx-4 transition-colors duration-300
+                      ${isCompleted ? 'bg-green-500' : 'bg-gray-200 dark:bg-gray-700'}
+                    `} />
+                  )}
+                </React.Fragment>
+              );
+            })}
+          </div>
+        </CardContent>
+      </Card>
+    );
+  };
 
-  // Pasar hookInstance a todos los componentes
-  const renderCurrentStep = () => {
+const renderCurrentStep = () => {
+    // Si estamos en el paso 3 y el status es 'completed', mostrar SuccessState
+    if (state.currentStep === 3 && state.step3.status === 'completed') {
+      return (
+        <div className="max-w-4xl mx-auto">
+          <SuccessState 
+            polizaNumber={state.step3.polizaNumber}
+            velneoUrl={state.step3.velneoUrl}
+          />
+        </div>
+      );
+    }
+
     switch (state.currentStep) {
       case 1:
-        return <ContextForm hookInstance={hookInstance} />;       
+        return (
+          <div className="max-w-4xl mx-auto">
+            <ContextForm hookInstance={hookInstance} />
+          </div>
+        );       
       case 2:
-        return <ValidationForm hookInstance={hookInstance} />;     
+        return (
+          <div className="w-full h-full">
+            <ValidationForm hookInstance={hookInstance} />
+          </div>
+        );     
       case 3:
-        return <ConfirmationForm hookInstance={hookInstance} />;   
+        return (
+          <div className="max-w-4xl mx-auto">
+            <ConfirmationForm hookInstance={hookInstance} />
+          </div>
+        );   
       default:
         return null;
     }
   };
-
   const renderNavigation = () => {
     // No mostrar navegación si estamos en estado de éxito
     if (state.step3.status === 'completed') {
@@ -250,22 +279,41 @@ export function NuevaPolizaContainer() {
   };
 
   return (
-    <div className="container mx-auto py-6 space-y-6 max-w-6xl">
-      <div className="text-center mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-2">Nueva Póliza</h1>
-        <p className="text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
-          Proceso guiado para crear una nueva póliza desde documento PDF.
-        </p>
-      </div>
+    <div className="px-4 lg:px-6 xl:px-8 py-6 space-y-6 w-full">
+      {/* Header - Solo mostrar si no estamos en success state */}
+      {!(state.currentStep === 3 && state.step3.status === 'completed') && (
+        <div className="text-center mb-8 max-w-4xl mx-auto">
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-2">Nueva Póliza</h1>
+          <p className="text-gray-600 dark:text-gray-400">
+            Proceso guiado para crear una nueva póliza desde documento PDF.
+          </p>
+        </div>
+      )}
 
-      {renderStepIndicator()}
-      {renderErrorState()}
+      {/* Step Indicator - Mostrar siempre excepto que tengamos error */}
+      {!(state.scan.status === 'error' || state.step3.status === 'error') && (
+        <div className="max-w-4xl mx-auto">
+          {renderStepIndicator()}
+        </div>
+      )}
       
-      <div className="min-h-[600px]">
+      {/* Error State - Solo mostrar si no estamos en success state */}
+      {!(state.currentStep === 3 && state.step3.status === 'completed') && (
+        <div className="max-w-4xl mx-auto">
+          {renderErrorState()}
+        </div>
+      )}
+      
+      <div className="min-h-[600px] w-full">
         {renderCurrentStep()}
       </div>
 
-      {renderNavigation()}
+      {/* Navigation - Solo mostrar si no estamos en success state */}
+      {!(state.currentStep === 3 && state.step3.status === 'completed') && (
+        <div className="max-w-4xl mx-auto">
+          {renderNavigation()}
+        </div>
+      )}
     </div>
   );
 }
