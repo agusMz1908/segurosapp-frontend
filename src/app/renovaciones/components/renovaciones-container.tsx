@@ -1,3 +1,6 @@
+// src/app/renovaciones/components/renovaciones-container.tsx
+// ✅ CORREGIDO: Usar los componentes específicos de renovaciones
+
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -11,15 +14,13 @@ import {
   Send,
   ArrowLeft,
   ArrowRight,
-  RotateCcw
+  RotateCcw,
+  AlertTriangle
 } from 'lucide-react';
 import { useRenovaciones } from '../../../hooks/use-renovaciones';
-import { useNuevaPoliza } from '../../../hooks/use-nueva-poliza';
 import { ClientePolizasSearchForm } from '../step-1-search/cliente-polizas-search-form';
 import { RenovacionConfirmationForm } from '../step-4-confirmation/renovacion-confirmation-form';
-import { FileUpload } from '../../nueva-poliza/step-1-context/file-upload';
-import { ExtractedDataForm } from '../../nueva-poliza/step-2-validation/extracted-data-form';
-import { MasterDataForm } from '../../nueva-poliza/step-2-validation/master-data-form';
+import { ValidationForm } from '../step-3-validation/validation-form'; // ✅ USAR VALIDATION-FORM ESPECÍFICO DE RENOVACIONES
 
 export function RenovacionesContainer() {
   const renovacionesHook = useRenovaciones();
@@ -31,334 +32,286 @@ export function RenovacionesContainer() {
     nextStep,
     prevStep,
     reset,
+    uploadDocumentForRenovacion,
   } = renovacionesHook;
 
-  const nuevaPolizaHook = useNuevaPoliza();
+  const mapUploadStatus = (renovacionStatus: string): 'idle' | 'uploading' | 'completed' | 'error' => {
+    switch (renovacionStatus) {
+      case 'uploading':
+        return 'uploading';
+      case 'scanning':
+        return 'uploading';
+      case 'completed':
+        return 'completed';
+      case 'error':
+        return 'error';
+      default:
+        return 'idle';
+    }
+  };
 
   const handleFileUpload = async (file: File): Promise<boolean> => {
     if (!state.context.clienteId || !state.context.seccionId) {
-      console.error('Contexto incompleto para renovación:', state.context);
+      console.error('❌ RENOVACIONES - Contexto incompleto:', state.context);
       return false;
     }
     
-    const tempContext = {
+    console.log('🔄 RENOVACIONES - Iniciando upload con contexto:', {
       clienteId: state.context.clienteId,
-      companiaId: 1, 
       seccionId: state.context.seccionId,
-      clienteInfo: state.context.clienteInfo,
-      companiaInfo: { id: 1, nombre: 'Detectando...', codigo: 'TEMP' },
-      seccionInfo: state.context.seccionInfo,
-    };
+      archivo: file.name
+    });
     
-    nuevaPolizaHook.updateContext(tempContext);
-
-    const result = await nuevaPolizaHook.uploadWithContext(file);
+    const result = await uploadDocumentForRenovacion(file);
+    console.log('✅ RENOVACIONES - Resultado upload:', result);
     return result;
   };
 
-  React.useEffect(() => {
-    if (nuevaPolizaHook.state.scan.status === 'completed' && 
-        nuevaPolizaHook.state.context.companiaId &&
-        nuevaPolizaHook.state.context.companiaId !== 1) { 
-      
-      console.log('🔄 Sincronizando compañía detectada:', {
-        companiaDetectada: nuevaPolizaHook.state.context.companiaInfo,
-        contextoAnterior: state.context.companiaInfo
-      });
-      
-      renovacionesHook.updateState({
-        context: {
-          ...state.context,
-          companiaId: nuevaPolizaHook.state.context.companiaId,
-          companiaInfo: nuevaPolizaHook.state.context.companiaInfo,
-        }
-      });
+  const getStepIcon = (stepNumber: number, isCompleted: boolean, isCurrent: boolean) => {
+    if (isCompleted) {
+      return <CheckCircle className="h-5 w-5 text-green-500" />;
     }
-  }, [
-    nuevaPolizaHook.state.scan.status,
-    nuevaPolizaHook.state.context.companiaId,
-    nuevaPolizaHook.state.context.companiaInfo,
-    state.context,
-    renovacionesHook
-  ]);
-
-  const steps = [
-    { 
-      number: 1, 
-      title: "Buscar Póliza", 
-      description: "Cliente y póliza a renovar",
-      icon: Circle,
-      isValid: canProceedToStep2
-    },
-    { 
-      number: 2, 
-      title: "Documento", 
-      description: "Escanear nueva póliza",
-      icon: Upload,
-      isValid: canProceedToStep3
-    },
-    { 
-      number: 3, 
-      title: "Validación", 
-      description: "Datos y maestros",
-      icon: FileText,
-      isValid: canProceedToStep4
-    },
-    { 
-      number: 4, 
-      title: "Confirmación", 
-      description: "Procesar renovación",
-      icon: Send,
-      isValid: state.renovacion.status === 'completed'
+    if (isCurrent) {
+      return <div className="h-5 w-5 rounded-full bg-blue-500 flex items-center justify-center text-white text-sm font-medium">{stepNumber}</div>;
     }
-  ];
-
-  const renderStepIndicator = () => (
-    <Card className="mb-6">
-      <CardContent className="pt-6">
-        <div className="flex items-center justify-between">
-          {steps.map((step, index) => {
-            const isActive = state.currentStep === step.number;
-            const isCompleted = state.currentStep > step.number;
-            const Icon = isCompleted ? CheckCircle : step.icon;
-            
-            return (
-              <React.Fragment key={step.number}>
-                <div className="flex flex-col items-center min-w-0 flex-1">
-                  <div className={`
-                    w-12 h-12 rounded-full flex items-center justify-center border-2 transition-all duration-300 mb-3
-                    ${isCompleted 
-                      ? 'bg-green-500 border-green-500 text-white shadow-lg' 
-                      : isActive 
-                        ? 'bg-blue-500 border-blue-500 text-white shadow-lg scale-110'
-                        : 'border-gray-300 text-gray-400 bg-white dark:bg-gray-800 dark:border-gray-600'
-                    }
-                  `}>
-                    <Icon className="h-5 w-5" />
-                  </div>
-                  
-                  <div className="text-center">
-                    <h3 className={`font-semibold text-sm mb-1 ${
-                      isActive ? 'text-blue-600 dark:text-blue-400' : isCompleted ? 'text-green-600 dark:text-green-400' : 'text-gray-500 dark:text-gray-400'
-                    }`}>
-                      {step.title}
-                    </h3>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 hidden sm:block">
-                      {step.description}
-                    </p>
-                  </div>
-                </div>
-                
-                {index < steps.length - 1 && (
-                  <div className={`
-                    flex-1 h-0.5 mx-4 transition-colors duration-300
-                    ${isCompleted ? 'bg-green-500' : 'bg-gray-200 dark:bg-gray-700'}
-                  `} />
-                )}
-              </React.Fragment>
-            );
-          })}
-        </div>
-      </CardContent>
-    </Card>
-  );
+    return <Circle className="h-5 w-5 text-gray-400" />;
+  };
 
   const renderCurrentStep = () => {
     switch (state.currentStep) {
       case 1:
-        return <ClientePolizasSearchForm hookInstance={renovacionesHook} />;
-      
+        return (
+          <Card>
+            <CardContent className="pt-6">
+              <ClientePolizasSearchForm hookInstance={renovacionesHook} />
+            </CardContent>
+          </Card>
+        );
+
       case 2:
         return (
-          <div className="space-y-6">
-            <div className="text-center mb-6">
-              <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">
-                Escanear Nueva Póliza
-              </h2>
-              <p className="text-gray-600 dark:text-gray-300">
-                Sube el documento de la nueva póliza renovada
-              </p>
-            </div>
-
-            <Alert>
-              <Search className="h-4 w-4" />
-              <AlertDescription>
-                <strong>Renovando póliza:</strong> {state.cliente.selectedPoliza?.conpol} - 
-                Cliente: {state.context.clienteInfo?.nombre} - 
-                Sección: {state.context.seccionInfo?.nombre} - 
-                La compañía se detectará automáticamente del documento escaneado
-              </AlertDescription>
-            </Alert>
-
-            <Card>
-              <CardContent className="pt-6">
-                <FileUpload
-                  disabled={false}
-                  onFileUpload={handleFileUpload} 
-                  uploadProgress={nuevaPolizaHook.state.file.uploadProgress}
-                  uploadStatus={
-                    nuevaPolizaHook.state.file.uploaded ? 'completed' : 
-                    nuevaPolizaHook.state.scan.status === 'scanning' ? 'uploading' : 
-                    'idle'
-                  }
-                  scanStatus={
-                    nuevaPolizaHook.state.scan.status === 'uploading' ? 'scanning' : 
-                    nuevaPolizaHook.state.scan.status
-                  }
-                  scanResult={{
-                    completionPercentage: nuevaPolizaHook.state.scan.completionPercentage,
-                    extractedData: nuevaPolizaHook.state.scan.extractedData,
-                    requiresAttention: nuevaPolizaHook.state.scan.requiresAttention,
-                    errorMessage: nuevaPolizaHook.state.scan.errorMessage,
-                  }}
-                  acceptedFile={nuevaPolizaHook.state.file.selected}
-                />
-              </CardContent>
-            </Card>
-          </div>
-        );
-      
-      case 3:
-        return (
-          <div className="space-y-6">
-            <div className="text-center mb-6">
-              <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">
-                Validar Información de Renovación
-              </h2>
-              <p className="text-gray-600 dark:text-gray-400">
-                Revisa los datos extraídos y completa la información maestra
-              </p>
-            </div>
-
-            <Alert>
-              <Search className="h-4 w-4" />
-              <AlertDescription>
-                <strong>Renovando:</strong> {state.cliente.selectedPoliza?.conpol} → Nueva póliza escaneada
-              </AlertDescription>
-            </Alert>
-
-            <div className="grid lg:grid-cols-3 gap-6">
-              <div className="lg:col-span-2">
-                <Card>
-                  <CardContent className="pt-6">
-                    <ExtractedDataForm hookInstance={nuevaPolizaHook} />
-                  </CardContent>
-                </Card>
-              </div>
-
-              <div className="space-y-4">
-                <MasterDataForm hookInstance={nuevaPolizaHook} />
+          <Card>
+            <CardContent className="pt-6">
+              <div className="space-y-6">
+                <div className="text-center">
+                  <h3 className="text-lg font-semibold mb-2">Subir Documento de Renovación</h3>
+                  <p className="text-gray-600">
+                    Sube la nueva póliza para procesarla y extraer los datos automáticamente
+                  </p>
+                </div>
                 
-                <Card>
-                  <CardContent className="pt-6">
+                {/* Información de contexto */}
+                <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg">
+                  <h4 className="font-medium mb-2">Contexto de Renovación:</h4>
+                  <div className="text-sm text-gray-600 dark:text-gray-400 space-y-1">
+                    <div><strong>Cliente:</strong> {state.context?.clienteInfo?.nombre || 'No seleccionado'}</div>
+                    <div><strong>Póliza Original:</strong> {state.context?.polizaOriginal?.numero || 'No seleccionada'}</div>
+                    <div><strong>Compañía:</strong> {state.context?.companiaInfo?.nombre || 'Se detectará automáticamente'}</div>
+                  </div>
+                </div>
+
+                {/* Upload de archivo */}
+                <div className={`
+                  border-2 border-dashed rounded-lg p-8 text-center transition-colors
+                  ${state.scan.status === 'uploading' || state.scan.status === 'scanning'
+                    ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' 
+                    : state.scan.status === 'error'
+                      ? 'border-red-300 bg-red-50 dark:bg-red-900/20'
+                      : 'border-gray-300 hover:border-gray-400 dark:border-gray-600'
+                  }
+                  ${state.scan.status === 'uploading' || state.scan.status === 'scanning' ? 'pointer-events-none' : 'cursor-pointer'}
+                `}
+                  onClick={() => !state.isLoading && document.getElementById('file-input-renovacion')?.click()}
+                >
+                  <input
+                    id="file-input-renovacion"
+                    type="file"
+                    accept=".pdf,.jpg,.jpeg,.png"
+                    onChange={(e) => {
+                      if (e.target.files?.[0]) {
+                        handleFileUpload(e.target.files[0]);
+                      }
+                    }}
+                    className="hidden"
+                    disabled={state.isLoading}
+                  />
+
+                  {state.scan.status === 'uploading' || state.scan.status === 'scanning' ? (
                     <div className="space-y-3">
-                      <h4 className="font-medium">Póliza Original</h4>
-                      <div className="text-sm space-y-1">
-                        <p><strong>Número:</strong> {state.cliente.selectedPoliza?.conpol}</p>
-                        <p><strong>Vencimiento:</strong> {new Date(state.cliente.selectedPoliza?.confchhas).toLocaleDateString()}</p>
-                        <p><strong>Premio:</strong> ${state.cliente.selectedPoliza?.conpremio?.toLocaleString()}</p>
+                      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto"></div>
+                      <p className="text-lg font-medium text-gray-700 dark:text-gray-300">
+                        {state.scan.status === 'uploading' ? 'Subiendo archivo...' : 'Procesando documento...'}
+                      </p>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">
+                        Por favor espera mientras extraemos la información del documento
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      <Upload className="h-12 w-12 mx-auto text-gray-400" />
+                      <div>
+                        <p className="text-lg font-medium text-gray-700 dark:text-gray-300">
+                          Arrastra tu archivo aquí o haz clic para seleccionar
+                        </p>
+                        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                          Formatos soportados: PDF, JPG, PNG (máximo 10MB)
+                        </p>
                       </div>
                     </div>
-                  </CardContent>
-                </Card>
+                  )}
+                </div>
+
+                {/* Estado de error */}
+                {state.scan.status === 'error' && (
+                  <Alert variant="destructive">
+                    <AlertTriangle className="h-4 w-4" />
+                    <AlertDescription>
+                      {state.scan.errorMessage || 'Error procesando el documento. Intenta nuevamente.'}
+                    </AlertDescription>
+                  </Alert>
+                )}
+
+                {/* Estado completado */}
+                {state.scan.status === 'completed' && (
+                  <Alert className="border-green-500 bg-green-50 dark:bg-green-900/20">
+                    <CheckCircle className="h-4 w-4 text-green-600" />
+                    <AlertDescription className="text-green-800 dark:text-green-200">
+                      Documento procesado exitosamente. Los datos han sido extraídos automáticamente.
+                      {state.scan.fileName && ` Archivo: ${state.scan.fileName}`}
+                    </AlertDescription>
+                  </Alert>
+                )}
               </div>
-            </div>
-          </div>
+            </CardContent>
+          </Card>
         );
-      
+
+      case 3:
+        // ✅ USAR EL VALIDATION-FORM ESPECÍFICO DE RENOVACIONES
+        return <ValidationForm hookInstance={renovacionesHook} />;
+
       case 4:
-        return (
-          <RenovacionConfirmationForm 
-            renovacionesHook={renovacionesHook}
-            nuevaPolizaHook={nuevaPolizaHook}
-          />
-        );
-      
+        return <RenovacionConfirmationForm hookInstance={renovacionesHook} />;
+
       default:
         return null;
     }
   };
 
-  const renderNavigation = () => {
-    if (state.renovacion.status === 'completed') {
-      return null;
-    }
-
-    const canProceed = () => {
-      switch (state.currentStep) {
-        case 1: return canProceedToStep2;
-        case 2: return nuevaPolizaHook.state.scan.status === 'completed';
-        case 3: return nuevaPolizaHook.canProceedToStep3;
-        case 4: return false; 
-        default: return false;
-      }
-    };
-
-    const getNextButtonText = () => {
-      switch (state.currentStep) {
-        case 4: return 'Procesar Renovación';
-        default: return 'Siguiente';
-      }
-    };
-
-    return (
-      <Card className="mt-6">
-        <CardContent className="pt-6">
-          <div className="flex justify-between items-center">
-            <div className="flex gap-2">
-              <Button 
-                variant="outline" 
-                onClick={prevStep}
-                disabled={state.currentStep === 1}
-              >
-                <ArrowLeft className="mr-2 h-4 w-4" />
-                Anterior
-              </Button>
-              
-              <Button 
-                variant="outline" 
-                onClick={reset}
-                className="text-red-600 border-red-300 hover:bg-red-50 dark:hover:bg-red-900/20"
-              >
-                <RotateCcw className="mr-2 h-4 w-4" />
-                Reiniciar
-              </Button>
-            </div>
-
-            <div className="flex items-center gap-4">
-              <Button 
-                onClick={nextStep}
-                disabled={!canProceed()}
-                className="min-w-[120px]"
-              >
-                {getNextButtonText()}
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  };
-
   return (
-    <div className="container mx-auto py-6 space-y-6 max-w-6xl">
-      <div className="text-center mb-8">
+    <div className="container mx-auto p-6 max-w-7xl">
+      <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-2">
-          Renovación de Pólizas
+          Renovaciones
         </h1>
-        <p className="text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
-          Proceso guiado para renovar pólizas existentes con nuevo documento PDF
+        <p className="text-gray-600 dark:text-gray-400">
+          Gestiona la renovación de pólizas de seguros con procesamiento automático
         </p>
       </div>
 
-      {renderStepIndicator()}
-      
-      <div className="min-h-[600px]">
+      {/* Progress Steps */}
+      <div className="mb-8">
+        <div className="flex items-center justify-center space-x-8">
+          {[
+            { number: 1, label: 'Buscar Cliente', icon: Search },
+            { number: 2, label: 'Subir Documento', icon: Upload },
+            { number: 3, label: 'Validar Datos', icon: FileText },
+            { number: 4, label: 'Confirmar', icon: Send },
+          ].map(({ number, label, icon: Icon }) => {
+            const isCompleted = state.currentStep > number;
+            const isCurrent = state.currentStep === number;
+            
+            return (
+              <div key={number} className="flex items-center">
+                <div className="flex flex-col items-center">
+                  {getStepIcon(number, isCompleted, isCurrent)}
+                  <span className={`mt-2 text-sm font-medium ${
+                    isCurrent ? 'text-blue-600' : 
+                    isCompleted ? 'text-green-600' : 'text-gray-400'
+                  }`}>
+                    {label}
+                  </span>
+                </div>
+                
+                {number < 4 && (
+                  <div className={`w-16 h-px mx-4 ${
+                    state.currentStep > number ? 'bg-green-500' : 'bg-gray-300'
+                  }`} />
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Current Step Content */}
+      <div className="mb-8">
         {renderCurrentStep()}
       </div>
 
-      {renderNavigation()}
+      {/* Navigation Buttons */}
+      <div className="flex justify-between">
+        <div>
+          {state.currentStep > 1 && (
+            <Button 
+              variant="outline" 
+              onClick={prevStep}
+              className="flex items-center gap-2"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Anterior
+            </Button>
+          )}
+        </div>
+
+        <div className="flex gap-3">
+          <Button
+            variant="outline"
+            onClick={reset}
+            className="flex items-center gap-2"
+          >
+            <RotateCcw className="h-4 w-4" />
+            Reiniciar
+          </Button>
+
+          {state.currentStep < 4 && (
+            <Button
+              onClick={nextStep}
+              disabled={
+                (state.currentStep === 1 && !canProceedToStep2) ||
+                (state.currentStep === 2 && !canProceedToStep3) ||
+                (state.currentStep === 3 && !canProceedToStep4)
+              }
+              className="flex items-center gap-2"
+            >
+              Siguiente
+              <ArrowRight className="h-4 w-4" />
+            </Button>
+          )}
+        </div>
+      </div>
+
+      {/* Debug Info - Solo en desarrollo */}
+      {process.env.NODE_ENV === 'development' && (
+        <div className="mt-8 p-4 bg-gray-100 dark:bg-gray-800 rounded-lg text-xs">
+          <details>
+            <summary className="cursor-pointer font-medium mb-2">Debug State Renovaciones</summary>
+            <pre className="whitespace-pre-wrap">
+              {JSON.stringify({
+                currentStep: state.currentStep,
+                contexto: state.context,
+                scanStatus: state.scan.status,
+                scanFileName: state.scan.fileName,
+                hasExtractedData: !!(state.scan.extractedData && Object.keys(state.scan.extractedData).length > 0),
+                hasMasterData: !!(state.masterData && Object.keys(state.masterData).length > 0),
+                canProceedToStep2,
+                canProceedToStep3,
+                canProceedToStep4
+              }, null, 2)}
+            </pre>
+          </details>
+        </div>
+      )}
     </div>
   );
 }

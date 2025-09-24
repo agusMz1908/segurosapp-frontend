@@ -1,4 +1,6 @@
 // src/app/renovaciones/step-3-validation/extracted-data-form.tsx
+// ✅ CORREGIDO: Usar la misma lógica de extracción de datos que nueva póliza
+
 import React, { useEffect, useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -13,13 +15,29 @@ export function ExtractedDataForm({ hookInstance }: ExtractedDataFormProps) {
   const [editedData, setEditedData] = useState<any>({});
   const [isInitialized, setIsInitialized] = useState(false);
 
+  // ✅ CORREGIDO: Usar mappedData si está disponible, sino normalizedData, sino extractedData
+  const dataSource = state.scan.mappedData && Object.keys(state.scan.mappedData).length > 0 
+    ? state.scan.mappedData 
+    : state.scan.normalizedData && Object.keys(state.scan.normalizedData).length > 0
+    ? state.scan.normalizedData
+    : state.scan.extractedData;
+
+  console.log('🔍 EXTRACTED DATA FORM RENOVACIONES - Usando dataSource:', {
+    mappedData: Object.keys(state.scan.mappedData || {}).length,
+    normalizedData: Object.keys(state.scan.normalizedData || {}).length,
+    extractedData: Object.keys(state.scan.extractedData || {}).length,
+    elegido: dataSource === state.scan.mappedData ? 'mappedData' : 
+             dataSource === state.scan.normalizedData ? 'normalizedData' : 'extractedData'
+  });
+
   // Inicializar datos cuando lleguen del escaneo
   useEffect(() => {
-    if (state.scan.extractedData && Object.keys(state.scan.extractedData).length > 0) {
-      setEditedData(state.scan.extractedData);
+    if (dataSource && Object.keys(dataSource).length > 0) {
+      console.log('✅ EXTRACTED DATA FORM RENOVACIONES - Inicializando con datos:', dataSource);
+      setEditedData(dataSource);
       setIsInitialized(true);
     }
-  }, [state.scan.extractedData]);
+  }, [dataSource]);
 
   const handleFieldChange = (fieldName: string, value: string) => {
     setEditedData((prev: any) => ({
@@ -28,7 +46,9 @@ export function ExtractedDataForm({ hookInstance }: ExtractedDataFormProps) {
     }));
     
     // Actualizar el estado global usando updateExtractedData
-    updateExtractedData({ [fieldName]: value });
+    if (updateExtractedData) {
+      updateExtractedData({ [fieldName]: value });
+    }
   };
 
   const getFieldStatus = (fieldName: string) => {
@@ -44,8 +64,59 @@ export function ExtractedDataForm({ hookInstance }: ExtractedDataFormProps) {
     return new Intl.NumberFormat('es-UY', {
       style: 'currency',
       currency: 'UYU',
-      minimumFractionDigits: 2
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
     }).format(numValue);
+  };
+
+  // ✅ FUNCIÓN CORREGIDA: Limpiar números para inputs numéricos
+  const cleanNumberForInput = (value: string | number) => {
+    if (!value) return '';
+    const numValue = typeof value === 'string' ? parseFloat(value.replace(/[^\d.-]/g, '')) : value;
+    if (isNaN(numValue)) return '';
+    // Devolver número limpio redondeado a 2 decimales para inputs type="number"
+    return (Math.round(numValue * 100) / 100).toString();
+  };
+
+  // ✅ NUEVA FUNCIÓN: Extraer valor por cuota usando la misma lógica de nueva póliza
+  const extractValorPorCuota = (data: any) => {
+    if (!data) return "";
+    
+    console.log('🔍 RENOVACIONES - Buscando valor por cuota en:', data);
+    
+    // Buscar diferentes formatos según la compañía - IGUAL QUE NUEVA POLIZA
+    const cuotaFields = [
+      "pago.cuota_monto[1]",      // MAPFRE - primera cuota
+      "pago.cuotas[0].prima",     // BSE - primera cuota
+      "pago.prima_cuota[1]",      // SURA - primera cuota
+      "pago.primera_cuota",       // Generic
+      "valorPorCuota",            // Directo desde backend
+      "valorCuota"                // Alternativa
+    ];
+
+    for (const field of cuotaFields) {
+      if (data[field]) {
+        const valor = data[field].toString();
+        console.log(`✅ RENOVACIONES - Valor por cuota encontrado en ${field}:`, valor);
+        return valor;
+      }
+    }
+    
+    // ✅ FALLBACK: Calcular desde el total si tenemos cantidad de cuotas
+    const total = data.premioTotal || data.montoTotal || data.premio || data["financiero.premio_total"];
+    const cuotas = parseInt(data.cantidadCuotas || "1");
+    
+    if (total && cuotas > 1) {
+      const totalNum = parseFloat(total.toString().replace(/[^\d.-]/g, ''));
+      if (!isNaN(totalNum)) {
+        const valorCalculado = totalNum / cuotas;
+        console.log(`🧮 RENOVACIONES - Valor por cuota calculado: ${total} / ${cuotas} = ${valorCalculado}`);
+        return valorCalculado.toString();
+      }
+    }
+    
+    console.log('❌ RENOVACIONES - No se encontró valor de cuota');
+    return "";
   };
 
   if (!isInitialized) {
@@ -76,7 +147,7 @@ export function ExtractedDataForm({ hookInstance }: ExtractedDataFormProps) {
               {getFieldStatus('numeroPoliza') === 'warning' && <AlertTriangle className="h-4 w-4 text-amber-500" />}
             </Label>
             <Input
-              value={editedData.numeroPoliza || editedData.polizaNumber || ''}
+              value={editedData.numeroPoliza || editedData.polizaNumber || editedData.NumeroPoliza || ''}
               onChange={(e) => handleFieldChange('numeroPoliza', e.target.value)}
               placeholder="Número de la nueva póliza"
               className="font-mono"
@@ -92,13 +163,13 @@ export function ExtractedDataForm({ hookInstance }: ExtractedDataFormProps) {
             <Input
               type="number"
               step="0.01"
-              value={editedData.premio || editedData.prima || ''}
+              value={cleanNumberForInput(editedData.premio || editedData.prima || editedData.Premio || '')}
               onChange={(e) => handleFieldChange('premio', e.target.value)}
               placeholder="0.00"
             />
-            {(editedData.premio || editedData.prima) && (
+            {(editedData.premio || editedData.prima || editedData.Premio) && (
               <p className="text-xs text-muted-foreground">
-                {formatCurrency(editedData.premio || editedData.prima)}
+                {formatCurrency(editedData.premio || editedData.prima || editedData.Premio)}
               </p>
             )}
           </div>
@@ -120,7 +191,7 @@ export function ExtractedDataForm({ hookInstance }: ExtractedDataFormProps) {
             </Label>
             <Input
               type="date"
-              value={editedData.fechaDesde || editedData.vigenciaDesde || ''}
+              value={editedData.fechaDesde || editedData.vigenciaDesde || editedData.FechaDesde || ''}
               onChange={(e) => handleFieldChange('fechaDesde', e.target.value)}
             />
           </div>
@@ -133,7 +204,7 @@ export function ExtractedDataForm({ hookInstance }: ExtractedDataFormProps) {
             </Label>
             <Input
               type="date"
-              value={editedData.fechaHasta || editedData.vigenciaHasta || ''}
+              value={editedData.fechaHasta || editedData.vigenciaHasta || editedData.FechaHasta || ''}
               onChange={(e) => handleFieldChange('fechaHasta', e.target.value)}
             />
           </div>
@@ -154,7 +225,7 @@ export function ExtractedDataForm({ hookInstance }: ExtractedDataFormProps) {
             </Label>
             <Input
               type="number"
-              value={editedData.cantidadCuotas || ''}
+              value={editedData.cantidadCuotas || editedData.CantidadCuotas || ''}
               onChange={(e) => handleFieldChange('cantidadCuotas', e.target.value)}
               placeholder="1"
               min="1"
@@ -170,13 +241,14 @@ export function ExtractedDataForm({ hookInstance }: ExtractedDataFormProps) {
             <Input
               type="number"
               step="0.01"
-              value={editedData.valorPorCuota || editedData.valorCuota || ''}
+              value={cleanNumberForInput(editedData.valorPorCuota || editedData.valorCuota || extractValorPorCuota(editedData) || '')}
               onChange={(e) => handleFieldChange('valorPorCuota', e.target.value)}
               placeholder="0.00"
             />
-            {(editedData.valorPorCuota || editedData.valorCuota) && (
+            {/* ✅ MOSTRAR VALOR FORMATEADO */}
+            {(editedData.valorPorCuota || editedData.valorCuota || extractValorPorCuota(editedData)) && (
               <p className="text-xs text-muted-foreground">
-                {formatCurrency(editedData.valorPorCuota || editedData.valorCuota)}
+                {formatCurrency(editedData.valorPorCuota || editedData.valorCuota || extractValorPorCuota(editedData))}
               </p>
             )}
           </div>
@@ -189,13 +261,13 @@ export function ExtractedDataForm({ hookInstance }: ExtractedDataFormProps) {
             <Input
               type="number"
               step="0.01"
-              value={editedData.premioTotal || editedData.montoTotal || editedData.premio || ''}
+              value={cleanNumberForInput(editedData.premioTotal || editedData.montoTotal || editedData.premio || editedData.Premio || '')}
               onChange={(e) => handleFieldChange('premioTotal', e.target.value)}
               placeholder="0.00"
             />
-            {(editedData.premioTotal || editedData.montoTotal || editedData.premio) && (
+            {(editedData.premioTotal || editedData.montoTotal || editedData.premio || editedData.Premio) && (
               <p className="text-xs text-muted-foreground">
-                {formatCurrency(editedData.premioTotal || editedData.montoTotal || editedData.premio)}
+                {formatCurrency(editedData.premioTotal || editedData.montoTotal || editedData.premio || editedData.Premio)}
               </p>
             )}
           </div>
@@ -215,7 +287,7 @@ export function ExtractedDataForm({ hookInstance }: ExtractedDataFormProps) {
               {getFieldStatus('vehiculoMarca') === 'success' && <CheckCircle className="h-4 w-4 text-green-500" />}
             </Label>
             <Input
-              value={editedData.vehiculoMarca || ''}
+              value={editedData.vehiculoMarca || editedData.VehiculoMarca || ''}
               onChange={(e) => handleFieldChange('vehiculoMarca', e.target.value)}
               placeholder="Marca del vehículo"
             />
@@ -227,7 +299,7 @@ export function ExtractedDataForm({ hookInstance }: ExtractedDataFormProps) {
               {getFieldStatus('vehiculoModelo') === 'success' && <CheckCircle className="h-4 w-4 text-green-500" />}
             </Label>
             <Input
-              value={editedData.vehiculoModelo || ''}
+              value={editedData.vehiculoModelo || editedData.VehiculoModelo || ''}
               onChange={(e) => handleFieldChange('vehiculoModelo', e.target.value)}
               placeholder="Modelo del vehículo"
             />
@@ -240,7 +312,7 @@ export function ExtractedDataForm({ hookInstance }: ExtractedDataFormProps) {
             </Label>
             <Input
               type="number"
-              value={editedData.vehiculoAno || ''}
+              value={editedData.vehiculoAno || editedData.VehiculoAño || ''}
               onChange={(e) => handleFieldChange('vehiculoAno', e.target.value)}
               placeholder="2024"
               min="1900"
@@ -254,7 +326,7 @@ export function ExtractedDataForm({ hookInstance }: ExtractedDataFormProps) {
               {getFieldStatus('vehiculoPatente') === 'success' && <CheckCircle className="h-4 w-4 text-green-500" />}
             </Label>
             <Input
-              value={editedData.vehiculoPatente || ''}
+              value={editedData.vehiculoPatente || editedData.Patente || ''}
               onChange={(e) => handleFieldChange('vehiculoPatente', e.target.value.toUpperCase())}
               placeholder="ABC1234"
               className="font-mono uppercase"
@@ -267,7 +339,7 @@ export function ExtractedDataForm({ hookInstance }: ExtractedDataFormProps) {
               {getFieldStatus('vehiculoChasis') === 'success' && <CheckCircle className="h-4 w-4 text-green-500" />}
             </Label>
             <Input
-              value={editedData.vehiculoChasis || ''}
+              value={editedData.vehiculoChasis || editedData.VehiculoChasis || ''}
               onChange={(e) => handleFieldChange('vehiculoChasis', e.target.value)}
               placeholder="Número de chasis"
               className="font-mono"
@@ -280,7 +352,7 @@ export function ExtractedDataForm({ hookInstance }: ExtractedDataFormProps) {
               {getFieldStatus('vehiculoMotor') === 'success' && <CheckCircle className="h-4 w-4 text-green-500" />}
             </Label>
             <Input
-              value={editedData.vehiculoMotor || ''}
+              value={editedData.vehiculoMotor || editedData.VehiculoMotor || ''}
               onChange={(e) => handleFieldChange('vehiculoMotor', e.target.value)}
               placeholder="Número de motor"
               className="font-mono"
@@ -303,38 +375,25 @@ export function ExtractedDataForm({ hookInstance }: ExtractedDataFormProps) {
         />
       </div>
 
-      {/* Información sobre la renovación */}
-      {state.polizaAnterior && (
-        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-          <h4 className="font-semibold text-blue-900 dark:text-blue-100 mb-2">
-            Información de Renovación
-          </h4>
-          <p className="text-sm text-blue-800 dark:text-blue-200">
-            Esta póliza renovará a la póliza <strong>{state.polizaAnterior.numero}</strong> del cliente{' '}
-            <strong>{state.polizaAnterior.cliente.nombre}</strong>. La póliza anterior será marcada como 
-            "Antecedente" y mantendrá la referencia al mismo contexto (cliente, compañía, sección).
-          </p>
-        </div>
-      )}
-
-      {/* Campos que requieren atención */}
-      {state.scan.requiresAttention && state.scan.requiresAttention.length > 0 && (
-        <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4">
-          <h4 className="font-semibold text-yellow-900 dark:text-yellow-100 mb-2 flex items-center gap-2">
-            <AlertTriangle className="h-4 w-4" />
-            Campos que Requieren Atención
-          </h4>
-          <div className="space-y-1">
-            {state.scan.requiresAttention.map((item: any, index: number) => (
-              <div key={index} className="flex items-center gap-2 text-sm">
-                <AlertTriangle className="h-3 w-3 text-yellow-500" />
-                <span className="text-yellow-800 dark:text-yellow-200">
-                  <strong>{item.fieldName}:</strong> {item.reason}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
+      {/* Debug en desarrollo */}
+      {process.env.NODE_ENV === 'development' && (
+        <details className="mt-4 text-xs">
+          <summary className="cursor-pointer font-medium">Debug ExtractedData Renovaciones</summary>
+          <pre className="mt-2 p-2 bg-gray-100 dark:bg-gray-800 rounded text-xs overflow-auto">
+            {JSON.stringify({
+              editedData,
+              valorPorCuotaExtraido: extractValorPorCuota(editedData),
+              dataSourceKeys: Object.keys(dataSource || {}),
+              cuotaFields: [
+                "pago.cuota_monto[1]",
+                "pago.cuotas[0].prima", 
+                "pago.prima_cuota[1]",
+                "valorPorCuota",
+                "valorCuota"
+              ].map(field => ({ field, value: editedData[field] }))
+            }, null, 2)}
+          </pre>
+        </details>
       )}
     </div>
   );

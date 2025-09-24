@@ -1,4 +1,6 @@
 // src/app/renovaciones/step-3-validation/master-data-form.tsx
+// ✅ CORREGIDO: Usar la misma lógica que funciona en nueva-poliza
+
 import React, { useEffect, useState, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
@@ -11,7 +13,7 @@ interface MasterDataFormProps {
   hookInstance: any;
 }
 
-// Componente controlado simple y confiable
+// Componente controlado simple y confiable - COPIADO DE NUEVA POLIZA
 const ControlledSelect = ({ 
   label, 
   value, 
@@ -64,6 +66,7 @@ export function MasterDataForm({ hookInstance }: MasterDataFormProps) {
   const { state, updateState } = hookInstance;
   const { getMasterDataByType, loading: masterDataLoading } = useMasterData();
 
+  // Estados locales - COPIADO DE NUEVA POLIZA
   const [combustibles, setCombustibles] = useState<MasterDataItem[]>([]);
   const [categorias, setCategorias] = useState<MasterDataItem[]>([]);
   const [destinos, setDestinos] = useState<MasterDataItem[]>([]);
@@ -73,7 +76,7 @@ export function MasterDataForm({ hookInstance }: MasterDataFormProps) {
   const [loadingData, setLoadingData] = useState(true);
   const [autoMappingExecuted, setAutoMappingExecuted] = useState(false);
 
-  // Acceder a state.masterData o crear un objeto por defecto
+  // Acceder directamente a state.masterData para evitar problemas de referencia - COPIADO DE NUEVA POLIZA
   const formData = state.masterData || {
     combustibleId: '',
     categoriaId: '',
@@ -82,21 +85,20 @@ export function MasterDataForm({ hookInstance }: MasterDataFormProps) {
     calidadId: '',
     tarifaId: '',
     cantidadCuotas: 1,
-    medioPagoId: '',
-    corredorId: '',
     observaciones: ''
   };
 
-  // Debug logs
+  // Debug logs mejorados - COPIADO DE NUEVA POLIZA
   console.log('🔍 RENOVACIONES MASTER DATA - formData actual:', formData);
   console.log('🔍 RENOVACIONES MASTER DATA - state.masterData:', state.masterData);
   console.log('🔍 RENOVACIONES MASTER DATA - autoMappingExecuted:', autoMappingExecuted);
 
+  // DEBUG: useEffect para monitorear cambios en state.masterData - COPIADO DE NUEVA POLIZA
   useEffect(() => {
     console.log('🔧 RENOVACIONES useEffect - state.masterData cambió:', state.masterData);
   }, [state.masterData]);
 
-  // Cargar datos maestros
+  // Cargar datos maestros - ADAPTADO DE NUEVA POLIZA
   useEffect(() => {
     const loadMasterData = async () => {
       try {
@@ -149,12 +151,14 @@ export function MasterDataForm({ hookInstance }: MasterDataFormProps) {
     loadMasterData();
   }, [getMasterDataByType, state.context?.companiaId]);
 
+  // Mapeo inteligente - COPIADO DE NUEVA POLIZA
   const executeIntelligentMapping = useCallback(() => {
     if (!state.scan?.extractedData || Object.keys(state.scan.extractedData).length === 0) {
       console.log('⚠️ RENOVACIONES - No hay datos extraídos para mapear');
       return;
     }
 
+    // Log de compañía al ejecutar mapeo
     const companiaId = state.context?.companiaId;
     console.log('🤖 RENOVACIONES - Ejecutando mapeo inteligente con compañía:', companiaId);
     console.log('🔍 RENOVACIONES - ANTES del mapeo - formData actual:', formData);
@@ -206,13 +210,15 @@ export function MasterDataForm({ hookInstance }: MasterDataFormProps) {
     console.log('🔍 RENOVACIONES - ¿Hay cambios?', hasChanges);
 
     if (hasChanges) {
+      // Crear objeto completo manteniendo valores existentes
       const updatedFormData = {
-        ...formData,
-        ...mappedData
+        ...formData, // Mantener todos los campos existentes
+        ...mappedData // Sobrescribir solo los mapeados
       };
       
       console.log('🔍 RENOVACIONES - ANTES de updateState:', updatedFormData);
       
+      // Forzar un re-render usando una función de actualización
       updateState((prevState: any) => {
         console.log('🔧 RENOVACIONES - updateState - prevState:', prevState);
         const newState = {
@@ -234,56 +240,32 @@ export function MasterDataForm({ hookInstance }: MasterDataFormProps) {
       if (mappedData.categoriaId !== currentFormData.categoriaId) mappedFields.push('Categoría');
       if (mappedData.tarifaId !== currentFormData.tarifaId) mappedFields.push('Tarifa');
       
-      console.log('✅ RENOVACIONES - Campos mapeados:', mappedFields);
-    } else {
-      console.log('ℹ️ RENOVACIONES - Mapeo inteligente completado sin cambios');
+      console.log('✅ RENOVACIONES - Campos mapeados:', mappedFields.join(', ') || 'Ninguno');
+      setAutoMappingExecuted(true);
     }
-
-    setAutoMappingExecuted(true);
   }, [
-    state.scan?.extractedData,
+    loadingData, 
+    autoMappingExecuted,
+    combustibles.length, 
+    destinos.length, 
+    departamentos.length, 
+    calidades.length,
+    categorias.length,
+    tarifas.length,
+    state.scan?.extractedData, 
+    formData,
     state.context?.companiaId,
-    formData, 
-    combustibles, 
-    destinos, 
-    departamentos, 
-    calidades, 
-    categorias, 
-    tarifas, 
-    updateState,
-    state
+    updateState
   ]);
 
-  // Ejecutar mapeo automático cuando se cumplan las condiciones
+  // Ejecutar mapeo automático - COPIADO DE NUEVA POLIZA
   useEffect(() => {
-    const canExecuteMapping = !loadingData && 
-                             !autoMappingExecuted &&
-                             combustibles.length > 0 && 
-                             destinos.length > 0 && 
-                             departamentos.length > 0 && 
-                             calidades.length > 0 &&
-                             categorias.length > 0 &&
-                             tarifas.length > 0 &&
-                             state.scan?.extractedData && 
-                             Object.keys(state.scan.extractedData).length > 0;
-
-    if (canExecuteMapping) {
-      console.log('🎯 RENOVACIONES - Condiciones cumplidas para mapeo automático');
-      setTimeout(() => {
-        executeIntelligentMapping();
-      }, 500);
-    } else {
-      console.log('⏳ RENOVACIONES - Esperando condiciones para mapeo:', {
-        loadingData,
-        autoMappingExecuted,
-        combustiblesReady: combustibles.length > 0,
-        destinosReady: destinos.length > 0,
-        departamentosReady: departamentos.length > 0,
-        calidadesReady: calidades.length > 0,
-        categoriasReady: categorias.length > 0,
-        tarifasReady: tarifas.length > 0,
-        hasExtractedData: state.scan?.extractedData && Object.keys(state.scan.extractedData).length > 0
-      });
+    if (!loadingData && 
+        !autoMappingExecuted && 
+        combustibles.length > 0 && 
+        state.scan?.extractedData) {
+      console.log('🔄 RENOVACIONES - Ejecutando mapeo automático...');
+      executeIntelligentMapping();
     }
   }, [
     loadingData, 
@@ -298,6 +280,7 @@ export function MasterDataForm({ hookInstance }: MasterDataFormProps) {
     executeIntelligentMapping
   ]);
 
+  // Manejar cambios de campos - COPIADO DE NUEVA POLIZA
   const handleFieldChange = (fieldName: string, value: string | number) => {
     console.log(`🔧 RENOVACIONES - handleFieldChange: ${fieldName} = ${value}`);
     
@@ -308,6 +291,7 @@ export function MasterDataForm({ hookInstance }: MasterDataFormProps) {
     
     console.log('🔧 RENOVACIONES - handleFieldChange - newFormData:', newFormData);
     
+    // Usar función de actualización para asegurar consistencia
     updateState((prevState: any) => {
       const newState = {
         ...prevState,
@@ -336,70 +320,73 @@ export function MasterDataForm({ hookInstance }: MasterDataFormProps) {
           )}
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-4">
-        
-        {/* Tipo de Combustible */}
-        <ControlledSelect
-          label="Tipo de Combustible"
-          value={formData.combustibleId}
-          onChange={(value) => handleFieldChange('combustibleId', value)}
-          options={combustibles}
-          placeholder="Seleccionar combustible..."
-          loading={loadingData}
-        />
+      <CardContent>
+        {/* Grid de 2 columnas - COPIADO DE NUEVA POLIZA */}
+        <div className="grid md:grid-cols-2 gap-x-6 gap-y-4">
+          
+          {/* Tipo de Combustible */}
+          <ControlledSelect
+            label="Tipo de Combustible"
+            value={formData.combustibleId}
+            onChange={(value) => handleFieldChange('combustibleId', value)}
+            options={combustibles}
+            placeholder="Seleccionar combustible..."
+            loading={loadingData}
+          />
 
-        {/* Categoría */}
-        <ControlledSelect
-          label="Categoría"
-          value={formData.categoriaId}
-          onChange={(value) => handleFieldChange('categoriaId', value)}
-          options={categorias}
-          placeholder="Seleccionar categoría..."
-          loading={loadingData}
-        />
+          {/* Categoría */}
+          <ControlledSelect
+            label="Categoría"
+            value={formData.categoriaId}
+            onChange={(value) => handleFieldChange('categoriaId', value)}
+            options={categorias}
+            placeholder="Seleccionar categoría..."
+            loading={loadingData}
+          />
 
-        {/* Destino del Vehículo */}
-        <ControlledSelect
-          label="Destino del Vehículo"
-          value={formData.destinoId}
-          onChange={(value) => handleFieldChange('destinoId', value)}
-          options={destinos}
-          placeholder="Seleccionar destino..."
-          loading={loadingData}
-        />
+          {/* Destino del Vehículo */}
+          <ControlledSelect
+            label="Destino del Vehículo"
+            value={formData.destinoId}
+            onChange={(value) => handleFieldChange('destinoId', value)}
+            options={destinos}
+            placeholder="Seleccionar destino..."
+            loading={loadingData}
+          />
 
-        {/* Departamento */}
-        <ControlledSelect
-          label="Departamento"
-          value={formData.departamentoId}
-          onChange={(value) => handleFieldChange('departamentoId', value)}
-          options={departamentos}
-          placeholder="Seleccionar departamento..."
-          loading={loadingData}
-        />
+          {/* Departamento */}
+          <ControlledSelect
+            label="Departamento"
+            value={formData.departamentoId}
+            onChange={(value) => handleFieldChange('departamentoId', value)}
+            options={departamentos}
+            placeholder="Seleccionar departamento..."
+            loading={loadingData}
+          />
 
-        {/* Calidad */}
-        <ControlledSelect
-          label="Calidad"
-          value={formData.calidadId}
-          onChange={(value) => handleFieldChange('calidadId', value)}
-          options={calidades}
-          placeholder="Seleccionar calidad..."
-          loading={loadingData}
-        />
+          {/* Calidad */}
+          <ControlledSelect
+            label="Calidad"
+            value={formData.calidadId}
+            onChange={(value) => handleFieldChange('calidadId', value)}
+            options={calidades}
+            placeholder="Seleccionar calidad..."
+            loading={loadingData}
+          />
 
-        {/* Tarifa */}
-        <ControlledSelect
-          label={`Tarifa ${tarifas.length > 0 ? `(${tarifas.length} opciones)` : ''}`}
-          value={formData.tarifaId}
-          onChange={(value) => handleFieldChange('tarifaId', value)}
-          options={tarifas}
-          placeholder="Seleccionar tarifa..."
-          loading={loadingData}
-        />
+          {/* Tarifa */}
+          <ControlledSelect
+            label={`Tarifa ${tarifas.length > 0 ? `(${tarifas.length} opciones)` : ''}`}
+            value={formData.tarifaId}
+            onChange={(value) => handleFieldChange('tarifaId', value)}
+            options={tarifas}
+            placeholder="Seleccionar tarifa..."
+            loading={loadingData}
+          />
+        </div>
 
         {/* Observaciones */}
-        <div className="space-y-2">
+        <div className="space-y-2 mt-4">
           <Label htmlFor="observaciones">Observaciones</Label>
           <textarea
             id="observaciones"
@@ -412,10 +399,34 @@ export function MasterDataForm({ hookInstance }: MasterDataFormProps) {
         </div>
 
         {(masterDataLoading || loadingData) && (
-          <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+          <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 mt-4">
             <Loader2 className="h-4 w-4 animate-spin" />
             Cargando datos maestros para renovación...
           </div>
+        )}
+
+        {/* Debug en desarrollo */}
+        {process.env.NODE_ENV === 'development' && (
+          <details className="mt-4 text-xs">
+            <summary className="cursor-pointer font-medium">Debug Info Renovaciones</summary>
+            <pre className="mt-2 p-2 bg-gray-100 dark:bg-gray-800 rounded text-xs overflow-auto">
+              {JSON.stringify({
+                formData,
+                companiaId: state?.context?.companiaId,
+                autoMappingExecuted,
+                hasExtractedData: !!(state?.scan?.extractedData && Object.keys(state.scan.extractedData).length > 0),
+                loadingData,
+                optionsCounts: {
+                  combustibles: combustibles.length,
+                  categorias: categorias.length,
+                  destinos: destinos.length,
+                  departamentos: departamentos.length,
+                  calidades: calidades.length,
+                  tarifas: tarifas.length
+                }
+              }, null, 2)}
+            </pre>
+          </details>
         )}
       </CardContent>
     </Card>
