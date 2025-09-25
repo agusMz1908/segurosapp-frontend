@@ -9,7 +9,9 @@ import {
   FileText,
   Loader2,
   AlertTriangle,
-  RefreshCw
+  RefreshCw,
+  Download,
+  ExternalLink
 } from 'lucide-react';
 
 interface PDFViewerProps {
@@ -36,7 +38,7 @@ export function PDFViewer({ file, isOpen, onClose, className = '' }: PDFViewerPr
         
         const timer = setTimeout(() => {
           setLoading(false);
-        }, 500);
+        }, 800);
         
         return () => {
           URL.revokeObjectURL(url);
@@ -73,7 +75,26 @@ export function PDFViewer({ file, isOpen, onClose, className = '' }: PDFViewerPr
       
       setTimeout(() => {
         setLoading(false);
-      }, 500);
+      }, 800);
+    }
+  };
+
+  const handleDownload = () => {
+    if (file) {
+      const url = URL.createObjectURL(file);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = file.name;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+  };
+
+  const openInNewTab = () => {
+    if (fileUrl) {
+      window.open(fileUrl, '_blank');
     }
   };
 
@@ -82,7 +103,7 @@ export function PDFViewer({ file, isOpen, onClose, className = '' }: PDFViewerPr
   return (
     <div className={`h-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-lg flex flex-col rounded-lg overflow-hidden ${className}`}>
       
-      {/* Header del visor */}
+      {/* Header del visor mejorado */}
       <Card className="flex-shrink-0 rounded-none border-0 border-b border-gray-200 dark:border-gray-700">
         <CardHeader className="py-3">
           <div className="flex items-center justify-between">
@@ -90,51 +111,101 @@ export function PDFViewer({ file, isOpen, onClose, className = '' }: PDFViewerPr
               <FileText className="h-4 w-4" />
               Visor PDF
             </CardTitle>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={onClose}
-              className="h-6 w-6 p-0 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100"
-            >
-              <X className="h-3 w-3" />
-            </Button>
+            
+            {/* Botones de acción */}
+            <div className="flex items-center gap-2">
+              {fileUrl && (
+                <>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleDownload}
+                    className="h-6 w-6 p-0 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100"
+                    title="Descargar PDF"
+                  >
+                    <Download className="h-3 w-3" />
+                  </Button>
+                  
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={openInNewTab}
+                    className="h-6 w-6 p-0 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100"
+                    title="Abrir en nueva pestaña"
+                  >
+                    <ExternalLink className="h-3 w-3" />
+                  </Button>
+                </>
+              )}
+              
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={onClose}
+                className="h-6 w-6 p-0 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100"
+              >
+                <X className="h-3 w-3" />
+              </Button>
+            </div>
           </div>
           
           {file && (
-            <p className="text-xs text-gray-600 dark:text-gray-400 truncate" title={file.name}>
-              {file.name}
-            </p>
+            <div className="flex items-center justify-between">
+              <p className="text-xs text-gray-600 dark:text-gray-400 truncate" title={file.name}>
+                {file.name}
+              </p>
+              <span className="text-xs text-gray-500 dark:text-gray-500">
+                {(file.size / 1024 / 1024).toFixed(1)} MB
+              </span>
+            </div>
           )}
         </CardHeader>
       </Card>
 
-      {/* Área de visualización del PDF */}
-      <div className="flex-1 overflow-hidden bg-gray-100 dark:bg-gray-800 relative">
+      {/* Área de visualización del PDF mejorada */}
+      <div className="flex-1 overflow-hidden bg-gray-50 dark:bg-gray-800 relative">
         {loading && (
-          <div className="absolute inset-0 flex items-center justify-center bg-white/80 dark:bg-gray-900/80 z-10">
+          <div className="absolute inset-0 flex items-center justify-center bg-white/90 dark:bg-gray-900/90 z-10">
             <div className="text-center">
-              <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2 text-blue-600 dark:text-blue-400" />
-              <p className="text-xs text-gray-600 dark:text-gray-400">Cargando PDF...</p>
+              <Loader2 className="h-8 w-8 animate-spin mx-auto mb-3 text-blue-600 dark:text-blue-400" />
+              <p className="text-sm text-gray-600 dark:text-gray-400">Cargando PDF...</p>
+              <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
+                Inicializando visor del navegador
+              </p>
             </div>
           </div>
         )}
 
         {error && (
-          <div className="p-3">
+          <div className="p-4">
             <Alert variant="destructive">
-              <AlertTriangle className="h-3 w-3" />
-              <AlertDescription className="text-xs">
-                <div className="space-y-2">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertDescription className="text-sm">
+                <div className="space-y-3">
                   <span>{error}</span>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={retry}
-                    className="w-full h-6 text-xs"
-                  >
-                    <RefreshCw className="h-2 w-2 mr-1" />
-                    Reintentar
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={retry}
+                      className="h-8 text-xs"
+                    >
+                      <RefreshCw className="h-3 w-3 mr-1" />
+                      Reintentar
+                    </Button>
+                    
+                    {file && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleDownload}
+                        className="h-8 text-xs"
+                      >
+                        <Download className="h-3 w-3 mr-1" />
+                        Descargar
+                      </Button>
+                    )}
+                  </div>
                 </div>
               </AlertDescription>
             </Alert>
@@ -142,21 +213,63 @@ export function PDFViewer({ file, isOpen, onClose, className = '' }: PDFViewerPr
         )}
 
         {fileUrl && !error && (
-          <iframe
-            src={fileUrl}
-            className="w-full h-full border-0"
-            title="Visor PDF"
-            onLoad={handleIframeLoad}
-            onError={handleIframeError}
-            style={{ minHeight: '100%' }}
-          />
+          <>
+            {/* Embed PDF como alternativa más compatible */}
+            <embed
+              src={fileUrl}
+              type="application/pdf"
+              className="w-full h-full"
+              style={{ minHeight: '100%' }}
+            />
+            
+            {/* Fallback iframe si embed no funciona */}
+            <noscript>
+              <iframe
+                src={fileUrl}
+                className="w-full h-full border-0 bg-white"
+                title="Visor PDF"
+                onLoad={handleIframeLoad}
+                onError={handleIframeError}
+                style={{ 
+                  minHeight: '100%',
+                  backgroundColor: '#ffffff'
+                }}
+                allowFullScreen
+              />
+            </noscript>
+            
+            {/* Fallback para navegadores que no soportan PDF */}
+            <div className="hidden" id="pdf-fallback">
+              <div className="flex items-center justify-center h-full">
+                <div className="text-center p-6">
+                  <FileText className="h-16 w-16 mx-auto mb-4 text-gray-400" />
+                  <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
+                    Vista previa no disponible
+                  </h3>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                    Tu navegador no puede mostrar este PDF directamente
+                  </p>
+                  <div className="space-y-2">
+                    <Button onClick={handleDownload} size="sm">
+                      <Download className="h-4 w-4 mr-2" />
+                      Descargar PDF
+                    </Button>
+                    <Button onClick={openInNewTab} variant="outline" size="sm">
+                      <ExternalLink className="h-4 w-4 mr-2" />
+                      Abrir en nueva pestaña
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </>
         )}
 
         {!fileUrl && !loading && !error && (
           <div className="flex items-center justify-center h-full">
             <div className="text-center text-gray-500 dark:text-gray-400">
-              <FileText className="h-8 w-8 mx-auto mb-2 opacity-50" />
-              <p className="text-xs">No hay documento para mostrar</p>
+              <FileText className="h-12 w-12 mx-auto mb-3 opacity-50" />
+              <p className="text-sm">No hay documento para mostrar</p>
             </div>
           </div>
         )}

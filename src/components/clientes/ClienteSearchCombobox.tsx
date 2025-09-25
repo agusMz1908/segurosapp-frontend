@@ -82,7 +82,9 @@ export function ClienteSearchCombobox({
     setSearchQuery('');
   };
 
-  const handleClear = () => {
+  const handleClear = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
     setSelectedCliente(undefined);
     onValueChange(undefined);
     setSearchResults([]);
@@ -99,183 +101,178 @@ export function ClienteSearchCombobox({
 
   return (
     <div className={cn("relative", className)}>
-      <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger asChild>
-          <Button
-            variant="outline"
-            role="combobox"
-            aria-expanded={open}
-            className={cn(
-              "w-full justify-between text-left font-normal",
-              !selectedCliente && "text-muted-foreground",
-              disabled && "opacity-50 cursor-not-allowed"
-            )}
-            disabled={disabled}
-          >
-            <div className="flex items-center gap-2 flex-1 min-w-0">
-              <User className="h-4 w-4 flex-shrink-0" />
-              <span className="truncate">{displayText}</span>
-            </div>
-            <div className="flex items-center gap-1 flex-shrink-0">
-              {selectedCliente && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-4 w-4 p-0 hover:bg-destructive/10"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleClear();
-                  }}
-                >
-                  <X className="h-3 w-3 text-muted-foreground hover:text-destructive" />
-                </Button>
+      <div className="flex">
+        <Popover open={open} onOpenChange={setOpen}>
+          <PopoverTrigger asChild>
+            <Button
+              variant="outline"
+              role="combobox"
+              aria-expanded={open}
+              className={cn(
+                "flex-1 justify-between text-left font-normal",
+                selectedCliente ? "rounded-r-none border-r-0" : "rounded-md",
+                !selectedCliente && "text-muted-foreground",
+                disabled && "opacity-50 cursor-not-allowed"
               )}
-              <ChevronsUpDown className="h-4 w-4 opacity-50" />
-            </div>
-          </Button>
-        </PopoverTrigger>
-        
-        <PopoverContent className="w-[400px] p-0" align="start">
-          <Command>
-            <div className="flex items-center border-b">
-              <Search className="h-4 w-4 ml-3 mr-2 flex-shrink-0 opacity-50" />
-              <CommandInput
-                placeholder="Buscar por nombre"
-                value={searchQuery}
-                onValueChange={setSearchQuery}
-                className="flex-1"
-              />
-              {loading && (
-                <Loader2 className="h-4 w-4 mr-3 flex-shrink-0 animate-spin opacity-50" />
-              )}
-            </div>
+              disabled={disabled}
+            >
+              <div className="flex items-center gap-2 flex-1 min-w-0">
+                <User className="h-4 w-4 flex-shrink-0" />
+                <span className="truncate">{displayText}</span>
+              </div>
+              <ChevronsUpDown className="h-4 w-4 opacity-50 ml-2" />
+            </Button>
+          </PopoverTrigger>
+          
+          <PopoverContent className="w-[400px] p-0" align="start">
+            <Command>
+              <div className="flex items-center border-b">
+                <Search className="h-4 w-4 ml-3 mr-2 flex-shrink-0 opacity-50" />
+                <CommandInput
+                  placeholder="Buscar por nombre"
+                  value={searchQuery}
+                  onValueChange={setSearchQuery}
+                  className="flex-1"
+                />
+                {loading && (
+                  <Loader2 className="h-4 w-4 mr-3 flex-shrink-0 animate-spin opacity-50" />
+                )}
+              </div>
 
-            <CommandList>
-              {/* Cliente seleccionado actual */}
-              {selectedCliente && (
-                <CommandGroup heading="Seleccionado">
-                  <CommandItem
-                    value={selectedCliente.id.toString()}
-                    onSelect={() => handleSelect(selectedCliente)}
-                    className="cursor-pointer"
-                  >
-                    <Check className="mr-2 h-4 w-4 opacity-100" />
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium truncate">{selectedCliente.nombre}</span>
-                        <span className="text-sm text-muted-foreground">
-                          {formatDocument(selectedCliente.documento, selectedCliente.documentType)}
-                        </span>
-                        {!selectedCliente.activo && (
-                          <span className="text-xs bg-red-100 text-red-700 px-1.5 py-0.5 rounded">
-                            Inactivo
-                          </span>
-                        )}
-                      </div>
-                      <div className="text-xs text-muted-foreground truncate">
-                        {getClienteContactText(selectedCliente)}
-                      </div>
-                    </div>
-                  </CommandItem>
-                  
-                  <CommandItem onSelect={handleClear} className="cursor-pointer text-red-600">
-                    <X className="mr-2 h-4 w-4" />
-                    <span>Limpiar selección</span>
-                  </CommandItem>
-                </CommandGroup>
-              )}
-
-              {/* Resultados de búsqueda */}
-              {searchQuery.length >= 2 && (
-                <CommandGroup 
-                  heading={`Resultados ${searchResults.length > 0 ? `(${searchResults.length})` : ''}`}
-                >
-                  {loading && (
-                    <div className="flex items-center justify-center py-6">
-                      <Loader2 className="h-6 w-6 animate-spin opacity-50" />
-                      <span className="ml-2 text-sm text-muted-foreground">Buscando...</span>
-                    </div>
-                  )}
-
-                  {!loading && searchResults.length === 0 && searchQuery.length >= 2 && (
-                    <CommandEmpty>
-                      {error ? (
-                        <div className="text-center py-4">
-                          <p className="text-sm text-red-600">Error: {error}</p>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="mt-2"
-                            onClick={() => {
-                              clearError();
-                              // Reintentar búsqueda
-                              searchClientes(searchQuery, 10);
-                            }}
-                          >
-                            Reintentar
-                          </Button>
-                        </div>
-                      ) : (
-                        <div className="text-center py-4">
-                          <p className="text-sm text-muted-foreground">
-                            No se encontraron clientes para "{searchQuery}"
-                          </p>
-                          <p className="text-xs text-muted-foreground mt-1">
-                            Intenta con nombre, documento o email
-                          </p>
-                        </div>
-                      )}
-                    </CommandEmpty>
-                  )}
-
-                  {!loading && searchResults.map((cliente) => (
+              <CommandList>
+                {/* Cliente seleccionado actual */}
+                {selectedCliente && (
+                  <CommandGroup heading="Seleccionado">
                     <CommandItem
-                      key={cliente.id}
-                      value={`${cliente.nombre} ${cliente.documento} ${cliente.email || ''}`}
-                      onSelect={() => handleSelect(cliente)}
+                      value={selectedCliente.id.toString()}
+                      onSelect={() => handleSelect(selectedCliente)}
                       className="cursor-pointer"
                     >
-                      <Check 
-                        className={cn(
-                          "mr-2 h-4 w-4",
-                          selectedCliente?.id === cliente.id ? "opacity-100" : "opacity-0"
-                        )} 
-                      />
+                      <Check className="mr-2 h-4 w-4 opacity-100" />
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
-                          <span className="font-medium truncate">{cliente.nombre}</span>
+                          <span className="font-medium truncate">{selectedCliente.nombre}</span>
                           <span className="text-sm text-muted-foreground">
-                            {formatDocument(cliente.documento, cliente.documentType)}
+                            {formatDocument(selectedCliente.documento, selectedCliente.documentType)}
                           </span>
-                          {!cliente.activo && (
+                          {!selectedCliente.activo && (
                             <span className="text-xs bg-red-100 text-red-700 px-1.5 py-0.5 rounded">
                               Inactivo
                             </span>
                           )}
                         </div>
                         <div className="text-xs text-muted-foreground truncate">
-                          {getClienteContactText(cliente)}
+                          {getClienteContactText(selectedCliente)}
                         </div>
                       </div>
                     </CommandItem>
-                  ))}
-                </CommandGroup>
-              )}
+                  </CommandGroup>
+                )}
 
-              {/* Ayuda inicial */}
-              {!searchQuery && (
-                <div className="p-4 text-center text-sm text-muted-foreground">
-                  <Search className="h-8 w-8 mx-auto mb-2 opacity-30" />
-                  <p>Escribe al menos 2 caracteres para buscar clientes</p>
-                  <p className="text-xs mt-1">
-                    Puedes buscar por nombre
-                  </p>
-                </div>
-              )}
-            </CommandList>
-          </Command>
-        </PopoverContent>
-      </Popover>
+                {/* Resultados de búsqueda */}
+                {searchQuery.length >= 2 && (
+                  <CommandGroup 
+                    heading={`Resultados ${searchResults.length > 0 ? `(${searchResults.length})` : ''}`}
+                  >
+                    {loading && (
+                      <div className="flex items-center justify-center py-6">
+                        <Loader2 className="h-6 w-6 animate-spin opacity-50" />
+                        <span className="ml-2 text-sm text-muted-foreground">Buscando...</span>
+                      </div>
+                    )}
+
+                    {!loading && searchResults.length === 0 && searchQuery.length >= 2 && (
+                      <CommandEmpty>
+                        {error ? (
+                          <div className="text-center py-4">
+                            <p className="text-sm text-red-600">Error: {error}</p>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="mt-2"
+                              onClick={() => {
+                                clearError();
+                                searchClientes(searchQuery, 10);
+                              }}
+                            >
+                              Reintentar
+                            </Button>
+                          </div>
+                        ) : (
+                          <div className="text-center py-4">
+                            <p className="text-sm text-muted-foreground">
+                              No se encontraron clientes para "{searchQuery}"
+                            </p>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              Intenta con nombre, documento o email
+                            </p>
+                          </div>
+                        )}
+                      </CommandEmpty>
+                    )}
+
+                    {!loading && searchResults.map((cliente) => (
+                      <CommandItem
+                        key={cliente.id}
+                        value={`${cliente.nombre} ${cliente.documento} ${cliente.email || ''}`}
+                        onSelect={() => handleSelect(cliente)}
+                        className="cursor-pointer"
+                      >
+                        <Check 
+                          className={cn(
+                            "mr-2 h-4 w-4",
+                            selectedCliente?.id === cliente.id ? "opacity-100" : "opacity-0"
+                          )} 
+                        />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium truncate">{cliente.nombre}</span>
+                            <span className="text-sm text-muted-foreground">
+                              {formatDocument(cliente.documento, cliente.documentType)}
+                            </span>
+                            {!cliente.activo && (
+                              <span className="text-xs bg-red-100 text-red-700 px-1.5 py-0.5 rounded">
+                                Inactivo
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-xs text-muted-foreground truncate">
+                            {getClienteContactText(cliente)}
+                          </div>
+                        </div>
+                      </CommandItem>
+                    ))}
+                  </CommandGroup>
+                )}
+
+                {/* Ayuda inicial */}
+                {!searchQuery && (
+                  <div className="p-4 text-center text-sm text-muted-foreground">
+                    <Search className="h-8 w-8 mx-auto mb-2 opacity-30" />
+                    <p>Escribe al menos 2 caracteres para buscar clientes</p>
+                    <p className="text-xs mt-1">
+                      Puedes buscar por nombre
+                    </p>
+                  </div>
+                )}
+              </CommandList>
+            </Command>
+          </PopoverContent>
+        </Popover>
+
+        {/* Botón de limpiar separado - fuera del Popover */}
+        {selectedCliente && (
+          <Button
+            variant="outline"
+            size="icon"
+            className="h-10 w-10 rounded-l-none border-l-0 hover:bg-destructive/10"
+            onClick={handleClear}
+            disabled={disabled}
+          >
+            <X className="h-4 w-4 text-muted-foreground hover:text-destructive" />
+          </Button>
+        )}
+      </div>
 
       {/* Error persistente */}
       {error && !open && (

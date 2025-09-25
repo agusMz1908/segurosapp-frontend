@@ -361,20 +361,6 @@ export function ExtractedDataForm({ hookInstance }: ExtractedDataFormProps) {
         </div>
       </div>
 
-      {/* Observaciones específicas de renovación */}
-      <div className="space-y-2">
-        <Label htmlFor="observaciones" className="text-lg font-semibold">
-          Observaciones de la Renovación
-        </Label>
-        <textarea
-          id="observaciones"
-          className="w-full min-h-[100px] p-3 border border-gray-300 rounded-md dark:border-gray-600 dark:bg-gray-800"
-          value={editedData.observaciones || ''}
-          onChange={(e) => handleFieldChange('observaciones', e.target.value)}
-          placeholder="Observaciones específicas para esta renovación..."
-        />
-      </div>
-
       {/* Debug en desarrollo */}
       {process.env.NODE_ENV === 'development' && (
         <details className="mt-4 text-xs">

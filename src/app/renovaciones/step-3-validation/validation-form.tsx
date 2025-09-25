@@ -1,29 +1,37 @@
-// src/app/renovaciones/step-3-validation/validation-form.tsx
-// ✅ CORREGIDO: Formulario de validación específico para renovaciones
-
 import React from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
 import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Separator } from '@/components/ui/separator';
 import { 
   FileText, 
-  Edit3,
+  Settings,
+  MessageSquare,
+  User,
+  Building2,
+  Hash,
+  Eye,
   AlertTriangle,
   CheckCircle,
   Info,
-  Database
+  RefreshCw
 } from 'lucide-react';
 import { ExtractedDataForm } from './extracted-data-form';
 import { MasterDataForm } from './master-data-form';
+import { PDFViewer } from '../../../components/pdf/PDFViewer';
+import { usePDFViewer } from '../../../hooks/usePDFViewer';
 
 interface ValidationFormProps {
   hookInstance: any;
 }
 
 export function ValidationForm({ hookInstance }: ValidationFormProps) {
-  const { state, updateExtractedData, updateMasterData } = hookInstance;
+  const { state, updateState, updateExtractedData, updateMasterData } = hookInstance;
+  const { isViewerOpen, openViewer, closeViewer } = usePDFViewer();
 
-  // ✅ CORREGIDO: Usar múltiples fuentes de datos
+  // Datos para mostrar
   const displayData = state.scan.normalizedData && Object.keys(state.scan.normalizedData).length > 0 
     ? state.scan.normalizedData 
     : state.scan.extractedData || {};
@@ -32,177 +40,212 @@ export function ValidationForm({ hookInstance }: ValidationFormProps) {
   const requiresAttention = state.scan.requiresAttention || [];
   const scanStatus = state.scan.status;
 
-  const getConfidenceColor = (percentage: number) => {
-    if (percentage >= 90) return 'text-green-600 bg-green-50 border-green-200 dark:text-green-400 dark:bg-green-900/20 dark:border-green-800';
-    if (percentage >= 80) return 'text-blue-600 bg-blue-50 border-blue-200 dark:text-blue-400 dark:bg-blue-900/20 dark:border-blue-800';
-    if (percentage >= 70) return 'text-yellow-600 bg-yellow-50 border-yellow-200 dark:text-yellow-400 dark:bg-yellow-900/20 dark:border-yellow-800';
-    return 'text-red-600 bg-red-50 border-red-200 dark:text-red-400 dark:bg-red-900/20 dark:border-red-800';
+  const handleObservacionesChange = (value: string) => {
+    updateState({
+      masterData: {
+        ...state.masterData,
+        observaciones: value
+      }
+    });
   };
 
-  // ✅ NUEVO: Si hay datos extraídos, mostrar el formulario completo de validación
+  const getConfidenceColor = (percentage: number) => {
+    if (percentage >= 90) return 'text-green-600 bg-green-50 border-green-200';
+    if (percentage >= 80) return 'text-blue-600 bg-blue-50 border-blue-200';
+    if (percentage >= 70) return 'text-yellow-600 bg-yellow-50 border-yellow-200';
+    return 'text-red-600 bg-red-50 border-red-200';
+  };
+
+  // Si hay datos extraídos, mostrar el formulario completo de validación
   if (scanStatus === 'completed' && displayData && Object.keys(displayData).length > 0) {
     return (
-      <div className="space-y-6 p-6">
-        {/* Header del paso */}
-        <div className="text-center mb-6">
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">
-            Validar Información de la Renovación
-          </h2>
-          <p className="text-gray-600 dark:text-gray-400">
-            Revisa los datos extraídos automáticamente y completa la información con datos maestros
-          </p>
-        </div>
-
-        {/* ✅ NUEVO: Estado del escaneo */}
-        <Card className={`border-2 ${getConfidenceColor(completionPercentage)}`}>
-          <CardHeader>
-            <CardTitle className="flex items-center justify-between">
-              <span className="flex items-center gap-2">
-                <CheckCircle className="h-5 w-5" />
-                Documento Procesado
-              </span>
-              <span className="text-sm font-normal">
-                {completionPercentage}% confianza
-              </span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Progress value={completionPercentage} className="mb-3" />
+      <div className="w-full">
+        {/* 🔥 CAMBIO CRÍTICO: Layout principal usando flexbox horizontal igual que Nueva Póliza */}
+        <div className={`flex gap-6 ${isViewerOpen ? '' : 'justify-center'}`}>
+          
+          {/* 🔥 CAMBIO CRÍTICO: Columna del formulario con la misma estructura que Nueva Póliza */}
+          <div className={`space-y-6 transition-all duration-300 ${
+            isViewerOpen ? 'w-1/2 flex-shrink-0' : 'w-full max-w-4xl'
+          }`}>
             
-            {state.scan.fileName && (
-              <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
-                <strong>Archivo:</strong> {state.scan.fileName}
-              </p>
+            {/* Header del paso - Solo cuando PDF está cerrado */}
+            {!isViewerOpen && (
+              <div className="text-center mb-6">
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">
+                  Validar Información de la Renovación
+                </h2>
+                <p className="text-gray-600 dark:text-gray-400">
+                  Revisa los datos extraídos automáticamente y completa la información con datos maestros
+                </p>
+              </div>
             )}
 
-            {requiresAttention.length > 0 && (
-              <Alert variant="destructive" className="mt-3">
-                <AlertTriangle className="h-4 w-4" />
-                <AlertDescription>
-                  {requiresAttention.length} campo(s) requieren atención manual
-                </AlertDescription>
-              </Alert>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* ✅ NUEVO: Comparación con póliza anterior */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Info className="h-5 w-5" />
-              Contexto de Renovación
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg mb-4">
-              <h4 className="font-medium mb-2">Información de la Renovación:</h4>
-              <div className="grid md:grid-cols-2 gap-4 text-sm">
+            {/* Contexto de renovación - Compacto igual que Nueva Póliza */}
+            <div className="grid grid-cols-3 gap-2 p-3 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 rounded-lg border border-green-200 dark:border-green-700">
+              <div className="flex items-center gap-1">
+                <User className="h-3 w-3 text-green-600 dark:text-green-400" />
                 <div>
-                  <strong>Cliente:</strong> {state.context?.clienteInfo?.nombre || 'N/A'}
+                  <span className="text-xs font-medium text-gray-600 dark:text-gray-400">Cliente</span>
+                  <p className="text-xs font-semibold text-gray-900 dark:text-gray-100 truncate">
+                    {state.context?.clienteInfo?.nombre || "No seleccionado"}
+                  </p>
                 </div>
+              </div>
+              <div className="flex items-center gap-1">
+                <Building2 className="h-3 w-3 text-green-600 dark:text-green-400" />
                 <div>
-                  <strong>Compañía:</strong> {state.context?.companiaInfo?.nombre || 'Detectando...'}
+                  <span className="text-xs font-medium text-gray-600 dark:text-gray-400">Compañía</span>
+                  <p className="text-xs font-semibold text-gray-900 dark:text-gray-100 truncate">
+                    {state.context?.companiaInfo?.nombre || "No seleccionada"}
+                  </p>
                 </div>
+              </div>
+              <div className="flex items-center gap-1">
+                <RefreshCw className="h-3 w-3 text-green-600 dark:text-green-400" />
                 <div>
-                  <strong>Póliza Original:</strong> {state.context?.polizaOriginal?.numero || 'N/A'}
-                </div>
-                <div>
-                  <strong>Vencimiento:</strong> {state.context?.polizaOriginal?.vencimiento || 'N/A'}
+                  <span className="text-xs font-medium text-gray-600 dark:text-gray-400">Renovando</span>
+                  <p className="text-xs font-semibold text-gray-900 dark:text-gray-100 truncate">
+                    {state.context?.polizaOriginal?.numero || "Póliza anterior"}
+                  </p>
                 </div>
               </div>
             </div>
 
-            <div className="text-sm text-gray-600 dark:text-gray-400">
-              <p>
-                La póliza anterior será marcada como "Antecedente" y mantendrá la referencia al mismo contexto (cliente, compañía, sección).
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Campos que requieren atención */}
-        {requiresAttention && requiresAttention.length > 0 && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <AlertTriangle className="h-5 w-5 text-yellow-600" />
-                Campos que Requieren Atención
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                {requiresAttention.map((item: any, index: number) => (
-                  <div key={index} className="flex items-center gap-2 p-2 bg-yellow-50 dark:bg-yellow-900/20 rounded">
-                    <AlertTriangle className="h-4 w-4 text-yellow-500" />
-                    <span className="text-sm">
-                      <strong>{item.fieldName || 'Campo desconocido'}:</strong> {item.reason || 'Requiere verificación'}
-                    </span>
+            <Card className="shadow-lg">
+              <CardContent className={`space-y-6 ${isViewerOpen ? 'p-4' : 'p-8'}`}>
+                
+                {/* 1. Datos del Documento */}
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <div className={`p-1.5 bg-green-100 dark:bg-green-800 rounded-lg ${isViewerOpen ? 'p-1' : 'p-2'}`}>
+                        <FileText className={`text-green-600 dark:text-green-400 ${isViewerOpen ? 'h-4 w-4' : 'h-5 w-5'}`} />
+                      </div>
+                      <div>
+                        <h3 className={`font-semibold text-gray-900 dark:text-gray-100 ${isViewerOpen ? 'text-base' : 'text-lg'}`}>
+                          Datos de la Nueva Póliza
+                        </h3>
+                        <p className={`text-gray-600 dark:text-gray-400 ${isViewerOpen ? 'text-xs' : 'text-sm'}`}>
+                          Extraídos del PDF • {completionPercentage}% confianza
+                        </p>
+                      </div>
+                    </div>
+                    
+                    {/* Botón Ver PDF - Estructura igual que Nueva Póliza */}
+                    {(state.file?.selected || state.scan?.file) ? (
+                      <Button
+                        variant={isViewerOpen ? "secondary" : "default"}
+                        size="sm"
+                        onClick={isViewerOpen ? closeViewer : openViewer}
+                        className={`flex items-center gap-2 shrink-0 ${
+                          isViewerOpen 
+                            ? 'bg-gray-200 hover:bg-gray-300 text-gray-700' 
+                            : 'bg-blue-600 hover:bg-blue-700 text-white'
+                        }`}
+                      >
+                        <Eye className="h-4 w-4" />
+                        {isViewerOpen ? 'Ocultar' : 'Ver PDF'}
+                      </Button>
+                    ) : (
+                      <div className="text-xs text-red-500 p-2 bg-red-50 rounded">
+                        No hay archivo PDF disponible
+                      </div>
+                    )}
                   </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        )}
+                  
+                  <div className="border border-gray-200 dark:border-gray-700 rounded-lg">
+                    <div className={isViewerOpen ? 'p-3' : 'p-6'}>
+                      <ExtractedDataForm hookInstance={hookInstance} />
+                    </div>
+                  </div>
+                </div>
 
-        {/* Formulario de datos extraídos */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Edit3 className="h-5 w-5" />
-              Datos Extraídos de la Póliza
-            </CardTitle>
-            <CardDescription>
-              Revisa y edita los datos extraídos automáticamente del documento
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ExtractedDataForm 
-              hookInstance={{
-                ...hookInstance,
-                state: {
-                  ...state,
-                  scan: {
-                    ...state.scan,
-                    extractedData: displayData // ✅ USAR datos normalizados si están disponibles
-                  }
-                }
-              }}
-            />
-          </CardContent>
-        </Card>
+                <Separator className="my-4" />
 
-        {/* Formulario de datos maestros */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Database className="h-5 w-5" />
-              Datos Maestros
-            </CardTitle>
-            <CardDescription>
-              Completa la información con datos maestros del sistema
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <MasterDataForm 
-              hookInstance={{
-                ...hookInstance,
-                state: {
-                  ...state,
-                  scan: {
-                    ...state.scan,
-                    extractedData: displayData // ✅ USAR datos normalizados para mapeo
-                  }
-                }
-              }}
-            />
-          </CardContent>
-        </Card>
+                {/* 2. Datos Maestros */}
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className={`p-1.5 bg-purple-100 dark:bg-purple-800 rounded-lg ${isViewerOpen ? 'p-1' : 'p-2'}`}>
+                      <Settings className={`text-purple-600 dark:text-purple-400 ${isViewerOpen ? 'h-4 w-4' : 'h-5 w-5'}`} />
+                    </div>
+                    <div>
+                      <h3 className={`font-semibold text-gray-900 dark:text-gray-100 ${isViewerOpen ? 'text-base' : 'text-lg'}`}>
+                        Datos Maestros para Velneo
+                      </h3>
+                      <p className={`text-gray-600 dark:text-gray-400 ${isViewerOpen ? 'text-xs' : 'text-sm'}`}>
+                        Configuración específica de la renovación
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    <MasterDataForm hookInstance={hookInstance} />
+                  </div>
+                </div>
+
+                <Separator className="my-4" />
+
+                {/* 3. Observaciones */}
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className={`p-1.5 bg-amber-100 dark:bg-amber-800 rounded-lg ${isViewerOpen ? 'p-1' : 'p-2'}`}>
+                      <MessageSquare className={`text-amber-600 dark:text-amber-400 ${isViewerOpen ? 'h-4 w-4' : 'h-5 w-5'}`} />
+                    </div>
+                    <div>
+                      <h3 className={`font-semibold text-gray-900 dark:text-gray-100 ${isViewerOpen ? 'text-base' : 'text-lg'}`}>
+                        Observaciones de Renovación
+                      </h3>
+                      <p className={`text-gray-600 dark:text-gray-400 ${isViewerOpen ? 'text-xs' : 'text-sm'}`}>
+                        Notas específicas para esta renovación
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Textarea
+                      placeholder="Escribe aquí observaciones específicas sobre esta renovación (se incluirán en el cronograma de cuotas)..."
+                      value={state.masterData?.observaciones || ''}
+                      onChange={(e) => handleObservacionesChange(e.target.value)}
+                      className={`resize-y ${isViewerOpen ? 'min-h-[80px]' : 'min-h-[100px]'}`}
+                      maxLength={500}
+                    />
+                    <div className="flex justify-between items-center text-xs text-gray-500 dark:text-gray-400">
+                      <span>Se incluirán automáticamente en las observaciones de renovación</span>
+                      <span>{(state.masterData?.observaciones || '').length}/500</span>
+                    </div>
+                  </div>
+                </div>
+
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* 🔥 CAMBIO CRÍTICO: Columna del visor PDF idéntica a Nueva Póliza */}
+          {isViewerOpen && (
+            <div className="w-1/2 flex-1 min-h-0">
+              <PDFViewer
+                file={state.file?.selected || state.scan?.file || null}
+                isOpen={isViewerOpen}
+                onClose={closeViewer}
+              />
+              
+              {/* Debug info para ayudar con el troubleshooting */}
+              {process.env.NODE_ENV === 'development' && (
+                <div className="mt-2 text-xs text-gray-500">
+                  <p>Debug PDF:</p>
+                  <p>state.file?.selected: {state.file?.selected ? 'Sí' : 'No'}</p>
+                  <p>state.scan?.file: {state.scan?.file ? 'Sí' : 'No'}</p>
+                  <p>fileName: {state.scan?.fileName || 'N/A'}</p>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       </div>
     );
   }
 
-  // ✅ FALLBACK: Estado cuando no hay datos o está en progreso
+  // Estado de carga o error
   return (
     <div className="space-y-6 p-6">
       <div className="text-center mb-6">
@@ -210,48 +253,20 @@ export function ValidationForm({ hookInstance }: ValidationFormProps) {
           Validar Información de la Renovación
         </h2>
         <p className="text-gray-600 dark:text-gray-400">
-          Esperando documento escaneado...
+          Esperando procesamiento del documento...
         </p>
       </div>
 
-      {scanStatus === 'error' && (
-        <Alert variant="destructive">
-          <AlertTriangle className="h-4 w-4" />
-          <AlertDescription>
-            {state.scan.errorMessage || 'Error procesando el documento. Intenta nuevamente.'}
-          </AlertDescription>
-        </Alert>
-      )}
-
-      {(scanStatus === 'uploading' || scanStatus === 'scanning') && (
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-center space-y-4">
-              <div className="flex items-center justify-center space-x-2">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-                <span className="text-lg font-medium">
-                  {scanStatus === 'uploading' ? 'Subiendo archivo...' : 'Procesando documento...'}
-                </span>
-              </div>
-              
-              {state.scan.fileName && (
-                <p className="text-sm text-gray-600">
-                  Archivo: {state.scan.fileName}
-                </p>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {scanStatus === 'idle' && (
-        <Alert>
-          <Info className="h-4 w-4" />
-          <AlertDescription>
-            Regresa al paso anterior y sube un documento para continuar con la validación.
-          </AlertDescription>
-        </Alert>
-      )}
+      <Card>
+        <CardContent className="pt-6">
+          <div className="text-center py-12">
+            <RefreshCw className="h-12 w-12 text-gray-400 mx-auto mb-4 animate-spin" />
+            <p className="text-gray-600 dark:text-gray-400">
+              Procesando documento para renovación...
+            </p>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

@@ -385,19 +385,6 @@ export function MasterDataForm({ hookInstance }: MasterDataFormProps) {
           />
         </div>
 
-        {/* Observaciones */}
-        <div className="space-y-2 mt-4">
-          <Label htmlFor="observaciones">Observaciones</Label>
-          <textarea
-            id="observaciones"
-            className="w-full p-2 border rounded-md resize-none dark:bg-gray-800 dark:border-gray-600"
-            rows={3}
-            placeholder="Observaciones adicionales para la renovación..."
-            value={formData.observaciones || ''}
-            onChange={(e) => handleFieldChange('observaciones', e.target.value)}
-          />
-        </div>
-
         {(masterDataLoading || loadingData) && (
           <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 mt-4">
             <Loader2 className="h-4 w-4 animate-spin" />

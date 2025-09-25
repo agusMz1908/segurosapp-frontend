@@ -1,112 +1,100 @@
 "use client"
 
+import { useEffect, useState } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
+import { useAuth, type user } from "@/hooks/useAuth"
 import { cn } from "@/lib/utils"
 import { useSidebar } from "../../hooks/use-sidebar"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
 import {
-  BarChart3,
-  Plus,
-  RotateCcw,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import {
+  LayoutDashboard,
   FileText,
+  RotateCcw,
+  Edit,
   Users,
-  TrendingUp,
+  BarChart3,
   Settings,
+  User,
+  LogOut,
+  Moon,
+  Sun,
   ChevronLeft,
   ChevronRight,
-  Shield,
-  Building2,
-  Bell,
 } from "lucide-react"
+import { useTheme } from "next-themes"
 
-const navigationItems = [
-  {
-    title: "Dashboard",
-    href: "/",
-    icon: BarChart3,
-    notifications: 0,
-  },
-  {
-    title: "Nueva Póliza",
-    href: "/nueva-poliza",
-    icon: Plus,
-    notifications: 0,
-  },
-  {
-    title: "Renovaciones", 
-    href: "/renovaciones", 
-    icon: RotateCcw,
-    notifications: 3,
-  },
-  {
-    title: "Cambios", 
-    href: "/cambios", 
-    icon: FileText, 
-    notifications: 0,
-  },
-  {
-    title: "Pólizas",
-    href: "/polizas",
-    icon: FileText,
-    notifications: 0,
-  },
-  {
-    title: "Clientes",
-    href: "/clientes",
-    icon: Users,
-    notifications: 0,
-  },
-  {
-    title: "Métricas",
-    href: "/metricas",
-    icon: TrendingUp,
-    notifications: 0,
-  },
-  {
-    title: "Configuración",
-    href: "/config",
-    icon: Settings,
-    notifications: 0,
-  },
+const navigation = [
+  { name: "Dashboard", href: "/", icon: LayoutDashboard },
+  { name: "Nueva Póliza", href: "/nueva-poliza", icon: FileText },
+  { name: "Renovaciones", href: "/renovaciones", icon: RotateCcw },
+  { name: "Cambios", href: "/cambios", icon: Edit },
+  { name: "Pólizas", href: "/polizas", icon: FileText },
+  { name: "Clientes", href: "/clientes", icon: Users },
+  { name: "Métricas", href: "/metricas", icon: BarChart3 },
+  { name: "Configuración", href: "/config", icon: Settings },
 ]
 
 export function Sidebar() {
-  const { isCollapsed, toggleSidebar, isMobile } = useSidebar()
+  const { isCollapsed, toggleSidebar } = useSidebar()
+  const { theme, setTheme } = useTheme()
+  const { logout, getUser } = useAuth()
   const pathname = usePathname()
+  const [user, setUser] = useState<user | null>(null)
+  const [isLoggingOut, setIsLoggingOut] = useState(false)
+
+  // Cargar datos del usuario al montar el componente
+  useEffect(() => {
+    const userData = getUser()
+    setUser(userData)
+  }, [getUser])
+
+  // Función para manejar logout
+  const handleLogout = async () => {
+    setIsLoggingOut(true)
+    try {
+      await logout()
+    } finally {
+      setIsLoggingOut(false)
+    }
+  }
 
   return (
     <aside
       className={cn(
-        "fixed left-0 top-0 z-50 h-full bg-sidebar border-r border-sidebar-border transition-all duration-300",
-        isCollapsed ? "w-16" : "w-64",
-        isMobile && isCollapsed && "translate-x-[-100%]",
+        "fixed left-0 top-0 z-50 h-screen bg-sidebar border-r border-sidebar-border transition-all duration-300",
+        isCollapsed ? "w-16" : "w-64"
       )}
     >
       <div className="flex h-full flex-col">
-        {/* Logo y Header */}
+        {/* Header del Sidebar */}
         <div className="flex h-16 items-center justify-between px-4 border-b border-sidebar-border">
-          <div
-            className={cn(
-              "flex items-center gap-2 transition-opacity duration-200",
-              isCollapsed ? "opacity-0 w-0" : "opacity-100",
-            )}
-          >
-            <Shield className="h-8 w-8 text-primary" />
-            <span className="text-xl font-bold text-sidebar-foreground">SegurosApp</span>
-          </div>
-
-          {/* Botón de toggle mejorado - siempre visible */}
+          {!isCollapsed && (
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+                <span className="text-white font-bold text-sm">S</span>
+              </div>
+              <span className="font-semibold text-sidebar-foreground">SegurosApp</span>
+            </div>
+          )}
+          
           <Button
             variant="ghost"
             size="icon"
             onClick={toggleSidebar}
             className={cn(
-              "h-8 w-8 text-sidebar-foreground hover:bg-sidebar-accent transition-all duration-200",
-              isCollapsed ? "mx-auto" : "ml-auto"
+              "h-8 w-8 text-sidebar-foreground hover:bg-sidebar-accent",
+              isCollapsed && "mx-auto"
             )}
-            title={isCollapsed ? "Expandir sidebar" : "Colapsar sidebar"}
           >
             {isCollapsed ? (
               <ChevronRight className="h-4 w-4" />
@@ -116,66 +104,112 @@ export function Sidebar() {
           </Button>
         </div>
 
-        {/* Navigation */}
-        <nav className="flex-1 space-y-1 p-2">
-          {navigationItems.map((item) => {
+        {/* Navegación */}
+        <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
+          {navigation.map((item) => {
             const isActive = pathname === item.href
-            const Icon = item.icon
-
             return (
               <Link
-                key={item.href}
+                key={item.name}
                 href={item.href}
                 className={cn(
-                  "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors relative",
-                  "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
-                  isActive 
-                    ? "bg-sidebar-primary text-sidebar-primary-foreground" 
-                    : "text-sidebar-foreground",
-                  isCollapsed && "justify-center px-2",
+                  "flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md transition-colors",
+                  isActive
+                    ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                    : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+                  isCollapsed && "justify-center"
                 )}
-                title={isCollapsed ? item.title : undefined}
               >
-                <Icon className="h-5 w-5 flex-shrink-0" />
-                {!isCollapsed && (
-                  <>
-                    <span className="flex-1">{item.title}</span>
-                    {item.notifications > 0 && (
-                      <Badge 
-                        variant="secondary" 
-                        className="h-5 w-5 p-0 text-xs bg-warning text-warning-foreground flex items-center justify-center"
-                      >
-                        {item.notifications}
-                      </Badge>
-                    )}
-                  </>
-                )}
-                {isCollapsed && item.notifications > 0 && (
-                  <div className="absolute top-1 right-1 h-2 w-2 bg-warning rounded-full"></div>
-                )}
+                <item.icon className={cn("flex-shrink-0", isCollapsed ? "h-5 w-5" : "h-4 w-4")} />
+                {!isCollapsed && <span>{item.name}</span>}
               </Link>
             )
           })}
         </nav>
 
-        {/* Footer section */}
-        <div className="mt-auto">
-          {/* Información del tenant */}
-          <div className="p-4 border-t border-sidebar-border">
-            <div className={cn("flex items-center gap-2", isCollapsed && "justify-center")}>
-              <Building2 className="h-5 w-5 text-sidebar-foreground flex-shrink-0" />
-              {!isCollapsed && (
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-sidebar-foreground truncate">
-                    Seguros Empresariales S.A.
+        {/* Controles de usuario en la parte inferior */}
+        <div className="border-t border-sidebar-border p-3 space-y-2">
+          {/* Toggle de tema */}
+          <Button
+            variant="ghost"
+            size={isCollapsed ? "icon" : "sm"}
+            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+            className={cn(
+              "w-full text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+              isCollapsed ? "justify-center h-8 w-8" : "justify-start gap-3 h-9"
+            )}
+          >
+            <Sun className="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
+            <Moon className="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+            {!isCollapsed && <span>Cambiar tema</span>}
+          </Button>
+
+          {/* Información del usuario */}
+          {!isCollapsed && (
+            <div className="px-3 py-2 text-xs text-sidebar-foreground/70">
+              <div className="font-medium">{user?.username || 'Usuario'}</div>
+              <div className="text-sidebar-foreground/50">{user?.email || 'usuario@segurosapp.com'}</div>
+            </div>
+          )}
+
+          {/* Menú de usuario */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size={isCollapsed ? "icon" : "sm"}
+                className={cn(
+                  "w-full text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+                  isCollapsed ? "justify-center h-8 w-8" : "justify-start gap-3 h-9"
+                )}
+              >
+                <Avatar className={cn(isCollapsed ? "h-5 w-5" : "h-6 w-6")}>
+                  <AvatarImage src="/avatars/01.png" alt="Usuario" />
+                  <AvatarFallback className="text-xs">
+                    {user ? user.username.substring(0, 2).toUpperCase() : 'US'}
+                  </AvatarFallback>
+                </Avatar>
+                {!isCollapsed && <span>Menú de usuario</span>}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent 
+              className="w-56" 
+              align="end" 
+              side={isCollapsed ? "right" : "top"}
+              forceMount
+            >
+              <DropdownMenuLabel className="font-normal">
+                <div className="flex flex-col space-y-1">
+                  <p className="text-sm font-medium leading-none">
+                    {user?.username || 'Usuario'}
                   </p>
-                  <p className="text-xs text-sidebar-foreground/70 truncate">
-                    Tenant: SEMP001
+                  <p className="text-xs leading-none text-muted-foreground">
+                    {user?.email || 'usuario@segurosapp.com'}
                   </p>
                 </div>
-              )}
-            </div>
-          </div>
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem>
+                <User className="mr-2 h-4 w-4" />
+                <span>Perfil</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem>
+                <Settings className="mr-2 h-4 w-4" />
+                <span>Configuración</span>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem 
+                className="text-red-600 focus:text-red-600 focus:bg-red-50 dark:focus:bg-red-950"
+                onClick={handleLogout}
+                disabled={isLoggingOut}
+              >
+                <LogOut className="mr-2 h-4 w-4" />
+                <span>
+                  {isLoggingOut ? 'Cerrando sesión...' : 'Cerrar sesión'}
+                </span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
     </aside>

@@ -1,6 +1,3 @@
-// src/app/renovaciones/components/renovaciones-container.tsx
-// ✅ CORREGIDO: Usar los componentes específicos de renovaciones
-
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -20,7 +17,8 @@ import {
 import { useRenovaciones } from '../../../hooks/use-renovaciones';
 import { ClientePolizasSearchForm } from '../step-1-search/cliente-polizas-search-form';
 import { RenovacionConfirmationForm } from '../step-4-confirmation/renovacion-confirmation-form';
-import { ValidationForm } from '../step-3-validation/validation-form'; // ✅ USAR VALIDATION-FORM ESPECÍFICO DE RENOVACIONES
+import { ValidationForm } from '../step-3-validation/validation-form';
+import { DocumentUploadContainer } from '../step-2-info/document-upload-container';
 
 export function RenovacionesContainer() {
   const renovacionesHook = useRenovaciones();
@@ -67,233 +65,267 @@ export function RenovacionesContainer() {
     return result;
   };
 
-  const getStepIcon = (stepNumber: number, isCompleted: boolean, isCurrent: boolean) => {
-    if (isCompleted) {
-      return <CheckCircle className="h-5 w-5 text-green-500" />;
+  const steps = [
+    { 
+      number: 1, 
+      title: "Búsqueda", 
+      description: "Cliente y Póliza a Renovar",
+      icon: Search,
+    },
+    { 
+      number: 2, 
+      title: "Documento", 
+      description: "Nueva Póliza PDF",
+      icon: Upload,
+    },
+    { 
+      number: 3, 
+      title: "Validación", 
+      description: "Datos Extraídos",
+      icon: FileText,
+    },
+    { 
+      number: 4, 
+      title: "Confirmación", 
+      description: "Envío a Velneo",
+      icon: Send,
     }
-    if (isCurrent) {
-      return <div className="h-5 w-5 rounded-full bg-blue-500 flex items-center justify-center text-white text-sm font-medium">{stepNumber}</div>;
-    }
-    return <Circle className="h-5 w-5 text-gray-400" />;
+  ];
+
+  const renderStepIndicator = () => {
+    return (
+      <Card className="mb-6">
+        <CardContent className="pt-6">
+          <div className="flex items-center justify-between">
+            {steps.map((step, index) => {
+              const isActive = state.currentStep === step.number;
+              const isCompleted = state.currentStep > step.number;
+              const Icon = isCompleted ? CheckCircle : step.icon;
+              
+              return (
+                <React.Fragment key={step.number}>
+                  <div className="flex flex-col items-center min-w-0 flex-1">
+                    <div className={`
+                      w-12 h-12 rounded-full flex items-center justify-center border-2 transition-all duration-300 mb-3
+                      ${isCompleted 
+                        ? 'bg-green-500 border-green-500 text-white shadow-lg' 
+                        : isActive 
+                          ? 'bg-blue-500 border-blue-500 text-white shadow-lg scale-110'
+                          : 'border-gray-300 text-gray-400 bg-white dark:bg-gray-800 dark:border-gray-600'
+                      }
+                    `}>
+                      <Icon className="h-5 w-5" />
+                    </div>
+                    
+                    <div className="text-center">
+                      <h3 className={`font-semibold text-sm mb-1 ${
+                        isActive ? 'text-blue-600 dark:text-blue-400' : isCompleted ? 'text-green-600 dark:text-green-400' : 'text-gray-500 dark:text-gray-400'
+                      }`}>
+                        {step.title}
+                      </h3>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 hidden sm:block">
+                        {step.description}
+                      </p>
+                    </div>
+                  </div>
+                  
+                  {index < steps.length - 1 && (
+                    <div className={`
+                      flex-1 h-0.5 mx-4 transition-colors duration-300
+                      ${isCompleted ? 'bg-green-500' : 'bg-gray-200 dark:bg-gray-700'}
+                    `} />
+                  )}
+                </React.Fragment>
+              );
+            })}
+          </div>
+        </CardContent>
+      </Card>
+    );
   };
 
   const renderCurrentStep = () => {
     switch (state.currentStep) {
       case 1:
         return (
-          <Card>
-            <CardContent className="pt-6">
-              <ClientePolizasSearchForm hookInstance={renovacionesHook} />
-            </CardContent>
-          </Card>
+          <div className="max-w-4xl mx-auto">
+            <Card>
+              <CardContent className="pt-6">
+                <ClientePolizasSearchForm hookInstance={renovacionesHook} />
+              </CardContent>
+            </Card>
+          </div>
         );
 
       case 2:
         return (
-          <Card>
-            <CardContent className="pt-6">
-              <div className="space-y-6">
-                <div className="text-center">
-                  <h3 className="text-lg font-semibold mb-2">Subir Documento de Renovación</h3>
-                  <p className="text-gray-600">
-                    Sube la nueva póliza para procesarla y extraer los datos automáticamente
-                  </p>
-                </div>
-                
-                {/* Información de contexto */}
-                <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg">
-                  <h4 className="font-medium mb-2">Contexto de Renovación:</h4>
-                  <div className="text-sm text-gray-600 dark:text-gray-400 space-y-1">
-                    <div><strong>Cliente:</strong> {state.context?.clienteInfo?.nombre || 'No seleccionado'}</div>
-                    <div><strong>Póliza Original:</strong> {state.context?.polizaOriginal?.numero || 'No seleccionada'}</div>
-                    <div><strong>Compañía:</strong> {state.context?.companiaInfo?.nombre || 'Se detectará automáticamente'}</div>
-                  </div>
-                </div>
-
-                {/* Upload de archivo */}
-                <div className={`
-                  border-2 border-dashed rounded-lg p-8 text-center transition-colors
-                  ${state.scan.status === 'uploading' || state.scan.status === 'scanning'
-                    ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' 
-                    : state.scan.status === 'error'
-                      ? 'border-red-300 bg-red-50 dark:bg-red-900/20'
-                      : 'border-gray-300 hover:border-gray-400 dark:border-gray-600'
-                  }
-                  ${state.scan.status === 'uploading' || state.scan.status === 'scanning' ? 'pointer-events-none' : 'cursor-pointer'}
-                `}
-                  onClick={() => !state.isLoading && document.getElementById('file-input-renovacion')?.click()}
-                >
-                  <input
-                    id="file-input-renovacion"
-                    type="file"
-                    accept=".pdf,.jpg,.jpeg,.png"
-                    onChange={(e) => {
-                      if (e.target.files?.[0]) {
-                        handleFileUpload(e.target.files[0]);
-                      }
-                    }}
-                    className="hidden"
-                    disabled={state.isLoading}
-                  />
-
-                  {state.scan.status === 'uploading' || state.scan.status === 'scanning' ? (
-                    <div className="space-y-3">
-                      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto"></div>
-                      <p className="text-lg font-medium text-gray-700 dark:text-gray-300">
-                        {state.scan.status === 'uploading' ? 'Subiendo archivo...' : 'Procesando documento...'}
-                      </p>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">
-                        Por favor espera mientras extraemos la información del documento
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="space-y-3">
-                      <Upload className="h-12 w-12 mx-auto text-gray-400" />
-                      <div>
-                        <p className="text-lg font-medium text-gray-700 dark:text-gray-300">
-                          Arrastra tu archivo aquí o haz clic para seleccionar
-                        </p>
-                        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                          Formatos soportados: PDF, JPG, PNG (máximo 10MB)
-                        </p>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Estado de error */}
-                {state.scan.status === 'error' && (
-                  <Alert variant="destructive">
-                    <AlertTriangle className="h-4 w-4" />
-                    <AlertDescription>
-                      {state.scan.errorMessage || 'Error procesando el documento. Intenta nuevamente.'}
-                    </AlertDescription>
-                  </Alert>
-                )}
-
-                {/* Estado completado */}
-                {state.scan.status === 'completed' && (
-                  <Alert className="border-green-500 bg-green-50 dark:bg-green-900/20">
-                    <CheckCircle className="h-4 w-4 text-green-600" />
-                    <AlertDescription className="text-green-800 dark:text-green-200">
-                      Documento procesado exitosamente. Los datos han sido extraídos automáticamente.
-                      {state.scan.fileName && ` Archivo: ${state.scan.fileName}`}
-                    </AlertDescription>
-                  </Alert>
-                )}
-              </div>
-            </CardContent>
-          </Card>
+          <div className="max-w-4xl mx-auto">
+            <DocumentUploadContainer hookInstance={renovacionesHook} />
+          </div>
         );
 
       case 3:
-        // ✅ USAR EL VALIDATION-FORM ESPECÍFICO DE RENOVACIONES
-        return <ValidationForm hookInstance={renovacionesHook} />;
+        return (
+          <div className="w-full h-full">
+            <ValidationForm hookInstance={renovacionesHook} />
+          </div>
+        );
 
       case 4:
-        return <RenovacionConfirmationForm hookInstance={renovacionesHook} />;
+        return (
+          <div className="max-w-4xl mx-auto">
+            <RenovacionConfirmationForm hookInstance={renovacionesHook} />
+          </div>
+        );
 
       default:
         return null;
     }
   };
 
-  return (
-    <div className="container mx-auto p-6 max-w-7xl">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-2">
-          Renovaciones
-        </h1>
-        <p className="text-gray-600 dark:text-gray-400">
-          Gestiona la renovación de pólizas de seguros con procesamiento automático
-        </p>
-      </div>
+  const renderNavigation = () => {
+    return (
+      <Card className="mt-6">
+        <CardContent className="pt-6">
+          <div className="flex justify-between items-center">
+            <div className="flex gap-2">
+              <Button 
+                variant="outline" 
+                onClick={prevStep}
+                disabled={state.currentStep === 1 || state.isLoading}
+              >
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Anterior
+              </Button>
+            </div>
 
-      {/* Progress Steps */}
-      <div className="mb-8">
-        <div className="flex items-center justify-center space-x-8">
-          {[
-            { number: 1, label: 'Buscar Cliente', icon: Search },
-            { number: 2, label: 'Subir Documento', icon: Upload },
-            { number: 3, label: 'Validar Datos', icon: FileText },
-            { number: 4, label: 'Confirmar', icon: Send },
-          ].map(({ number, label, icon: Icon }) => {
-            const isCompleted = state.currentStep > number;
-            const isCurrent = state.currentStep === number;
-            
-            return (
-              <div key={number} className="flex items-center">
-                <div className="flex flex-col items-center">
-                  {getStepIcon(number, isCompleted, isCurrent)}
-                  <span className={`mt-2 text-sm font-medium ${
-                    isCurrent ? 'text-blue-600' : 
-                    isCompleted ? 'text-green-600' : 'text-gray-400'
-                  }`}>
-                    {label}
+            <div className="flex items-center gap-4">
+              {state.isLoading && (
+                <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                  <span className="text-sm">
+                    {state.scan.status === 'scanning' && 'Escaneando...'}
+                    {state.scan.status === 'uploading' && 'Subiendo archivo...'}
                   </span>
                 </div>
-                
-                {number < 4 && (
-                  <div className={`w-16 h-px mx-4 ${
-                    state.currentStep > number ? 'bg-green-500' : 'bg-gray-300'
-                  }`} />
-                )}
-              </div>
-            );
-          })}
-        </div>
-      </div>
+              )}
+              
+              <Button 
+                onClick={nextStep}
+                disabled={
+                  state.isLoading ||
+                  (state.currentStep === 1 && !canProceedToStep2) ||
+                  (state.currentStep === 2 && !canProceedToStep3) ||
+                  (state.currentStep === 3 && !canProceedToStep4)
+                }
+                className="min-w-[100px]"
+              >
+                Siguiente
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+          
+          {state.currentStep === 1 && !canProceedToStep2 && (
+            <Alert className="mt-4">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertDescription>
+                Selecciona un cliente y una póliza para renovar.
+              </AlertDescription>
+            </Alert>
+          )}
 
-      {/* Current Step Content */}
-      <div className="mb-8">
+          {state.currentStep === 2 && !canProceedToStep3 && (
+            <Alert className="mt-4">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertDescription>
+                Sube y procesa un documento para continuar al siguiente paso.
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {state.currentStep === 3 && !canProceedToStep4 && (
+            <Alert className="mt-4">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertDescription>
+                Completa la información requerida para proceder con la renovación.
+              </AlertDescription>
+            </Alert>
+          )}
+        </CardContent>
+      </Card>
+    );
+  };
+
+  const renderErrorState = () => {
+    if (state.scan.status === 'error') {
+      return (
+        <Alert variant="destructive" className="mb-6">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription>
+            <div className="flex justify-between items-center">
+              <span>
+                Error procesando documento: {state.scan.errorMessage || 'Error desconocido'}
+              </span>
+              <Button 
+                size="sm" 
+                variant="outline"
+                onClick={reset}
+              >
+                <RotateCcw className="h-4 w-4 mr-1" />
+                Reiniciar
+              </Button>
+            </div>
+          </AlertDescription>
+        </Alert>
+      );
+    }
+    return null;
+  };
+
+  return (
+    <div className="px-4 lg:px-6 xl:px-8 py-6 space-y-6 w-full">
+      {/* Header - Solo mostrar si no estamos en estado de éxito y no es paso 3 */}
+      {state.currentStep !== 3 && (
+        <div className="text-center mb-8 max-w-4xl mx-auto">
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-2">
+            Renovaciones
+          </h1>
+          <p className="text-gray-600 dark:text-gray-400">
+            Gestiona la renovación de pólizas de seguros con procesamiento automático
+          </p>
+        </div>
+      )}
+
+      {/* Step Indicator - Mostrar siempre excepto que tengamos error */}
+      {state.scan.status !== 'error' && (
+        <div className="max-w-4xl mx-auto">
+          {renderStepIndicator()}
+        </div>
+      )}
+      
+      {/* Error State - Solo mostrar si no es paso 3 */}
+      {state.currentStep !== 3 && (
+        <div className="max-w-4xl mx-auto">
+          {renderErrorState()}
+        </div>
+      )}
+      
+      {/* Content Area - Usar ancho completo solo en paso 3 */}
+      <div className={state.currentStep === 3 ? "min-h-[600px] w-full" : "max-w-4xl mx-auto min-h-[600px]"}>
         {renderCurrentStep()}
       </div>
 
-      {/* Navigation Buttons */}
-      <div className="flex justify-between">
-        <div>
-          {state.currentStep > 1 && (
-            <Button 
-              variant="outline" 
-              onClick={prevStep}
-              className="flex items-center gap-2"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              Anterior
-            </Button>
-          )}
+      {/* Navigation - Mostrar siempre excepto cuando la renovación esté completada */}
+      {!(state.currentStep === 4 && state.processCompleted) && (
+        <div className="max-w-4xl mx-auto">
+          {renderNavigation()}
         </div>
-
-        <div className="flex gap-3">
-          <Button
-            variant="outline"
-            onClick={reset}
-            className="flex items-center gap-2"
-          >
-            <RotateCcw className="h-4 w-4" />
-            Reiniciar
-          </Button>
-
-          {state.currentStep < 4 && (
-            <Button
-              onClick={nextStep}
-              disabled={
-                (state.currentStep === 1 && !canProceedToStep2) ||
-                (state.currentStep === 2 && !canProceedToStep3) ||
-                (state.currentStep === 3 && !canProceedToStep4)
-              }
-              className="flex items-center gap-2"
-            >
-              Siguiente
-              <ArrowRight className="h-4 w-4" />
-            </Button>
-          )}
-        </div>
-      </div>
+      )}
 
       {/* Debug Info - Solo en desarrollo */}
       {process.env.NODE_ENV === 'development' && (
-        <div className="mt-8 p-4 bg-gray-100 dark:bg-gray-800 rounded-lg text-xs">
+        <div className="mt-8 p-4 bg-gray-100 dark:bg-gray-800 rounded-lg text-xs max-w-4xl mx-auto">
           <details>
             <summary className="cursor-pointer font-medium mb-2">Debug State Renovaciones</summary>
             <pre className="whitespace-pre-wrap">

@@ -1,34 +1,52 @@
-// src/app/renovaciones/step-3-validation/document-uploader.tsx
 import React, { useCallback, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Progress } from '@/components/ui/progress';
 import { 
   Upload, 
   FileText, 
   AlertTriangle, 
   CheckCircle,
   X,
-  Loader2
+  Loader2,
+  RefreshCw,
+  Trash2,
+  XCircle
 } from 'lucide-react';
 
-interface DocumentUploaderProps {
+interface DocumentUploader {
   onUpload: (file: File) => Promise<boolean>;
+  onFileRemove?: () => void;
   isUploading: boolean;
-  uploadStatus: 'idle' | 'uploading' | 'completed' | 'error';
+  uploadStatus: 'idle' | 'uploading' | 'scanning' | 'completed' | 'error';
   fileName?: string;
   accept?: string;
   maxSize?: number; // en MB
+  errorMessage?: string;
+  progress?: number;
+  scanResult?: {
+    completionPercentage: number;
+    extractedData: any;
+    requiresAttention: any[];
+    errorMessage?: string;
+  };
+  acceptedFile?: File | null;
 }
 
 export function DocumentUploader({ 
   onUpload, 
+  onFileRemove,
   isUploading,
   uploadStatus,
   fileName,
   accept = ".pdf,.jpg,.jpeg,.png",
-  maxSize = 10 
-}: DocumentUploaderProps) {
+  maxSize = 10,
+  errorMessage,
+  progress = 0,
+  scanResult,
+  acceptedFile
+}: DocumentUploader) {
   const [dragActive, setDragActive] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -40,7 +58,7 @@ export function DocumentUploader({
     }
 
     // Validar tipo
-    const allowedTypes = accept.split(',').map(type => type.trim());
+    const allowedTypes = accept.split(',').map((type: string) => type.trim());
     const fileExtension = '.' + file.name.split('.').pop()?.toLowerCase();
     
     if (!allowedTypes.includes(fileExtension)) {
@@ -67,19 +85,19 @@ export function DocumentUploader({
 
     try {
       setError(null);
-      console.log('🔄 Iniciando upload para renovación:', selectedFile.name);
+      console.log('📄 Iniciando upload para renovación:', selectedFile.name);
       
       const success = await onUpload(selectedFile);
       
       if (success) {
-        console.log('✅ Upload exitoso');
+        console.log('✅ Upload exitoso para renovación');
         setSelectedFile(null);
       } else {
-        console.log('❌ Upload falló');
+        console.log('❌ Upload falló para renovación');
         setError('Error al procesar el documento. Intenta nuevamente.');
       }
     } catch (error: any) {
-      console.error('❌ Error uploading file:', error);
+      console.error('❌ Error uploading file for renovacion:', error);
       setError(error.message || 'Error al subir el archivo. Intenta nuevamente.');
     }
   };
@@ -123,35 +141,169 @@ export function DocumentUploader({
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
-  // Si el upload está completado, mostrar estado de éxito
-  if (uploadStatus === 'completed') {
+  // 🔥 NUEVO: Estado de éxito - Igual que Nueva Póliza
+  if (uploadStatus === 'completed' && scanResult && acceptedFile) {
+    const confidence = scanResult.completionPercentage;
+    
     return (
-      <Card className="border-green-500 bg-green-50 dark:bg-green-900/20">
-        <CardContent className="pt-6">
-          <div className="text-center space-y-4">
-            <div className="flex items-center justify-center space-x-2 text-green-600">
-              <CheckCircle className="h-8 w-8" />
-              <span className="font-semibold text-lg">Documento Procesado Exitosamente</span>
+      <Card className="border-green-300 dark:border-green-600 bg-green-50 dark:bg-green-900/20">
+        <CardHeader className="pb-4">
+          <CardTitle className="flex items-center gap-2 text-green-700 dark:text-green-300">
+            <CheckCircle className="h-5 w-5" />
+            Documento Procesado Exitosamente
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3 min-w-0 flex-1">
+              <FileText className="h-5 w-5 text-green-600 dark:text-green-400 flex-shrink-0" />
+              <div className="min-w-0 flex-1">
+                <p className="font-medium text-green-800 dark:text-green-200 truncate" title={acceptedFile.name}>
+                  {acceptedFile.name}
+                </p>
+                <p className="text-sm text-green-600 dark:text-green-300">
+                  {formatFileSize(acceptedFile.size)} • {confidence}% confianza
+                </p>
+              </div>
             </div>
             
-            {fileName && (
-              <p className="text-sm text-green-800 dark:text-green-200">
-                Archivo: {fileName}
-              </p>
-            )}
-            
-            <Alert className="border-green-500 bg-green-100 dark:bg-green-900/40">
-              <CheckCircle className="h-4 w-4 text-green-600" />
-              <AlertDescription className="text-green-800 dark:text-green-200">
-                Los datos han sido extraídos automáticamente. Revisa la información extraída abajo y procede al siguiente paso.
+            <div className="flex gap-2 ml-3">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => acceptedFile && onUpload(acceptedFile)}
+                className="text-green-700 dark:text-green-300 border-green-300 dark:border-green-600 hover:bg-green-100 dark:hover:bg-green-800"
+              >
+                <RefreshCw className="h-4 w-4 mr-1" />
+                Reescanear
+              </Button>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={onFileRemove}
+                className="text-green-700 dark:text-green-300 border-green-300 dark:border-green-600 hover:bg-green-100 dark:hover:bg-green-800"
+              >
+                <Trash2 className="h-4 w-4 mr-1" />
+                Remover
+              </Button>
+            </div>
+          </div>
+
+          {scanResult.requiresAttention && scanResult.requiresAttention.length > 0 && (
+            <Alert className="border-yellow-300 bg-yellow-50 dark:bg-yellow-900/20">
+              <AlertTriangle className="h-4 w-4 text-yellow-600" />
+              <AlertDescription className="text-yellow-800 dark:text-yellow-200">
+                {scanResult.requiresAttention.length} campo(s) requieren atención manual
               </AlertDescription>
             </Alert>
+          )}
+
+          <Alert className="border-green-500 bg-green-100 dark:bg-green-900/40">
+            <CheckCircle className="h-4 w-4 text-green-600" />
+            <AlertDescription className="text-green-800 dark:text-green-200">
+              Los datos han sido extraídos automáticamente del documento de renovación. 
+              Revisa la información extraída en el siguiente paso.
+            </AlertDescription>
+          </Alert>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // 🔥 NUEVO: Estado de error - Igual que Nueva Póliza
+  if (uploadStatus === 'error' || error) {
+    return (
+      <Card className="border-red-300 dark:border-red-600 bg-red-50 dark:bg-red-900/20">
+        <CardHeader className="pb-4">
+          <CardTitle className="flex items-center gap-2 text-red-700 dark:text-red-300">
+            <XCircle className="h-5 w-5" />
+            Error Procesando Documento
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <Alert variant="destructive" className="border-red-300 bg-red-100 dark:bg-red-900/40">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription>
+              {error || errorMessage || scanResult?.errorMessage || 'Hubo un problema procesando el documento'}
+            </AlertDescription>
+          </Alert>
+          
+          <div className="flex gap-2">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={onFileRemove || clearSelection}
+              className="text-red-700 dark:text-red-300 border-red-300 dark:border-red-600 hover:bg-red-100 dark:hover:bg-red-800"
+            >
+              <Trash2 className="h-4 w-4 mr-1" />
+              Remover
+            </Button>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => {
+                if (acceptedFile) {
+                  onUpload(acceptedFile);
+                } else if (selectedFile) {
+                  handleUpload();
+                } else {
+                  document.getElementById('file-input-renovacion')?.click();
+                }
+              }}
+              className="text-red-700 dark:text-red-300 border-red-300 dark:border-red-600 hover:bg-red-100 dark:hover:bg-red-800"
+            >
+              <RefreshCw className="h-4 w-4 mr-1" />
+              Reintentar
+            </Button>
           </div>
         </CardContent>
       </Card>
     );
   }
 
+  // Estado de carga - Mejorado
+  if (isUploading || uploadStatus === 'uploading' || uploadStatus === 'scanning') {
+    return (
+      <Card className="border-blue-300 dark:border-blue-600 bg-blue-50 dark:bg-blue-900/20">
+        <CardHeader className="pb-4">
+          <CardTitle className="flex items-center gap-2 text-blue-700 dark:text-blue-300">
+            <Loader2 className="h-5 w-5 animate-spin" />
+            {uploadStatus === 'uploading' ? 'Subiendo Documento...' : 'Procesando con IA...'}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {(selectedFile || acceptedFile) && (
+            <div className="flex items-center gap-3 mb-4">
+              <FileText className="h-5 w-5 text-blue-600 dark:text-blue-400 flex-shrink-0" />
+              <div className="min-w-0 flex-1">
+                <p className="font-medium text-blue-800 dark:text-blue-200 truncate">
+                  {(selectedFile || acceptedFile)?.name}
+                </p>
+                <p className="text-sm text-blue-600 dark:text-blue-300">
+                  {formatFileSize((selectedFile || acceptedFile)?.size || 0)}
+                </p>
+              </div>
+            </div>
+          )}
+          
+          <div className="space-y-3">
+            <Progress 
+              value={uploadStatus === 'uploading' ? progress : 75} 
+              className="h-2"
+            />
+            <p className="text-sm text-blue-600 dark:text-blue-300 text-center">
+              {uploadStatus === 'uploading' 
+                ? `${progress}% - Subiendo archivo al servidor...`
+                : 'Extrayendo información del documento con IA...'
+              }
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // Estado inicial - Sin cambios importantes
   return (
     <Card>
       <CardHeader>
@@ -161,17 +313,18 @@ export function DocumentUploader({
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
+        
         {/* Área de drop */}
         <div
           className={`
-            border-2 border-dashed rounded-lg p-8 text-center transition-colors
+            border-2 border-dashed rounded-lg p-8 text-center transition-all duration-300
             ${dragActive 
-              ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' 
+              ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 scale-105' 
               : error 
                 ? 'border-red-300 bg-red-50 dark:bg-red-900/20'
-                : 'border-gray-300 hover:border-gray-400 dark:border-gray-600'
+                : 'border-gray-300 hover:border-gray-400 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800/50'
             }
-            ${isUploading ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+            ${isUploading ? 'pointer-events-none opacity-75' : 'cursor-pointer'}
           `}
           onDragEnter={handleDrag}
           onDragLeave={handleDrag}
@@ -188,32 +341,25 @@ export function DocumentUploader({
             disabled={isUploading}
           />
 
-          {isUploading ? (
-            <div className="space-y-3">
-              <Loader2 className="h-12 w-12 mx-auto text-blue-500 animate-spin" />
+          <div className="space-y-4">
+            <Upload className={`h-12 w-12 mx-auto transition-colors ${
+              dragActive ? 'text-blue-500' : 'text-gray-400'
+            }`} />
+            <div>
               <p className="text-lg font-medium text-gray-700 dark:text-gray-300">
-                {uploadStatus === 'uploading' ? 'Subiendo archivo...' : 'Procesando documento...'}
+                {dragActive 
+                  ? '¡Suelta el archivo aquí!' 
+                  : 'Arrastra tu archivo aquí o haz clic para seleccionar'
+                }
               </p>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                Por favor espera mientras extraemos la información del documento
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                Formatos soportados: PDF, JPG, PNG (máximo {maxSize}MB)
               </p>
             </div>
-          ) : (
-            <div className="space-y-3">
-              <Upload className="h-12 w-12 mx-auto text-gray-400" />
-              <div>
-                <p className="text-lg font-medium text-gray-700 dark:text-gray-300">
-                  Arrastra tu archivo aquí o haz clic para seleccionar
-                </p>
-                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                  Formatos soportados: PDF, JPG, PNG (máximo {maxSize}MB)
-                </p>
-              </div>
-            </div>
-          )}
+          </div>
         </div>
 
-        {/* Error */}
+        {/* Error de validación */}
         {error && (
           <Alert variant="destructive">
             <AlertTriangle className="h-4 w-4" />
@@ -223,7 +369,7 @@ export function DocumentUploader({
 
         {/* Archivo seleccionado */}
         {selectedFile && !isUploading && (
-          <Card>
+          <Card className="border-blue-200 dark:border-blue-800">
             <CardContent className="pt-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
@@ -251,6 +397,7 @@ export function DocumentUploader({
                     onClick={handleUpload}
                     disabled={isUploading}
                     size="sm"
+                    className="bg-blue-600 hover:bg-blue-700"
                   >
                     <Upload className="h-4 w-4 mr-1" />
                     Subir y Procesar
@@ -260,26 +407,6 @@ export function DocumentUploader({
             </CardContent>
           </Card>
         )}
-
-        {/* Información adicional */}
-        <Alert>
-          <CheckCircle className="h-4 w-4" />
-          <AlertDescription>
-            El sistema extraerá automáticamente la información de la nueva póliza y la comparará 
-            con los datos de la póliza anterior para facilitar el proceso de renovación.
-          </AlertDescription>
-        </Alert>
-
-        {/* Tips */}
-        <div className="text-xs text-gray-500 dark:text-gray-400 space-y-1">
-          <p><strong>Tips para mejores resultados:</strong></p>
-          <ul className="list-disc list-inside space-y-1 ml-2">
-            <li>Usa documentos con buena calidad de imagen</li>
-            <li>Asegúrate de que el texto sea legible</li>
-            <li>Los PDFs nativos dan mejores resultados que escaneos</li>
-            <li>Evita documentos con marcas de agua excesivas</li>
-          </ul>
-        </div>
       </CardContent>
     </Card>
   );

@@ -1,10 +1,8 @@
 "use client";
 
 import React from 'react';
-import { CreatePolizaHandler } from '@/components/poliza/create-poliza-handler';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { 
   CheckCircle, 
