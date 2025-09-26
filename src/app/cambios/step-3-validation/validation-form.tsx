@@ -72,10 +72,10 @@ export function ValidationForm({ hookInstance }: ValidationFormProps) {
               </div>
             )}
 
-            {/* Contexto del cambio - Compacto */}
-            <div className="grid grid-cols-3 gap-2 p-3 bg-gradient-to-r from-purple-50 to-violet-50 dark:from-purple-900/20 dark:to-violet-900/20 rounded-lg border border-purple-200 dark:border-purple-700">
+            {/* 🔥 CAMBIO: Usar colores azules como Nueva Póliza en lugar de violeta */}
+            <div className="grid grid-cols-3 gap-2 p-3 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-lg border border-blue-200 dark:border-blue-700">
               <div className="flex items-center gap-1">
-                <User className="h-3 w-3 text-purple-600 dark:text-purple-400" />
+                <User className="h-3 w-3 text-blue-600 dark:text-blue-400" />
                 <div>
                   <span className="text-xs font-medium text-gray-600 dark:text-gray-400">Cliente</span>
                   <p className="text-xs font-semibold text-gray-900 dark:text-gray-100 truncate">
@@ -84,7 +84,7 @@ export function ValidationForm({ hookInstance }: ValidationFormProps) {
                 </div>
               </div>
               <div className="flex items-center gap-1">
-                <Building2 className="h-3 w-3 text-purple-600 dark:text-purple-400" />
+                <Building2 className="h-3 w-3 text-blue-600 dark:text-blue-400" />
                 <div>
                   <span className="text-xs font-medium text-gray-600 dark:text-gray-400">Compañía</span>
                   <p className="text-xs font-semibold text-gray-900 dark:text-gray-100 truncate">
@@ -93,7 +93,7 @@ export function ValidationForm({ hookInstance }: ValidationFormProps) {
                 </div>
               </div>
               <div className="flex items-center gap-1">
-                <Edit className="h-3 w-3 text-purple-600 dark:text-purple-400" />
+                <Edit className="h-3 w-3 text-blue-600 dark:text-blue-400" />
                 <div>
                   <span className="text-xs font-medium text-gray-600 dark:text-gray-400">Modificando</span>
                   <p className="text-xs font-semibold text-gray-900 dark:text-gray-100 truncate">
@@ -106,12 +106,12 @@ export function ValidationForm({ hookInstance }: ValidationFormProps) {
             <Card className="shadow-lg">
               <CardContent className={`space-y-6 ${isViewerOpen ? 'p-4' : 'p-8'}`}>
                 
-                {/* 1. Datos del Documento */}
+                {/* 1. Datos del Documento - 🔥 CAMBIO: Usar azul en lugar de violeta */}
                 <div className="space-y-4">
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-2">
-                      <div className={`p-1.5 bg-purple-100 dark:bg-purple-800 rounded-lg ${isViewerOpen ? 'p-1' : 'p-2'}`}>
-                        <FileText className={`text-purple-600 dark:text-purple-400 ${isViewerOpen ? 'h-4 w-4' : 'h-5 w-5'}`} />
+                      <div className={`p-1.5 bg-blue-100 dark:bg-blue-800 rounded-lg ${isViewerOpen ? 'p-1' : 'p-2'}`}>
+                        <FileText className={`text-blue-600 dark:text-blue-400 ${isViewerOpen ? 'h-4 w-4' : 'h-5 w-5'}`} />
                       </div>
                       <div>
                         <h3 className={`font-semibold text-gray-900 dark:text-gray-100 ${isViewerOpen ? 'text-base' : 'text-lg'}`}>
@@ -123,7 +123,7 @@ export function ValidationForm({ hookInstance }: ValidationFormProps) {
                       </div>
                     </div>
                     
-                    {/* Botón Ver PDF */}
+                    {/* Botón Ver PDF - 🔥 CAMBIO: Usar azul en lugar de violeta */}
                     {(state.file?.selected || state.scan?.file) ? (
                       <Button
                         variant={isViewerOpen ? "secondary" : "default"}
@@ -132,7 +132,7 @@ export function ValidationForm({ hookInstance }: ValidationFormProps) {
                         className={`flex items-center gap-2 shrink-0 ${
                           isViewerOpen 
                             ? 'bg-gray-200 hover:bg-gray-300 text-gray-700' 
-                            : 'bg-purple-600 hover:bg-purple-700 text-white'
+                            : 'bg-blue-600 hover:bg-blue-700 text-white'
                         }`}
                       >
                         <Eye className="h-4 w-4" />
@@ -154,11 +154,11 @@ export function ValidationForm({ hookInstance }: ValidationFormProps) {
 
                 <Separator className="my-4" />
 
-                {/* 2. Datos Maestros */}
+                {/* 2. Datos Maestros - 🔥 CAMBIO: Usar verde en lugar de indigo */}
                 <div className="space-y-4">
                   <div className="flex items-center gap-2 mb-3">
-                    <div className={`p-1.5 bg-indigo-100 dark:bg-indigo-800 rounded-lg ${isViewerOpen ? 'p-1' : 'p-2'}`}>
-                      <Settings className={`text-indigo-600 dark:text-indigo-400 ${isViewerOpen ? 'h-4 w-4' : 'h-5 w-5'}`} />
+                    <div className={`p-1.5 bg-green-100 dark:bg-green-800 rounded-lg ${isViewerOpen ? 'p-1' : 'p-2'}`}>
+                      <Settings className={`text-green-600 dark:text-green-400 ${isViewerOpen ? 'h-4 w-4' : 'h-5 w-5'}`} />
                     </div>
                     <div>
                       <h3 className={`font-semibold text-gray-900 dark:text-gray-100 ${isViewerOpen ? 'text-base' : 'text-lg'}`}>

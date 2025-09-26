@@ -1,5 +1,6 @@
 // src/app/cambios/step-3-validation/extracted-data-form.tsx
 // ✅ ADAPTADO DE RENOVACIONES: Usar la misma lógica de extracción de datos
+// ✅ CORREGIDO: Eliminar prefijos duplicados en campos del vehículo
 
 import React, { useEffect, useState } from 'react';
 import { Input } from '@/components/ui/input';
@@ -117,6 +118,31 @@ export function ExtractedDataForm({ hookInstance }: ExtractedDataFormProps) {
     
     console.log('❌ CAMBIOS - No se encontró valor de cuota');
     return "";
+  };
+
+  // ✅ FUNCIÓN NUEVA: Limpiar prefijos duplicados en campos del vehículo
+  const cleanVehicleField = (value: string | any, fieldType: 'marca' | 'modelo' | 'other' = 'other') => {
+    if (!value) return '';
+    
+    const stringValue = typeof value === 'string' ? value : value.toString();
+    
+    // Si es marca, remover prefijos "MARCA" duplicados
+    if (fieldType === 'marca') {
+      return stringValue
+        .replace(/^MARCA\s*/i, '') // Remover "MARCA" al inicio
+        .replace(/^Marca\s*/i, '') // Remover "Marca" al inicio
+        .trim();
+    }
+    
+    // Si es modelo, remover prefijos "MODELO" duplicados
+    if (fieldType === 'modelo') {
+      return stringValue
+        .replace(/^MODELO\s*/i, '') // Remover "MODELO" al inicio
+        .replace(/^Modelo\s*/i, '') // Remover "Modelo" al inicio  
+        .trim();
+    }
+    
+    return stringValue.trim();
   };
 
   if (!isInitialized) {
@@ -274,7 +300,7 @@ export function ExtractedDataForm({ hookInstance }: ExtractedDataFormProps) {
         </div>
       </div>
 
-      {/* Datos del vehículo (si aplica para el cambio) */}
+      {/* ✅ DATOS DEL VEHÍCULO CORREGIDOS - Eliminar prefijos duplicados */}
       <div className="space-y-4">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
           Información del Vehículo (si modificada)
@@ -287,7 +313,7 @@ export function ExtractedDataForm({ hookInstance }: ExtractedDataFormProps) {
               {getFieldStatus('vehiculoMarca') === 'success' && <CheckCircle className="h-4 w-4 text-green-500" />}
             </Label>
             <Input
-              value={editedData.vehiculoMarca || editedData.VehiculoMarca || ''}
+              value={cleanVehicleField(editedData.vehiculoMarca || editedData.VehiculoMarca || '', 'marca')}
               onChange={(e) => handleFieldChange('vehiculoMarca', e.target.value)}
               placeholder="Marca del vehículo"
             />
@@ -299,7 +325,7 @@ export function ExtractedDataForm({ hookInstance }: ExtractedDataFormProps) {
               {getFieldStatus('vehiculoModelo') === 'success' && <CheckCircle className="h-4 w-4 text-green-500" />}
             </Label>
             <Input
-              value={editedData.vehiculoModelo || editedData.VehiculoModelo || ''}
+              value={cleanVehicleField(editedData.vehiculoModelo || editedData.VehiculoModelo || '', 'modelo')}
               onChange={(e) => handleFieldChange('vehiculoModelo', e.target.value)}
               placeholder="Modelo del vehículo"
             />
@@ -370,6 +396,8 @@ export function ExtractedDataForm({ hookInstance }: ExtractedDataFormProps) {
               editedData,
               valorPorCuotaExtraido: extractValorPorCuota(editedData),
               dataSourceKeys: Object.keys(dataSource || {}),
+              marcaLimpia: cleanVehicleField(editedData.vehiculoMarca || editedData.VehiculoMarca || '', 'marca'),
+              modeloLimpio: cleanVehicleField(editedData.vehiculoModelo || editedData.VehiculoModelo || '', 'modelo'),
               cuotaFields: [
                 "pago.cuota_monto[1]",
                 "pago.cuotas[0].prima", 

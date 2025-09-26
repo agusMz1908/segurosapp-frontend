@@ -18,9 +18,21 @@ interface ContextFormProps {
   hookInstance: any;
 }
 
+// Configuración simple de filtros - fácil de modificar
+const COMPANIAS_HABILITADAS = [
+  'BANCO DE SEGUROS',
+  'MAPFRE', 
+  'SURA SEGUROS',
+  'PORTO SEGUROS'
+];
+
+const SECCIONES_HABILITADAS = [
+  'AUTOMOVILES'
+];
+
 export function ContextForm({ hookInstance }: ContextFormProps) {
-  console.log('🔍 DEBUG - Context State:', hookInstance.state.context);
-  console.log('🔍 DEBUG - isContextValid:', hookInstance.isContextValid());
+  console.log('DEBUG - Context State:', hookInstance.state.context);
+  console.log('DEBUG - isContextValid:', hookInstance.isContextValid());
   const { state, updateContext, isContextValid, uploadWithContext, removeSelectedFile } = hookInstance;
   const { 
     getCompanias, 
@@ -35,33 +47,83 @@ export function ContextForm({ hookInstance }: ContextFormProps) {
   const [seccionesFiltradas, setSeccionesFiltradas] = useState<Seccion[]>([]);
   const [clienteSeleccionado, setClienteSeleccionado] = useState<Cliente | undefined>();
 
+  // Función para filtrar compañías
+  const filtrarCompanias = (companias: Compania[]): Compania[] => {
+    return companias.filter(compania => 
+      COMPANIAS_HABILITADAS.some(nombreHabilitado => 
+        compania.nombre.toUpperCase().includes(nombreHabilitado.toUpperCase()) ||
+        compania.codigo?.toUpperCase() === nombreHabilitado.toUpperCase()
+      )
+    );
+  };
+
+  // Función para filtrar secciones
+  const filtrarSecciones = (secciones: Seccion[]): Seccion[] => {
+    console.log('🔍 DEBUG - Filtrando secciones:', {
+      seccionesOriginales: secciones.map(s => ({ id: s.id, nombre: s.nombre, codigo: s.codigo })),
+      seccionesHabilitadas: SECCIONES_HABILITADAS
+    });
+    
+    const filtradas = secciones.filter(seccion => {
+      const coincide = SECCIONES_HABILITADAS.some(nombreHabilitado => {
+        const nombreCoincide = seccion.nombre.toUpperCase().includes(nombreHabilitado.toUpperCase());
+        const codigoCoincide = seccion.codigo?.toUpperCase() === nombreHabilitado.toUpperCase();
+        
+        console.log(`🔍 Comparando "${seccion.nombre}" con "${nombreHabilitado}":`, {
+          nombreCoincide,
+          codigoCoincide,
+          resultado: nombreCoincide || codigoCoincide
+        });
+        
+        return nombreCoincide || codigoCoincide;
+      });
+      
+      return coincide;
+    });
+    
+    console.log('✅ Secciones filtradas:', filtradas.map(s => s.nombre));
+    return filtradas;
+  };
+
   // Cargar datos maestros al montar
   useEffect(() => {
     const loadMasterData = async () => {
       try {
-        console.log('🔄 Cargando datos maestros en ContextForm...');
+        console.log('Cargando datos maestros en ContextForm...');
         
         const [companiasData, seccionesData] = await Promise.all([
           getCompanias(),
           getSecciones()
         ]);
         
-        setCompanias(companiasData);
-        setSecciones(seccionesData);
+        // Aplicar filtros
+        const companiasFiltradas = filtrarCompanias(companiasData);
+        const seccionesFiltradas = filtrarSecciones(seccionesData);
         
-        console.log('✅ Datos maestros cargados:', {
-          companias: companiasData.length,
-          secciones: seccionesData.length
+        setCompanias(companiasFiltradas);
+        setSecciones(seccionesFiltradas);
+        
+        console.log('Datos maestros cargados y filtrados:', {
+          companiasTotal: companiasData.length,
+          companiasFiltradas: companiasFiltradas.length,
+          seccionesTotal: seccionesData.length,
+          seccionesFiltradas: seccionesFiltradas.length
         });
+
+        console.log('Compañías disponibles:', companiasFiltradas.map(c => c.nombre));
+        console.log('Secciones disponibles:', seccionesFiltradas.map(s => s.nombre));
+        
       } catch (error) {
-        console.error('❌ Error loading master data:', error);
+        console.error('Error loading master data:', error);
       }
     };
 
     loadMasterData();
   }, [getCompanias, getSecciones]);
 
+  // Actualizar secciones filtradas cuando cambie la compañía
   useEffect(() => {
+    // CAMBIO: No filtrar por compañía, mostrar todas las secciones habilitadas
     setSeccionesFiltradas(secciones);
   }, [secciones]);
 
@@ -97,7 +159,10 @@ export function ContextForm({ hookInstance }: ContextFormProps) {
         codigo: compania.codigo,
         activa: compania.activa,
         displayName: compania.displayName
-      } : undefined
+      } : undefined,
+      // Limpiar sección cuando cambia compañía
+      seccionId: undefined,
+      seccionInfo: undefined
     });
 
     console.log('Compañía seleccionada:', compania);
@@ -144,22 +209,24 @@ export function ContextForm({ hookInstance }: ContextFormProps) {
             Todos los campos son obligatorios antes de poder cargar el documento PDF
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="grid md:grid-cols-3 gap-6">
-            {/* Selector de Cliente - NUEVO COMPONENTE */}
-            <div className="space-y-2">
+        <CardContent className="space-y-8 p-8">
+          <div className="space-y-8 lg:space-y-0 lg:grid lg:grid-cols-3 lg:gap-8">
+            {/* Selector de Cliente */}
+            <div className="space-y-3">
               <label className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-200">
                 <User className="h-4 w-4" />
                 Cliente
                 {state.context.clienteId && <CheckCircle className="h-4 w-4 text-green-500" />}
               </label>
               
-              <ClienteSearchCombobox
-                value={state.context.clienteId}
-                onValueChange={handleClienteChange}
-                placeholder="Buscar cliente por nombre o documento..."
-                className="w-full"
-              />
+              <div className="w-full max-w-full">
+                <ClienteSearchCombobox
+                  value={state.context.clienteId}
+                  onValueChange={handleClienteChange}
+                  placeholder="Buscar cliente..."
+                  className="w-full max-w-full"
+                />
+              </div>
               
               <p className="text-xs text-gray-500 dark:text-gray-400">
                 Busca por nombre, documento o email del cliente
@@ -167,71 +234,103 @@ export function ContextForm({ hookInstance }: ContextFormProps) {
             </div>
 
             {/* Selector de Compañía */}
-            <div className="space-y-2">
+            <div className="space-y-3">
               <label className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-200">
                 <Building2 className="h-4 w-4" />
                 Compañía
                 {state.context.companiaId && <CheckCircle className="h-4 w-4 text-green-500" />}
               </label>
+              
               <select
-                className={`w-full p-2 border rounded-md text-gray-900 dark:text-gray-100 ${
-                  state.context.companiaId 
-                    ? 'border-green-500 dark:border-green-400' 
-                    : 'border-gray-300 dark:border-gray-600'
-                }`}
+                className="w-full p-3 border rounded-md text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 value={state.context.companiaId || ''}
-                onChange={(e) => handleCompaniaSelect(parseInt(e.target.value))}
+                onChange={(e) => handleCompaniaSelect(Number(e.target.value))}
                 disabled={masterDataLoading}
               >
-                <option value="" className="bg-black text-gray-500 dark:text-gray-400">
-                  Seleccionar compañía...
-                </option>
-                {companias.map((compania) => (
-                  <option key={compania.id} value={compania.id} className="bg-black text-gray-900 dark:text-gray-100">
-                    {compania.displayName || compania.nombre}
+                <option value="">Seleccionar compañía...</option>
+                {companias.map(compania => (
+                  <option key={compania.id} value={compania.id}>
+                    {compania.nombre}
                   </option>
                 ))}
               </select>
               
-              {masterDataLoading && (
-                <p className="text-xs text-gray-500 dark:text-gray-400">Cargando compañías...</p>
-              )}
+              <div className="text-xs text-gray-500 dark:text-gray-400">
+                <p>Selecciona la compañía de seguros</p>
+                {companias.length > 0 && (
+                  <span className="text-blue-600 dark:text-blue-400">
+                    {companias.length} compañías disponibles
+                  </span>
+                )}
+              </div>
             </div>
 
             {/* Selector de Sección */}
-            <div className="space-y-2">
+            <div className="space-y-3">
               <label className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-200">
                 <FileText className="h-4 w-4" />
                 Sección
                 {state.context.seccionId && <CheckCircle className="h-4 w-4 text-green-500" />}
               </label>
+              
               <select
-                className={`w-full p-2 border rounded-md text-gray-900 dark:text-gray-100 ${
-                  state.context.seccionId 
-                    ? 'border-green-500 dark:border-green-400' 
-                    : 'border-gray-300 dark:border-gray-600'
-                }`}
+                className="w-full p-3 border rounded-md text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 value={state.context.seccionId || ''}
-                onChange={(e) => handleSeccionSelect(parseInt(e.target.value))}
-                disabled={masterDataLoading}
+                onChange={(e) => handleSeccionSelect(Number(e.target.value))}
+                disabled={masterDataLoading || !state.context.companiaId}
               >
-                <option value="" className="bg-black text-gray-500 dark:text-gray-400">
-                  Seleccionar sección...
-                </option>
-                {seccionesFiltradas.map((seccion) => (
-                  <option key={seccion.id} value={seccion.id} className="bg-black text-gray-900 dark:text-gray-100">
-                    {seccion.displayName || seccion.nombre}
+                <option value="">Seleccionar sección...</option>
+                {seccionesFiltradas.map(seccion => (
+                  <option key={seccion.id} value={seccion.id}>
+                    {seccion.nombre}
                   </option>
                 ))}
               </select>
               
-              {seccionesFiltradas.length === 0 && !masterDataLoading && (
-                <p className="text-xs text-yellow-600 dark:text-yellow-400">
-                  No hay secciones disponibles
-                </p>
-              )}
+              <div className="text-xs text-gray-500 dark:text-gray-400">
+                <p>Selecciona el tipo de póliza</p>
+                {seccionesFiltradas.length > 0 && (
+                  <span className="text-blue-600 dark:text-blue-400">
+                    {seccionesFiltradas.length} secciones disponibles
+                  </span>
+                )}
+              </div>
             </div>
           </div>
+
+          {/* Información seleccionada */}
+          {(clienteSeleccionado || state.context.companiaInfo || state.context.seccionInfo) && (
+            <div className="mt-8 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg border">
+              <h4 className="font-medium text-gray-900 dark:text-gray-100 mb-3">
+                Contexto Seleccionado
+              </h4>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                {clienteSeleccionado && (
+                  <div>
+                    <span className="font-medium text-gray-700 dark:text-gray-300">Cliente:</span>
+                    <p className="text-gray-900 dark:text-gray-100">{clienteSeleccionado.nombre}</p>
+                    <p className="text-gray-500 dark:text-gray-400 text-xs">
+                      {formatDocument(clienteSeleccionado.documento, clienteSeleccionado.documentType)}
+                    </p>
+                  </div>
+                )}
+                
+                {state.context.companiaInfo && (
+                  <div>
+                    <span className="font-medium text-gray-700 dark:text-gray-300">Compañía:</span>
+                    <p className="text-gray-900 dark:text-gray-100">{state.context.companiaInfo.nombre}</p>
+                  </div>
+                )}
+                
+                {state.context.seccionInfo && (
+                  <div>
+                    <span className="font-medium text-gray-700 dark:text-gray-300">Sección:</span>
+                    <p className="text-gray-900 dark:text-gray-100">{state.context.seccionInfo.nombre}</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -258,20 +357,20 @@ export function ContextForm({ hookInstance }: ContextFormProps) {
         </CardHeader>
         <CardContent>
           <FileUpload
-              disabled={!isContextValid}
-              onFileUpload={uploadWithContext}
-              onFileRemove={removeSelectedFile}  // ← AGREGAR ESTA LÍNEA
-              uploadProgress={state.file.uploadProgress}
-              uploadStatus={state.file.uploaded ? 'completed' : state.scan.status === 'scanning' ? 'uploading' : 'idle'}
-              scanStatus={state.scan.status}
-              scanResult={{
-                completionPercentage: state.scan.completionPercentage,
-                extractedData: state.scan.extractedData,
-                requiresAttention: state.scan.requiresAttention,
-                errorMessage: state.scan.errorMessage,
-              }}
-              acceptedFile={state.file.selected}
-            />
+            disabled={!isContextValid}
+            onFileUpload={uploadWithContext}
+            onFileRemove={removeSelectedFile}
+            uploadProgress={state.file.uploadProgress}
+            uploadStatus={state.file.uploaded ? 'completed' : state.scan.status === 'scanning' ? 'uploading' : 'idle'}
+            scanStatus={state.scan.status}
+            scanResult={{
+              completionPercentage: state.scan.completionPercentage,
+              extractedData: state.scan.extractedData,
+              requiresAttention: state.scan.requiresAttention,
+              errorMessage: state.scan.errorMessage,
+            }}
+            acceptedFile={state.file.selected}
+          />
           {/* Alertas contextuales */}
           {!isContextValid && (
             <Alert className="mt-4 bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-700">

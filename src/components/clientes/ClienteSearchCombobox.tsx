@@ -91,17 +91,17 @@ export function ClienteSearchCombobox({
     setSearchQuery('');
   };
 
+  // 🔥 ARREGLADO: Solo mostrar el nombre, sin cédula en paréntesis
   const displayText = useMemo(() => {
     if (selectedCliente) {
-      const formattedDoc = formatDocument(selectedCliente.documento, selectedCliente.documentType);
-      return `${selectedCliente.nombre} (${formattedDoc})`;
+      return selectedCliente.nombre; // Solo el nombre
     }
     return placeholder;
   }, [selectedCliente, placeholder]);
 
   return (
-    <div className={cn("relative", className)}>
-      <div className="flex">
+    <div className={cn("relative w-full", className)}>
+      <div className="flex w-full">
         <Popover open={open} onOpenChange={setOpen}>
           <PopoverTrigger asChild>
             <Button
@@ -109,18 +109,22 @@ export function ClienteSearchCombobox({
               role="combobox"
               aria-expanded={open}
               className={cn(
-                "flex-1 justify-between text-left font-normal",
-                selectedCliente ? "rounded-r-none border-r-0" : "rounded-md",
+                "flex-1 justify-between text-left font-normal min-w-0", // 🔥 AÑADIDO min-w-0
+                selectedCliente ?
+                "rounded-r-none border-r-0" : "rounded-md",
                 !selectedCliente && "text-muted-foreground",
                 disabled && "opacity-50 cursor-not-allowed"
               )}
               disabled={disabled}
             >
-              <div className="flex items-center gap-2 flex-1 min-w-0">
+              <div className="flex items-center gap-2 flex-1 min-w-0 overflow-hidden">
                 <User className="h-4 w-4 flex-shrink-0" />
-                <span className="truncate">{displayText}</span>
+                {/* 🔥 ARREGLADO: Contenedor para truncar texto correctamente */}
+                <span className="truncate block min-w-0" title={displayText}>
+                  {displayText}
+                </span>
               </div>
-              <ChevronsUpDown className="h-4 w-4 opacity-50 ml-2" />
+              <ChevronsUpDown className="h-4 w-4 opacity-50 ml-2 flex-shrink-0" />
             </Button>
           </PopoverTrigger>
           
@@ -129,7 +133,7 @@ export function ClienteSearchCombobox({
               <div className="flex items-center border-b">
                 <Search className="h-4 w-4 ml-3 mr-2 flex-shrink-0 opacity-50" />
                 <CommandInput
-                  placeholder="Buscar por nombre"
+                  placeholder="Buscar por nombre, documento o email"
                   value={searchQuery}
                   onValueChange={setSearchQuery}
                   className="flex-1"
@@ -150,13 +154,13 @@ export function ClienteSearchCombobox({
                     >
                       <Check className="mr-2 h-4 w-4 opacity-100" />
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 min-w-0">
                           <span className="font-medium truncate">{selectedCliente.nombre}</span>
-                          <span className="text-sm text-muted-foreground">
+                          <span className="text-sm text-muted-foreground flex-shrink-0">
                             {formatDocument(selectedCliente.documento, selectedCliente.documentType)}
                           </span>
                           {!selectedCliente.activo && (
-                            <span className="text-xs bg-red-100 text-red-700 px-1.5 py-0.5 rounded">
+                            <span className="text-xs bg-red-100 text-red-700 px-1.5 py-0.5 rounded flex-shrink-0">
                               Inactivo
                             </span>
                           )}
@@ -225,13 +229,13 @@ export function ClienteSearchCombobox({
                           )} 
                         />
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2 min-w-0">
                             <span className="font-medium truncate">{cliente.nombre}</span>
-                            <span className="text-sm text-muted-foreground">
+                            <span className="text-sm text-muted-foreground flex-shrink-0">
                               {formatDocument(cliente.documento, cliente.documentType)}
                             </span>
                             {!cliente.activo && (
-                              <span className="text-xs bg-red-100 text-red-700 px-1.5 py-0.5 rounded">
+                              <span className="text-xs bg-red-100 text-red-700 px-1.5 py-0.5 rounded flex-shrink-0">
                                 Inactivo
                               </span>
                             )}
@@ -251,7 +255,7 @@ export function ClienteSearchCombobox({
                     <Search className="h-8 w-8 mx-auto mb-2 opacity-30" />
                     <p>Escribe al menos 2 caracteres para buscar clientes</p>
                     <p className="text-xs mt-1">
-                      Puedes buscar por nombre
+                      Puedes buscar por nombre, documento o email
                     </p>
                   </div>
                 )}
@@ -265,9 +269,10 @@ export function ClienteSearchCombobox({
           <Button
             variant="outline"
             size="icon"
-            className="h-10 w-10 rounded-l-none border-l-0 hover:bg-destructive/10"
+            className="h-10 w-10 rounded-l-none border-l-0 hover:bg-destructive/10 flex-shrink-0"
             onClick={handleClear}
             disabled={disabled}
+            title="Limpiar selección"
           >
             <X className="h-4 w-4 text-muted-foreground hover:text-destructive" />
           </Button>

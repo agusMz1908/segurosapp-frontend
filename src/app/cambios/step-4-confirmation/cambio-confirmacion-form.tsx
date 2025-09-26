@@ -183,7 +183,7 @@ export function CambioConfirmationForm({ hookInstance }: CambioConfirmationFormP
     window.location.href = '/dashboard';
   };
 
-  // Estado de procesamiento
+  // Estado de procesamiento - 🔥 CAMBIO: Usar azul en lugar de violeta
   if (isProcessing) {
     return (
       <div className="space-y-6 p-6">
@@ -199,7 +199,7 @@ export function CambioConfirmationForm({ hookInstance }: CambioConfirmationFormP
         <Card>
           <CardContent className="pt-6">
             <div className="text-center py-12">
-              <Loader2 className="h-16 w-16 text-purple-500 mx-auto mb-6 animate-spin" />
+              <Loader2 className="h-16 w-16 text-blue-500 mx-auto mb-6 animate-spin" />
               
               <div className="space-y-3">
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
@@ -274,11 +274,11 @@ export function CambioConfirmationForm({ hookInstance }: CambioConfirmationFormP
           </CardContent>
         </Card>
 
-        {/* Datos Modificados */}
-        <Card className="border-purple-200 bg-purple-50 dark:bg-purple-900/10 dark:border-purple-800">
+        {/* Datos Modificados - 🔥 CAMBIO: Usar azul en lugar de violeta */}
+        <Card className="border-blue-200 bg-blue-50 dark:bg-blue-900/10 dark:border-blue-800">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Edit className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+              <Edit className="h-5 w-5 text-blue-600 dark:text-blue-400" />
               Modificaciones a Aplicar
             </CardTitle>
           </CardHeader>
@@ -286,7 +286,7 @@ export function CambioConfirmationForm({ hookInstance }: CambioConfirmationFormP
             <div className="space-y-3 text-sm">
               <div className="flex justify-between">
                 <span className="font-medium">Número:</span>
-                <span className="text-purple-700 dark:text-purple-300">
+                <span className="text-blue-700 dark:text-blue-300">
                   {extractedData.numeroPoliza || extractedData.polizaNumber || 'Sin cambios'}
                 </span>
               </div>
@@ -298,7 +298,7 @@ export function CambioConfirmationForm({ hookInstance }: CambioConfirmationFormP
               </div>
               <div className="flex justify-between">
                 <span className="font-medium">Premio Total:</span>
-                <span className="text-purple-700 dark:text-purple-300 font-semibold">
+                <span className="text-blue-700 dark:text-blue-300 font-semibold">
                   {formatCurrency(extractedData.montoTotal || extractedData.premioTotal)}
                 </span>
               </div>
@@ -326,7 +326,7 @@ export function CambioConfirmationForm({ hookInstance }: CambioConfirmationFormP
         </CardContent>
       </Card>
 
-      {/* Botón de confirmación */}
+      {/* Botón de confirmación - 🔥 CAMBIO: Usar azul en lugar de violeta */}
       <Card>
         <CardContent className="pt-6">
           <div className="text-center space-y-4">
@@ -340,7 +340,7 @@ export function CambioConfirmationForm({ hookInstance }: CambioConfirmationFormP
             <Button 
               onClick={handleProcessCambio}
               size="lg"
-              className="bg-purple-600 hover:bg-purple-700 shadow-lg hover:shadow-xl transition-all duration-200"
+              className="bg-blue-600 hover:bg-blue-700 shadow-lg hover:shadow-xl transition-all duration-200"
               disabled={!state.scan?.scanId || !context.polizaOriginal?.id}
             >
               <Send className="mr-2 h-5 w-5" />

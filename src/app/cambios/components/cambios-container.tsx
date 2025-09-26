@@ -72,12 +72,13 @@ export function CambiosContainer() {
               return (
                 <React.Fragment key={step.number}>
                   <div className="flex flex-col items-center min-w-0 flex-1">
+                    {/* 🔥 CAMBIO: Usar azul en lugar de violeta para consistencia */}
                     <div className={`
                       w-12 h-12 rounded-full flex items-center justify-center border-2 transition-all duration-300 mb-3
                       ${isCompleted 
-                        ? 'bg-purple-500 border-purple-500 text-white shadow-lg' 
+                        ? 'bg-blue-500 border-blue-500 text-white shadow-lg' 
                         : isActive 
-                          ? 'bg-purple-500 border-purple-500 text-white shadow-lg scale-110'
+                          ? 'bg-blue-500 border-blue-500 text-white shadow-lg scale-110'
                           : 'border-gray-300 text-gray-400 bg-white dark:bg-gray-800 dark:border-gray-600'
                       }
                     `}>
@@ -86,7 +87,7 @@ export function CambiosContainer() {
                     
                     <div className="text-center">
                       <h3 className={`font-semibold text-sm mb-1 ${
-                        isActive ? 'text-purple-600 dark:text-purple-400' : isCompleted ? 'text-purple-600 dark:text-purple-400' : 'text-gray-500 dark:text-gray-400'
+                        isActive ? 'text-blue-600 dark:text-blue-400' : isCompleted ? 'text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-400'
                       }`}>
                         {step.title}
                       </h3>
@@ -99,7 +100,7 @@ export function CambiosContainer() {
                   {index < steps.length - 1 && (
                     <div className={`
                       flex-1 h-0.5 mx-4 transition-colors duration-300
-                      ${isCompleted ? 'bg-purple-500' : 'bg-gray-200 dark:bg-gray-700'}
+                      ${isCompleted ? 'bg-blue-500' : 'bg-gray-200 dark:bg-gray-700'}
                     `} />
                   )}
                 </React.Fragment>
@@ -138,11 +139,11 @@ export function CambiosContainer() {
           </div>
         );
 
-        case 4:
+      case 4:
         return (
-            <div className="max-w-4xl mx-auto">
+          <div className="max-w-4xl mx-auto">
             <CambioConfirmationForm hookInstance={cambiosHook} />
-            </div>
+          </div>
         );
 
       default:
@@ -168,8 +169,8 @@ export function CambiosContainer() {
 
             <div className="flex items-center gap-4">
               {state.isLoading && (
-                <div className="flex items-center gap-2 text-purple-600 dark:text-purple-400">
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-purple-600"></div>
+                <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
                   <span className="text-sm">
                     {state.scan.status === 'scanning' && 'Escaneando...'}
                     {state.scan.status === 'uploading' && 'Subiendo archivo...'}
@@ -185,7 +186,7 @@ export function CambiosContainer() {
                   (state.currentStep === 2 && !canProceedToStep3) ||
                   (state.currentStep === 3 && !canProceedToStep4)
                 }
-                className="min-w-[100px] bg-purple-600 hover:bg-purple-700"
+                className="min-w-[100px] bg-blue-600 hover:bg-blue-700"
               >
                 Siguiente
                 <ArrowRight className="ml-2 h-4 w-4" />

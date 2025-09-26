@@ -11,9 +11,9 @@ import {
   DollarSign,
   AlertTriangle,
   CheckCircle,
+  RefreshCw,
   FileText,
-  Loader2,
-  Edit
+  Loader2
 } from 'lucide-react';
 import { ClienteSearchCombobox } from '@/components/clientes/ClienteSearchCombobox';
 import type { Cliente } from '@/types/master-data';
@@ -23,11 +23,12 @@ interface ClientePolizasCambiosFormProps {
 }
 
 export function ClientePolizasCambiosForm({ hookInstance }: ClientePolizasCambiosFormProps) {
-  const { state, loadPolizasByCliente, selectPolizaForChange } = hookInstance;
+  const { state, loadPolizasByCliente, selectPolizaForChange, getDiasParaVencimiento } = hookInstance;
+  
   const [selectedCliente, setSelectedCliente] = useState<Cliente | undefined>();
 
   const handleClienteChange = async (clienteId: number | undefined, cliente?: Cliente) => {
-    console.log('Cliente seleccionado para cambios:', cliente);
+    console.log('👤 Cliente seleccionado completo:', cliente);
     setSelectedCliente(cliente);
     
     if (clienteId && cliente) {
@@ -62,22 +63,23 @@ export function ClientePolizasCambiosForm({ hookInstance }: ClientePolizasCambio
     });
   };
 
-  const getVigenciaStatus = (poliza: any) => {
-    const fechaVencimiento = new Date(poliza.confchhas);
-    const hoy = new Date();
-    const diasParaVencimiento = Math.ceil((fechaVencimiento.getTime() - hoy.getTime()) / (1000 * 60 * 60 * 24));
-    
-    if (diasParaVencimiento > 60) {
-      return { color: 'green', text: `Vigente (${diasParaVencimiento} días)`, vigente: true };
-    } else if (diasParaVencimiento > 30) {
-      return { color: 'blue', text: `Vigente (${diasParaVencimiento} días)`, vigente: true };
-    } else if (diasParaVencimiento > 0) {
-      return { color: 'yellow', text: `Vigente (${diasParaVencimiento} días)`, vigente: true };
-    } else {
-      return { color: 'red', text: `Vencida hace ${Math.abs(diasParaVencimiento)} días`, vigente: false };
-    }
-  };
-
+const getVigenciaStatus = (poliza: any) => {
+  const fechaVencimiento = new Date(poliza.confchhas);
+  const hoy = new Date();
+  const diasParaVencimiento = Math.ceil((fechaVencimiento.getTime() - hoy.getTime()) / (1000 * 60 * 60 * 24));
+  
+  if (diasParaVencimiento > 30) {
+    return { color: 'green', text: 'Vigente', vigente: true };
+  } else if (diasParaVencimiento > 0) {
+    return { color: 'blue', text: `Vence en ${diasParaVencimiento} días`, vigente: true };
+  } else if (diasParaVencimiento === 0) {
+    return { color: 'yellow', text: 'Vence hoy', vigente: true };
+  } else if (diasParaVencimiento > -30) {
+    return { color: 'yellow', text: `Vencida hace ${Math.abs(diasParaVencimiento)} días`, vigente: true };
+  } else {
+    return { color: 'red', text: `Vencida hace ${Math.abs(diasParaVencimiento)} días`, vigente: false };
+  }
+};
   const isPolizaSelected = (polizaId: number) => {
     return state.cliente.selectedPoliza?.id === polizaId;
   };
@@ -87,7 +89,7 @@ export function ClientePolizasCambiosForm({ hookInstance }: ClientePolizasCambio
       {/* Header */}
       <div className="text-center mb-6">
         <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">
-          Buscar Póliza para Cambio
+          Buscar Póliza para Cambios
         </h2>
         <p className="text-gray-600 dark:text-gray-300">
           Selecciona un cliente para ver sus pólizas vigentes de automotor
@@ -136,24 +138,24 @@ export function ClientePolizasCambiosForm({ hookInstance }: ClientePolizasCambio
         </CardContent>
       </Card>
 
-      {/* Listado de Pólizas Vigentes */}
+      {/* Listado de Pólizas */}
       {state.cliente.selectedId && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Edit className="h-5 w-5" />
+              <Car className="h-5 w-5" />
               Pólizas de Automotor Vigentes
-              {state.isLoading && <Loader2 className="h-4 w-4 animate-spin text-purple-600" />}
+              {state.isLoading && <Loader2 className="h-4 w-4 animate-spin text-blue-600" />}
             </CardTitle>
             <CardDescription>
-              Se muestran todas las pólizas de automotor vigentes del cliente
+              Solo se muestran pólizas de automotor vigentes disponibles para cambios
             </CardDescription>
           </CardHeader>
           <CardContent>
             {state.isLoading ? (
               <div className="flex items-center justify-center py-12">
                 <div className="flex flex-col items-center gap-3">
-                  <Loader2 className="h-8 w-8 animate-spin text-purple-600" />
+                  <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
                   <span className="text-gray-600 dark:text-gray-400">Cargando pólizas vigentes...</span>
                 </div>
               </div>
@@ -162,6 +164,7 @@ export function ClientePolizasCambiosForm({ hookInstance }: ClientePolizasCambio
                 <AlertTriangle className="h-4 w-4" />
                 <AlertDescription>
                   No se encontraron pólizas de automotor vigentes para este cliente.
+                  Solo se pueden modificar pólizas vigentes o vencidas hace menos de 30 días.
                 </AlertDescription>
               </Alert>
             ) : (
@@ -177,7 +180,7 @@ export function ClientePolizasCambiosForm({ hookInstance }: ClientePolizasCambio
                       className={`
                         border rounded-lg p-4 transition-all duration-200 hover:shadow-md cursor-pointer
                         ${isSelected
-                          ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/20 shadow-sm ring-1 ring-purple-500'
+                          ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 shadow-sm ring-1 ring-blue-500'
                           : vigente 
                             ? 'border-green-200 bg-green-50 dark:bg-green-900/10 hover:border-green-300' 
                             : 'border-gray-200 bg-gray-50 dark:bg-gray-800/50 opacity-60'
@@ -187,10 +190,11 @@ export function ClientePolizasCambiosForm({ hookInstance }: ClientePolizasCambio
                     >
                       <div className="flex justify-between items-start mb-3">
                         <div className="flex items-center gap-3">
+                          {/* 🔥 CORREGIDO: Indicador visual azul cuando está seleccionada */}
                           <div className={`
                             w-3 h-3 rounded-full transition-colors
                             ${isSelected 
-                              ? 'bg-purple-500 shadow-lg shadow-purple-500/30' 
+                              ? 'bg-blue-500 shadow-lg shadow-blue-500/30' 
                               : 'bg-gray-300 dark:bg-gray-600'
                             }
                           `} />
@@ -210,17 +214,20 @@ export function ClientePolizasCambiosForm({ hookInstance }: ClientePolizasCambio
                           <Badge 
                             variant={vigenciaStatus.color === 'green' ? 'default' : 
                                      vigenciaStatus.color === 'blue' ? 'secondary' :
-                                     vigenciaStatus.color === 'yellow' ? 'secondary' : 'destructive'}
+                                     vigenciaStatus.color === 'yellow' ? 'secondary' : 
+                                     vigenciaStatus.color === 'red' ? 'destructive' : 'outline'}
                           >
                             {vigenciaStatus.text}
                           </Badge>
                           
+                          {/* 🔥 CORREGIDO: Icono azul cuando está seleccionada */}
                           {isSelected && (
-                            <CheckCircle className="h-5 w-5 text-purple-500" />
+                            <CheckCircle className="h-5 w-5 text-blue-500" />
                           )}
                         </div>
                       </div>
 
+                      {/* Información simplificada */}
                       <div className="flex items-center justify-between mb-4 text-sm">
                         <div className="flex items-center gap-6">
                           <div className="flex items-center gap-2">
@@ -228,32 +235,23 @@ export function ClientePolizasCambiosForm({ hookInstance }: ClientePolizasCambio
                             <span className="text-gray-600">Vigencia hasta: </span>
                             <span className="font-medium">{formatDate(poliza.confchhas)}</span>
                           </div>
-                          
-                          {poliza.prima && (
-                            <div className="flex items-center gap-2">
-                              <DollarSign className="h-4 w-4 text-gray-500" />
-                              <span className="text-gray-600">Prima: </span>
-                              <span className="font-medium">{formatCurrency(poliza.prima)}</span>
-                            </div>
-                          )}
                         </div>
                       </div>
 
+                      {/* Footer de la tarjeta */}
                       <div className="flex justify-between items-center pt-2 border-t border-gray-200 dark:border-gray-700">
                         <div className="flex items-center gap-2">
                           {vigente ? (
-                            <>
-                              <CheckCircle className="h-4 w-4 text-green-600" />
-                              <span className="text-sm text-green-700">Disponible para cambios</span>
-                            </>
+                            <CheckCircle className="h-4 w-4 text-green-600" />
                           ) : (
-                            <>
-                              <AlertTriangle className="h-4 w-4 text-red-600" />
-                              <span className="text-sm text-red-700">Póliza vencida</span>
-                            </>
+                            <AlertTriangle className="h-4 w-4 text-red-600" />
                           )}
+                          <span className={`text-sm ${vigente ? 'text-green-700' : 'text-red-700'}`}>
+                            {vigente ? 'Disponible para cambios' : 'No disponible para cambios'}
+                          </span>
                         </div>
 
+                        {/* 🔥 CORREGIDO: Botones con colores azules */}
                         {vigente && !isSelected && (
                           <Button
                             onClick={(e) => {
@@ -262,15 +260,14 @@ export function ClientePolizasCambiosForm({ hookInstance }: ClientePolizasCambio
                             }}
                             variant="outline"
                             size="sm"
-                            className="hover:bg-purple-50 hover:border-purple-300 hover:text-purple-700"
+                            className="hover:bg-blue-50 hover:border-blue-300 hover:text-blue-700"
                           >
-                            <Edit className="h-4 w-4 mr-1" />
                             Seleccionar para Cambio
                           </Button>
                         )}
                         
                         {isSelected && (
-                          <Badge variant="default" className="bg-purple-500">
+                          <Badge variant="default" className="bg-blue-500">
                             Póliza Seleccionada
                           </Badge>
                         )}

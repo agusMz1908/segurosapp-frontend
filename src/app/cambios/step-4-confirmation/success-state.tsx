@@ -42,13 +42,13 @@ export function SuccessState({
 
   return (
     <div className="space-y-6 p-6 max-w-4xl mx-auto">
-      {/* Header de éxito */}
+      {/* Header de éxito - 🔥 CAMBIO: Usar azul en lugar de violeta */}
       <div className="text-center mb-8">
-        <div className="mx-auto mb-6 w-20 h-20 bg-purple-100 dark:bg-purple-900/20 rounded-full flex items-center justify-center">
-          <CheckCircle className="h-12 w-12 text-purple-600 dark:text-purple-400" />
+        <div className="mx-auto mb-6 w-20 h-20 bg-blue-100 dark:bg-blue-900/20 rounded-full flex items-center justify-center">
+          <CheckCircle className="h-12 w-12 text-blue-600 dark:text-blue-400" />
         </div>
         
-        <h2 className="text-3xl font-bold text-purple-700 dark:text-purple-400 mb-3">
+        <h2 className="text-3xl font-bold text-blue-700 dark:text-blue-400 mb-3">
           Cambio Completado Exitosamente
         </h2>
         
@@ -61,27 +61,28 @@ export function SuccessState({
       {/* Información del cambio */}
       <div className="grid md:grid-cols-2 gap-6">
         {/* Póliza Original */}
-        <Card className="border-gray-200 bg-gray-50 dark:bg-gray-900/10 dark:border-gray-800">
+        <Card className="border-orange-200 bg-orange-50 dark:bg-orange-900/10 dark:border-orange-800">
           <CardContent className="pt-6">
             <div className="text-center space-y-3">
-              <div className="w-12 h-12 bg-gray-100 dark:bg-gray-900/20 rounded-lg flex items-center justify-center mx-auto">
-                <FileText className="h-6 w-6 text-gray-600 dark:text-gray-400" />
+              <div className="w-12 h-12 bg-orange-100 dark:bg-orange-900/20 rounded-lg flex items-center justify-center mx-auto">
+                <FileText className="h-6 w-6 text-orange-600 dark:text-orange-400" />
               </div>
               
-              <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-300">
+              <h3 className="text-lg font-semibold text-orange-800 dark:text-orange-300">
                 Póliza Original
               </h3>
               
               <div className="space-y-2 text-sm">
                 <div>
                   <span className="font-medium">Número:</span>{' '}
-                  <span className="text-gray-700 dark:text-gray-300">
+                  <span className="text-orange-700 dark:text-orange-300">
                     {context.polizaOriginal?.numero || context.polizaOriginal?.conpol || 'N/A'}
                   </span>
                 </div>
                 <div>
                   <span className="font-medium">Estado:</span>{' '}
-                  <span className="inline-flex items-center gap-1 px-2 py-1 bg-purple-200 dark:bg-purple-800 text-purple-800 dark:text-purple-200 rounded-full text-xs">
+                  {/* 🔥 CAMBIO: Usar azul en lugar de violeta */}
+                  <span className="inline-flex items-center gap-1 px-2 py-1 bg-blue-200 dark:bg-blue-800 text-blue-800 dark:text-blue-200 rounded-full text-xs">
                     <Edit className="h-3 w-3" />
                     Modificada Exitosamente
                   </span>
@@ -97,22 +98,22 @@ export function SuccessState({
           </CardContent>
         </Card>
 
-        {/* Cambio Aplicado */}
-        <Card className="border-purple-200 bg-purple-50 dark:bg-purple-900/10 dark:border-purple-800">
+        {/* Cambio Aplicado - 🔥 CAMBIO: Usar azul en lugar de violeta */}
+        <Card className="border-blue-200 bg-blue-50 dark:bg-blue-900/10 dark:border-blue-800">
           <CardContent className="pt-6">
             <div className="text-center space-y-3">
-              <div className="w-12 h-12 bg-purple-100 dark:bg-purple-900/20 rounded-lg flex items-center justify-center mx-auto">
-                <CheckCircle className="h-6 w-6 text-purple-600 dark:text-purple-400" />
+              <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/20 rounded-lg flex items-center justify-center mx-auto">
+                <CheckCircle className="h-6 w-6 text-blue-600 dark:text-blue-400" />
               </div>
               
-              <h3 className="text-lg font-semibold text-purple-800 dark:text-purple-300">
+              <h3 className="text-lg font-semibold text-blue-800 dark:text-blue-300">
                 Cambio Aplicado
               </h3>
               
               <div className="space-y-2 text-sm">
                 <div>
                   <span className="font-medium">Resultado:</span>{' '}
-                  <span className="text-purple-700 dark:text-purple-300 font-mono">
+                  <span className="text-blue-700 dark:text-blue-300 font-mono">
                     {processResult.polizaNumber || `ID: ${processResult.velneoPolizaId}` || 'Procesado'}
                   </span>
                 </div>
@@ -152,9 +153,10 @@ export function SuccessState({
             </div>
             
             <div>
+              {/* 🔥 CAMBIO: Usar verde en lugar de violeta */}
               <div className="flex items-center justify-center gap-2 mb-2">
-                <div className="w-8 h-8 bg-purple-100 dark:bg-purple-900/20 rounded-lg flex items-center justify-center">
-                  <Building2 className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+                <div className="w-8 h-8 bg-green-100 dark:bg-green-900/20 rounded-lg flex items-center justify-center">
+                  <Building2 className="h-4 w-4 text-green-600 dark:text-green-400" />
                 </div>
                 <span className="font-medium text-gray-900 dark:text-gray-100">Compañía</span>
               </div>
@@ -165,8 +167,8 @@ export function SuccessState({
             
             <div>
               <div className="flex items-center justify-center gap-2 mb-2">
-                <div className="w-8 h-8 bg-green-100 dark:bg-green-900/20 rounded-lg flex items-center justify-center">
-                  <Calendar className="h-4 w-4 text-green-600 dark:text-green-400" />
+                <div className="w-8 h-8 bg-amber-100 dark:bg-amber-900/20 rounded-lg flex items-center justify-center">
+                  <Calendar className="h-4 w-4 text-amber-600 dark:text-amber-400" />
                 </div>
                 <span className="font-medium text-gray-900 dark:text-gray-100">Procesado</span>
               </div>
@@ -178,27 +180,27 @@ export function SuccessState({
         </CardContent>
       </Card>
 
-      {/* Mensaje del sistema */}
+      {/* Mensaje del sistema - 🔥 CAMBIO: Usar azul en lugar de violeta */}
       {processResult.message && (
-        <Card className="bg-purple-50 dark:bg-purple-900/10 border-purple-200 dark:border-purple-800">
+        <Card className="bg-blue-50 dark:bg-blue-900/10 border-blue-200 dark:border-blue-800">
           <CardContent className="pt-4">
             <div className="text-center">
-              <p className="text-purple-800 dark:text-purple-300 font-medium">
+              <p className="text-blue-800 dark:text-blue-300 font-medium">
                 {processResult.message}
               </p>
               
               {processResult.mensajeModificacion && (
-                <p className="text-sm text-purple-600 dark:text-purple-400 mt-2">
+                <p className="text-sm text-blue-600 dark:text-blue-400 mt-2">
                   {processResult.mensajeModificacion}
                 </p>
               )}
 
               {processResult.cambiosAplicados && processResult.cambiosAplicados.length > 0 && (
                 <div className="mt-3">
-                  <p className="text-sm text-purple-700 dark:text-purple-300 font-medium mb-1">
+                  <p className="text-sm text-blue-700 dark:text-blue-300 font-medium mb-1">
                     Cambios aplicados:
                   </p>
-                  <ul className="text-xs text-purple-600 dark:text-purple-400 space-y-1">
+                  <ul className="text-xs text-blue-600 dark:text-blue-400 space-y-1">
                     {processResult.cambiosAplicados.map((cambio: string, index: number) => (
                       <li key={index}>• {cambio}</li>
                     ))}
@@ -229,12 +231,12 @@ export function SuccessState({
                 Ir al Dashboard
               </Button>
 
-              {/* Botón Nuevo Cambio */}
+              {/* Botón Nuevo Cambio - 🔥 CAMBIO: Usar verde en lugar de violeta */}
               <Button
                 onClick={onStartNewCambio}
                 size="lg"
                 variant="outline"
-                className="w-full sm:w-auto border-purple-300 text-purple-700 hover:bg-purple-50 dark:border-purple-600 dark:text-purple-400 dark:hover:bg-purple-900/20 shadow-lg transition-all duration-200 hover:shadow-xl"
+                className="w-full sm:w-auto border-green-300 text-green-700 hover:bg-green-50 dark:border-green-600 dark:text-green-400 dark:hover:bg-green-900/20 shadow-lg transition-all duration-200 hover:shadow-xl"
               >
                 <RefreshCw className="mr-2 h-5 w-5" />
                 Nuevo Cambio

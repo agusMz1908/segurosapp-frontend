@@ -1,5 +1,6 @@
 // src/app/cambios/step-3-validation/master-data-form.tsx
 // ✅ ADAPTADO DE RENOVACIONES: Usar la misma lógica que funciona
+// ✅ CORREGIDO: Usar colores consistentes con Nueva Póliza y Renovaciones
 
 import React, { useEffect, useState, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -313,8 +314,9 @@ export function MasterDataForm({ hookInstance }: MasterDataFormProps) {
               • Mapeo automático aplicado
             </span>
           )}
+          {/* 🔥 CAMBIO: Usar azul en lugar de violeta para consistencia */}
           {state.context?.companiaInfo && (
-            <span className="text-purple-600 dark:text-purple-400 ml-2">
+            <span className="text-blue-600 dark:text-blue-400 ml-2">
               • {state.context.companiaInfo.nombre}
             </span>
           )}

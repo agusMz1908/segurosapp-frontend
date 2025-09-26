@@ -93,9 +93,9 @@ export function DocumentUploadContainer({ hookInstance }: DocumentUploadContaine
         </p>
       </div>
 
-      <Card className="border-purple-200 dark:border-purple-800">
-        <CardHeader className="bg-purple-50 dark:bg-purple-900/20">
-          <CardTitle className="flex items-center gap-2 text-purple-700 dark:text-purple-400">
+        <Card className="border-blue-200 dark:border-blue-800">
+          <CardHeader className="bg-blue-50 dark:bg-blue-900/20">
+            <CardTitle className="flex items-center gap-2 text-blue-700 dark:text-blue-400">
             <Info className="h-5 w-5" />
             Contexto del Cambio
           </CardTitle>
@@ -140,11 +140,6 @@ export function DocumentUploadContainer({ hookInstance }: DocumentUploadContaine
                 <p className="font-medium text-lg">
                   {state.context.companiaInfo?.nombre || 'Se detectará automáticamente'}
                 </p>
-                {state.context.companiaInfo?.codigo && (
-                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                    Código: {state.context.companiaInfo.codigo}
-                  </p>
-                )}
               </div>
             </div>
           </div>
