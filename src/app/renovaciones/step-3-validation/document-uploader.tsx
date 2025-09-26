@@ -22,7 +22,7 @@ interface DocumentUploader {
   uploadStatus: 'idle' | 'uploading' | 'scanning' | 'completed' | 'error';
   fileName?: string;
   accept?: string;
-  maxSize?: number; // en MB
+  maxSize?: number; 
   errorMessage?: string;
   progress?: number;
   scanResult?: {
@@ -160,9 +160,6 @@ export function DocumentUploader({
               <div className="min-w-0 flex-1">
                 <p className="font-medium text-green-800 dark:text-green-200 truncate" title={acceptedFile.name}>
                   {acceptedFile.name}
-                </p>
-                <p className="text-sm text-green-600 dark:text-green-300">
-                  {formatFileSize(acceptedFile.size)} • {confidence}% confianza
                 </p>
               </div>
             </div>
