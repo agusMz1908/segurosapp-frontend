@@ -28,7 +28,6 @@ export function ClientePolizasCambiosForm({ hookInstance }: ClientePolizasCambio
   const [selectedCliente, setSelectedCliente] = useState<Cliente | undefined>();
 
   const handleClienteChange = async (clienteId: number | undefined, cliente?: Cliente) => {
-    console.log('👤 Cliente seleccionado completo:', cliente);
     setSelectedCliente(cliente);
     
     if (clienteId && cliente) {
@@ -45,22 +44,12 @@ export function ClientePolizasCambiosForm({ hookInstance }: ClientePolizasCambio
   };
 
   const handlePolizaSelect = (poliza: any) => {
-    console.log('📋 Póliza seleccionada completa:', poliza);
+    console.log('📋 Póliza seleccionada:', poliza);
     
     selectPolizaForChange(poliza);
 
     const companiaId = poliza.comcod;
-    let companiaNombre = poliza.comnom;
-
-    if (!companiaNombre || companiaNombre.trim() === '') {
-      const mapeoCompanias: Record<number, string> = {
-        1: 'BANCO DE SEGUROS',
-        2: 'SURA SEGUROS',
-        3: 'MAPFRE',
-        4: 'PORTO SEGUROS'
-      };
-      companiaNombre = mapeoCompanias[companiaId] || `Compañía ${companiaId}`;
-    }
+    const companiaNombre = poliza.comnom || `Compañía ${companiaId}`;
 
     hookInstance.updateState((prevState: any) => ({
       ...prevState,
@@ -79,15 +68,6 @@ export function ClientePolizasCambiosForm({ hookInstance }: ClientePolizasCambio
         }
       }
     }));
-    
-    console.log('✅ Contexto actualizado - Compañía:', companiaNombre);
-  };
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('es-UY', {
-      style: 'currency',
-      currency: 'UYU'
-    }).format(amount);
   };
 
   const formatDate = (dateString: string) => {
@@ -231,12 +211,12 @@ export function ClientePolizasCambiosForm({ hookInstance }: ClientePolizasCambio
                             }
                           `} />
                           
-                          <FileText className="h-5 w-5 text-gray-600" />
+                          <FileText className="h-5 w-5 text-gray-600 dark:text-gray-300" />
                           <div>
-                            <h4 className="font-semibold text-lg">
+                            <h4 className="font-semibold text-lg text-gray-900 dark:text-gray-100">
                               Póliza {poliza.conpol}
                             </h4>
-                            <p className="text-sm text-gray-600">
+                            <p className="text-sm text-gray-600 dark:text-gray-300">
                               {poliza.comnom || `Compañía ${poliza.comcod}`}
                             </p>
                           </div>
@@ -248,6 +228,7 @@ export function ClientePolizasCambiosForm({ hookInstance }: ClientePolizasCambio
                                      vigenciaStatus.color === 'blue' ? 'secondary' :
                                      vigenciaStatus.color === 'yellow' ? 'secondary' : 
                                      vigenciaStatus.color === 'red' ? 'destructive' : 'outline'}
+                            className={vigenciaStatus.color === 'blue' ? 'bg-blue-600 text-white dark:bg-blue-500' : ''}
                           >
                             {vigenciaStatus.text}
                           </Badge>
@@ -261,25 +242,14 @@ export function ClientePolizasCambiosForm({ hookInstance }: ClientePolizasCambio
                       <div className="flex items-center justify-between mb-4 text-sm">
                         <div className="flex items-center gap-6">
                           <div className="flex items-center gap-2">
-                            <Calendar className="h-4 w-4 text-gray-500" />
-                            <span className="text-gray-600">Vigencia hasta: </span>
-                            <span className="font-medium">{formatDate(poliza.confchhas)}</span>
+                            <Calendar className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+                            <span className="text-gray-600 dark:text-gray-300">Vigencia hasta: </span>
+                            <span className="font-medium text-gray-900 dark:text-gray-100">{formatDate(poliza.confchhas)}</span>
                           </div>
                         </div>
                       </div>
 
                       <div className="flex justify-between items-center pt-2 border-t border-gray-200 dark:border-gray-700">
-                        <div className="flex items-center gap-2">
-                          {vigente ? (
-                            <CheckCircle className="h-4 w-4 text-green-600" />
-                          ) : (
-                            <AlertTriangle className="h-4 w-4 text-red-600" />
-                          )}
-                          <span className={`text-sm ${vigente ? 'text-green-700' : 'text-red-700'}`}>
-                            {vigente ? 'Disponible para cambios' : 'No disponible para cambios'}
-                          </span>
-                        </div>
-
                         {vigente && !isSelected && (
                           <Button
                             onClick={(e) => {

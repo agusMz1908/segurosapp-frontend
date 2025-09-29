@@ -283,100 +283,144 @@ export function useCambios() {
     }
   }, []);
 
-  const loadPolizasByCliente = useCallback(async (clienteId: number) => {
-    setState(prev => ({ ...prev, isLoading: true }));
-    
-    try { 
-      const token = getAuthToken();
-      if (!token) {
-        throw new Error('No se encontró token de autenticación');
-      }
+const loadPolizasByCliente = useCallback(async (clienteId: number) => {
+  try {
+    const token = getAuthToken();
+    if (!token) {
+      throw new Error('No se encontró token de autenticación');
+    }
 
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://localhost:7202';
-      const response = await fetch(`${API_URL}/api/MasterData/clientes/${clienteId}/polizas?soloActivos=true`, {
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://localhost:7202';
+    
+    const [polizasResponse, companiasResponse] = await Promise.all([
+      fetch(`${API_URL}/api/MasterData/clientes/${clienteId}/polizas?soloActivos=true`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
-      });
-
-      if (!response.ok) {
-        if (response.status === 401) {
-          handle401Error();
-          throw new Error('Error de autenticación');
-        }
-        throw new Error(`Error ${response.status}: ${response.statusText}`);
-      }
-
-      const polizasData = await response.json();
-      let polizasList: any[] = [];
-      
-      if (Array.isArray(polizasData)) {
-        polizasList = polizasData;
-      } else if (polizasData && polizasData.data && Array.isArray(polizasData.data)) {
-        polizasList = polizasData.data;
-      } else if (polizasData && polizasData.polizas && Array.isArray(polizasData.polizas)) {
-        polizasList = polizasData.polizas;
-      } else {
-        throw new Error('El API no devolvió un array de pólizas válido');
-      }
-
-      const now = new Date();
-      const polizasVigentes = polizasList.filter((poliza: any) => {
-        if (poliza.seccod !== 4) {
-          return false;
-        }
-
-        let diasHastaVencimiento = 0;
-        try {
-          const fechaVencimiento = new Date(poliza.confchhas);
-          diasHastaVencimiento = Math.ceil((fechaVencimiento.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-        } catch (error) {
-          console.error(`Error parseando fecha para póliza ${poliza.conpol}:`, error);
-          return false;
-        }
-        
-        const esVigenteParaCambios = diasHastaVencimiento >= -30;       
-        return esVigenteParaCambios;
-      });
-
-      setState(prev => ({
-        ...prev,
-        cliente: {
-          ...prev.cliente,
-          selectedId: clienteId,
-          polizas: polizasVigentes
+      }),
+      fetch(`${API_URL}/api/MasterData/companias`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
         },
-        isLoading: false
-      }));
+      })
+    ]);
 
-      if (polizasVigentes.length === 0) {
-        toast('Este cliente no tiene pólizas de automotor vigentes disponibles para cambios', {
-          icon: 'ℹ️',
-          duration: 4000,
-        });
-      } else {
-        toast.success(`Se encontraron ${polizasVigentes.length} pólizas vigentes`);
+    if (!polizasResponse.ok || !companiasResponse.ok) {
+      if (polizasResponse.status === 401 || companiasResponse.status === 401) {
+        handle401Error();
+        throw new Error('Error de autenticación');
       }
-
-      return polizasVigentes;
-    } catch (error: any) {
-      toast.error('Error cargando pólizas vigentes: ' + (error.message || 'Error desconocido'));
-      
-      setState(prev => ({ 
-        ...prev, 
-        cliente: {
-          ...prev.cliente,
-          selectedId: clienteId,
-          polizas: []
-        },
-        isLoading: false 
-      }));
-      
-      return [];
+      throw new Error('Error al cargar datos');
     }
-  }, []);
+
+    const polizasData = await polizasResponse.json();
+    const companiasData = await companiasResponse.json();
+
+    let companiasList: any[] = [];
+
+    if (Array.isArray(companiasData)) {
+      companiasList = companiasData;
+    } else if (companiasData && companiasData.data && Array.isArray(companiasData.data)) {
+      companiasList = companiasData.data;
+    } else if (companiasData && companiasData.companias && Array.isArray(companiasData.companias)) {
+      companiasList = companiasData.companias;
+    } else {
+      console.warn('⚠️ Formato de compañías inesperado, usando array vacío');
+      companiasList = [];
+    }
+
+    const mapeoCompanias: Record<number, string> = {};
+    companiasList.forEach((compania: any) => {
+      mapeoCompanias[compania.id] = compania.comnom || compania.displayName || `Compañía ${compania.id}`;
+    });
+    let polizasList: any[] = [];
+    
+    if (Array.isArray(polizasData)) {
+      polizasList = polizasData;
+    } else if (polizasData && polizasData.data && Array.isArray(polizasData.data)) {
+      polizasList = polizasData.data;
+    } else if (polizasData && polizasData.polizas && Array.isArray(polizasData.polizas)) {
+      polizasList = polizasData.polizas;
+    }
+
+    console.log('📋 Lista de pólizas a filtrar:', polizasList.length, polizasList);
+
+    const now = new Date();
+    const polizasVigentes = polizasList.filter((poliza: any) => {
+      console.log(`\n🔍 Evaluando póliza ${poliza.conpol}:`, {
+        seccod: poliza.seccod,
+        vencimiento: poliza.confchhas,
+        compania: poliza.comcod
+      });
+
+      if (poliza.seccod !== 4) {
+        console.log(`❌ Rechazada - No es automotor (sección ${poliza.seccod})`);
+        return false;
+      }
+      
+      let diasHastaVencimiento = 0;
+      try {
+        const fechaVencimiento = new Date(poliza.confchhas);
+        diasHastaVencimiento = Math.ceil((fechaVencimiento.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+        console.log(`📅 Días hasta vencimiento: ${diasHastaVencimiento}`);
+      } catch (error) {
+        console.log('❌ Error parseando fecha');
+        return false;
+      }
+      
+      const esVigenteParaCambios = diasHastaVencimiento >= -30;
+      console.log(`${esVigenteParaCambios ? '✅' : '❌'} Vigente para cambios:`, esVigenteParaCambios);
+      
+      if (esVigenteParaCambios) {
+        if (!poliza.comnom || poliza.comnom.trim() === '') {
+          poliza.comnom = mapeoCompanias[poliza.comcod] || `Compañía ${poliza.comcod}`;
+          console.log(`🏢 Nombre mapeado: ${poliza.comnom}`);
+        }
+      }
+      
+      return esVigenteParaCambios;
+    });
+
+    console.log('✅ Pólizas vigentes filtradas:', polizasVigentes.length, polizasVigentes);
+
+    updateState((prevState: { cliente: any; }) => ({
+      ...prevState,
+      cliente: {
+        ...prevState.cliente,
+        selectedId: clienteId,
+        polizas: polizasVigentes
+      }
+    }));
+
+    if (polizasVigentes.length === 0) {
+      toast('Este cliente no tiene pólizas de automotor vigentes para cambios', {
+        icon: 'ℹ️',
+        duration: 4000,
+      });
+    } else {
+      toast.success(`Se encontraron ${polizasVigentes.length} pólizas vigentes`);
+    }
+
+    return polizasVigentes;
+  } catch (error: any) {
+    console.error('❌ Error:', error);
+    toast.error('Error cargando pólizas: ' + (error.message || 'Error desconocido'));
+    updateState((prevState: { cliente: any; }) => ({
+      ...prevState,
+      cliente: {
+        ...prevState.cliente,
+        selectedId: clienteId,
+        polizas: []
+      }
+    }));
+    
+    return [];
+  }
+}, [updateState]);
 
   const selectPolizaForChange = useCallback((poliza: any) => {
     setState(prevState => {

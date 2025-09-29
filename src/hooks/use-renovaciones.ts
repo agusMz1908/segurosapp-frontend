@@ -155,94 +155,130 @@ export function useRenovaciones() {
     });
   }, [updateState]);
 
-  const loadPolizasByCliente = useCallback(async (clienteId: number) => {
-    try {
-      const token = getAuthToken();
-      if (!token) {
-        throw new Error('No se encontró token de autenticación');
-      }
+const loadPolizasByCliente = useCallback(async (clienteId: number) => {
+  try {
+    const token = getAuthToken();
+    if (!token) {
+      throw new Error('No se encontró token de autenticación');
+    }
 
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://localhost:7202';
-      const response = await fetch(`${API_URL}/api/MasterData/clientes/${clienteId}/polizas?soloActivos=true`, {
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://localhost:7202';
+    const [polizasResponse, companiasResponse] = await Promise.all([
+      fetch(`${API_URL}/api/MasterData/clientes/${clienteId}/polizas?soloActivos=true`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
-      });
+      }),
+      fetch(`${API_URL}/api/MasterData/companias`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      })
+    ]);
 
-      if (!response.ok) {
-        if (response.status === 401) {
-          handle401Error();
-          throw new Error('Error de autenticación');
-        }
-        throw new Error(`Error ${response.status}: ${response.statusText}`);
+    if (!polizasResponse.ok || !companiasResponse.ok) {
+      if (polizasResponse.status === 401 || companiasResponse.status === 401) {
+        handle401Error();
+        throw new Error('Error de autenticación');
       }
-
-      const polizasData = await response.json();
-      let polizasList: any[] = [];
-      
-      if (Array.isArray(polizasData)) {
-        polizasList = polizasData;
-      } else if (polizasData && polizasData.data && Array.isArray(polizasData.data)) {
-        polizasList = polizasData.data;
-      } else if (polizasData && polizasData.polizas && Array.isArray(polizasData.polizas)) {
-        polizasList = polizasData.polizas;
-      } else {
-        throw new Error('El API no devolvió un array de pólizas válido');
-      }
-
-      const now = new Date();
-      const polizasRenovables = polizasList.filter((poliza: any) => {
-        if (poliza.seccod !== 4) {
-          return false;
-        }
-        
-        let diasHastaVencimiento = 0;
-        try {
-          const fechaVencimiento = new Date(poliza.confchhas);
-          diasHastaVencimiento = Math.ceil((fechaVencimiento.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-        } catch (error) {
-          return false;
-        }
-        
-        const enRangoRenovacion = diasHastaVencimiento >= -30 && diasHastaVencimiento <= 60;      
-        return enRangoRenovacion;
-      });
-
-      updateState(prevState => ({
-        ...prevState,
-        cliente: {
-          ...prevState.cliente,
-          selectedId: clienteId,
-          polizas: polizasRenovables
-        }
-      }));
-
-      if (polizasRenovables.length === 0) {
-        toast('Este cliente no tiene pólizas de automotor renovables en este momento', {
-          icon: 'ℹ️',
-          duration: 4000,
-        });
-      } else {
-        toast.success(`Se encontraron ${polizasRenovables.length} pólizas renovables`);
-      }
-
-      return polizasRenovables;
-    } catch (error: any) {
-      toast.error('Error cargando pólizas del cliente: ' + (error.message || 'Error desconocido'));
-      updateState(prevState => ({
-        ...prevState,
-        cliente: {
-          ...prevState.cliente,
-          selectedId: clienteId,
-          polizas: []
-        }
-      }));
-      
-      return [];
+      throw new Error('Error al cargar datos');
     }
-  }, [updateState]);
+
+    const polizasData = await polizasResponse.json();
+    const companiasData = await companiasResponse.json();
+
+    let companiasList: any[] = [];
+
+    if (Array.isArray(companiasData)) {
+      companiasList = companiasData;
+    } else if (companiasData && companiasData.data && Array.isArray(companiasData.data)) {
+      companiasList = companiasData.data;
+    } else if (companiasData && companiasData.companias && Array.isArray(companiasData.companias)) {
+      companiasList = companiasData.companias;
+    } else {
+      console.warn('⚠️ Formato de compañías inesperado, usando array vacío');
+      companiasList = [];
+    }
+
+    const mapeoCompanias: Record<number, string> = {};
+    companiasList.forEach((compania: any) => {
+      mapeoCompanias[compania.id] = compania.comnom || compania.displayName || `Compañía ${compania.id}`;
+    });
+
+    let polizasList: any[] = [];
+    if (Array.isArray(polizasData)) {
+      polizasList = polizasData;
+    } else if (polizasData && polizasData.data && Array.isArray(polizasData.data)) {
+      polizasList = polizasData.data;
+    } else if (polizasData && polizasData.polizas && Array.isArray(polizasData.polizas)) {
+      polizasList = polizasData.polizas;
+    } else {
+      throw new Error('El API no devolvió un array de pólizas válido');
+    }
+
+    const now = new Date();
+    const polizasRenovables = polizasList.filter((poliza: any) => {
+      if (poliza.seccod !== 4) {
+        console.log(`❌ Rechazada - Sección ${poliza.seccod} (no automotor)`);
+        return false;
+      }
+      
+      let diasHastaVencimiento = 0;
+      try {
+        const fechaVencimiento = new Date(poliza.confchhas);
+        diasHastaVencimiento = Math.ceil((fechaVencimiento.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+      } catch (error) {
+        return false;
+      }
+      
+      const enRangoRenovacion = diasHastaVencimiento >= -30 && diasHastaVencimiento <= 60;
+      
+      if (enRangoRenovacion) {
+        if (!poliza.comnom || poliza.comnom.trim() === '') {
+          poliza.comnom = mapeoCompanias[poliza.comcod] || `Compañía ${poliza.comcod}`;
+        }
+      }
+      
+      return enRangoRenovacion;
+    });
+
+    updateState(prevState => ({
+      ...prevState,
+      cliente: {
+        ...prevState.cliente,
+        selectedId: clienteId,
+        polizas: polizasRenovables
+      }
+    }));
+
+    if (polizasRenovables.length === 0) {
+      toast('Este cliente no tiene pólizas de automotor renovables en este momento', {
+        icon: 'ℹ️',
+        duration: 4000,
+      });
+    } else {
+      toast.success(`Se encontraron ${polizasRenovables.length} pólizas renovables`);
+    }
+
+    return polizasRenovables;
+  } catch (error: any) {
+    toast.error('Error cargando pólizas del cliente: ' + (error.message || 'Error desconocido'));
+    updateState(prevState => ({
+      ...prevState,
+      cliente: {
+        ...prevState.cliente,
+        selectedId: clienteId,
+        polizas: []
+      }
+    }));
+    
+    return [];
+  }
+}, [updateState]);
 
   const setClienteData = useCallback((cliente: Cliente) => {
     updateState(prevState => ({

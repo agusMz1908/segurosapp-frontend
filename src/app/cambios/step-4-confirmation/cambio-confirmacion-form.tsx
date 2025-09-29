@@ -319,7 +319,7 @@ export function CambioConfirmationForm({ hookInstance }: CambioConfirmationFormP
             <Button 
               onClick={handleProcessCambio}
               size="lg"
-              className="bg-blue-600 hover:bg-blue-700 shadow-lg hover:shadow-xl transition-all duration-200"
+              className="bg-green-600 hover:bg-green-700 shadow-lg hover:shadow-xl transition-all duration-200"
               disabled={!state.scan?.scanId || !context.polizaOriginal?.id}
             >
               <Send className="mr-2 h-5 w-5" />

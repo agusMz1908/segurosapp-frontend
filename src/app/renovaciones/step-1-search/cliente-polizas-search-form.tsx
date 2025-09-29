@@ -27,37 +27,30 @@ export function ClientePolizasSearchForm({ hookInstance }: ClientePolizasSearchF
   
   const [selectedCliente, setSelectedCliente] = useState<Cliente | undefined>();
 
-const handleClienteChange = async (clienteId: number | undefined, cliente?: Cliente) => {
-  setSelectedCliente(cliente);
-  
-  if (clienteId && cliente) {
-    if (hookInstance.setClienteData) {
-      hookInstance.setClienteData(cliente);
-    }
+  const handleClienteChange = async (clienteId: number | undefined, cliente?: Cliente) => {
+    setSelectedCliente(cliente);
     
-    try {
-      await hookInstance.loadPolizasByCliente(clienteId);
-    } catch (error) {
-      console.error('Error cargando pólizas:', error);
+    if (clienteId && cliente) {
+      if (hookInstance.setClienteData) {
+        hookInstance.setClienteData(cliente);
+      }
+      
+      try {
+        await hookInstance.loadPolizasByCliente(clienteId);
+      } catch (error) {
+        console.error('Error cargando pólizas:', error);
+      }
     }
-  }
-};
+  };
 
 const handlePolizaSelect = (poliza: any) => {
+  console.log('=== HANDLE POLIZA SELECT ===');
+  console.log('Póliza recibida:', JSON.stringify(poliza, null, 2));
+  console.log('State completo cliente.polizas:', hookInstance.state.cliente.polizas);
   selectPolizaToRenew(poliza);
 
   const companiaId = poliza.comcod;
-  let companiaNombre = poliza.comnom;
-
-  if (!companiaNombre || companiaNombre.trim() === '') {
-    const mapeoCompanias: Record<number, string> = {
-      1: 'BANCO DE SEGUROS',
-      2: 'SURA SEGUROS',
-      3: 'MAPFRE',
-      4: 'PORTO SEGUROS'
-    };
-    companiaNombre = mapeoCompanias[companiaId] || `Compañía ${companiaId}`;
-  }
+  const companiaNombre = poliza.comnom;
 
   hookInstance.updateState((prevState: any) => ({
     ...prevState,
@@ -77,13 +70,6 @@ const handlePolizaSelect = (poliza: any) => {
     }
   }));
 };
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('es-UY', {
-      style: 'currency',
-      currency: 'UYU'
-    }).format(amount);
-  };
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('es-UY', {
@@ -206,12 +192,12 @@ const handlePolizaSelect = (poliza: any) => {
                             }
                           `} />
                           
-                          <FileText className="h-5 w-5 text-gray-600" />
+                          <FileText className="h-5 w-5 text-gray-600 dark:text-gray-300" />
                           <div>
-                            <h4 className="font-semibold text-lg">
+                            <h4 className="font-semibold text-lg text-gray-900 dark:text-gray-100">
                               Póliza {poliza.conpol}
                             </h4>
-                            <p className="text-sm text-gray-600">
+                            <p className="text-sm text-gray-600 dark:text-gray-300">
                               {poliza.comnom || `Compañía ${poliza.comcod}`}
                             </p>
                           </div>
@@ -222,6 +208,7 @@ const handlePolizaSelect = (poliza: any) => {
                             variant={vencimientoStatus.color === 'green' ? 'default' : 
                                      vencimientoStatus.color === 'yellow' ? 'secondary' : 
                                      vencimientoStatus.color === 'red' ? 'destructive' : 'outline'}
+                            className={vencimientoStatus.color === 'blue' ? 'bg-blue-600 text-white dark:bg-blue-500' : ''}
                           >
                             {vencimientoStatus.text}
                           </Badge>
@@ -235,9 +222,9 @@ const handlePolizaSelect = (poliza: any) => {
                       <div className="flex items-center justify-between mb-4 text-sm">
                         <div className="flex items-center gap-6">
                           <div className="flex items-center gap-2">
-                            <Calendar className="h-4 w-4 text-gray-500" />
-                            <span className="text-gray-600">Vigencia hasta: </span>
-                            <span className="font-medium">{formatDate(poliza.confchhas)}</span>
+                            <Calendar className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+                            <span className="text-gray-600 dark:text-gray-300">Vigencia hasta: </span>
+                            <span className="font-medium text-gray-900 dark:text-gray-100">{formatDate(poliza.confchhas)}</span>
                           </div>
                         </div>
                       </div>
@@ -245,11 +232,11 @@ const handlePolizaSelect = (poliza: any) => {
                       <div className="flex justify-between items-center pt-2 border-t border-gray-200 dark:border-gray-700">
                         <div className="flex items-center gap-2">
                           {renovable ? (
-                            <CheckCircle className="h-4 w-4 text-green-600" />
+                            <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
                           ) : (
-                            <AlertTriangle className="h-4 w-4 text-red-600" />
+                            <AlertTriangle className="h-4 w-4 text-red-600 dark:text-red-400" />
                           )}
-                          <span className={`text-sm ${renovable ? 'text-green-700' : 'text-red-700'}`}>
+                          <span className={`text-sm ${renovable ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400'}`}>
                             {renovable ? 'Puede ser renovada' : 'No renovable en este momento'}
                           </span>
                         </div>
