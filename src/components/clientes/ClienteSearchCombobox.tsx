@@ -43,7 +43,6 @@ export function ClienteSearchCombobox({
   
   const { searchClientes, loading, error, clearError } = useMasterData();
 
-  // Debounce search
   useEffect(() => {
     if (!searchQuery || searchQuery.length < 2) {
       setSearchResults([]);
@@ -56,7 +55,6 @@ export function ClienteSearchCombobox({
         const results = await searchClientes(searchQuery, 10);
         setSearchResults(results);
       } catch (error) {
-        console.error('Error searching clientes:', error);
         setSearchResults([]);
       }
     }, 300);
@@ -64,10 +62,8 @@ export function ClienteSearchCombobox({
     return () => clearTimeout(timeoutId);
   }, [searchQuery, searchClientes, clearError]);
 
-  // Cargar cliente seleccionado si tenemos un ID
   useEffect(() => {
     if (value && !selectedCliente) {
-      // Si tenemos un ID pero no el objeto cliente, buscarlo
       const clienteFromResults = searchResults.find(c => c.id === value);
       if (clienteFromResults) {
         setSelectedCliente(clienteFromResults);
@@ -91,10 +87,9 @@ export function ClienteSearchCombobox({
     setSearchQuery('');
   };
 
-  // 🔥 ARREGLADO: Solo mostrar el nombre, sin cédula en paréntesis
   const displayText = useMemo(() => {
     if (selectedCliente) {
-      return selectedCliente.nombre; // Solo el nombre
+      return selectedCliente.nombre; 
     }
     return placeholder;
   }, [selectedCliente, placeholder]);
@@ -109,7 +104,7 @@ export function ClienteSearchCombobox({
               role="combobox"
               aria-expanded={open}
               className={cn(
-                "flex-1 justify-between text-left font-normal min-w-0", // 🔥 AÑADIDO min-w-0
+                "flex-1 justify-between text-left font-normal min-w-0",
                 selectedCliente ?
                 "rounded-r-none border-r-0" : "rounded-md",
                 !selectedCliente && "text-muted-foreground",
@@ -119,7 +114,6 @@ export function ClienteSearchCombobox({
             >
               <div className="flex items-center gap-2 flex-1 min-w-0 overflow-hidden">
                 <User className="h-4 w-4 flex-shrink-0" />
-                {/* 🔥 ARREGLADO: Contenedor para truncar texto correctamente */}
                 <span className="truncate block min-w-0" title={displayText}>
                   {displayText}
                 </span>
@@ -144,7 +138,6 @@ export function ClienteSearchCombobox({
               </div>
 
               <CommandList>
-                {/* Cliente seleccionado actual */}
                 {selectedCliente && (
                   <CommandGroup heading="Seleccionado">
                     <CommandItem
@@ -173,7 +166,6 @@ export function ClienteSearchCombobox({
                   </CommandGroup>
                 )}
 
-                {/* Resultados de búsqueda */}
                 {searchQuery.length >= 2 && (
                   <CommandGroup 
                     heading={`Resultados ${searchResults.length > 0 ? `(${searchResults.length})` : ''}`}
@@ -249,7 +241,6 @@ export function ClienteSearchCombobox({
                   </CommandGroup>
                 )}
 
-                {/* Ayuda inicial */}
                 {!searchQuery && (
                   <div className="p-4 text-center text-sm text-muted-foreground">
                     <Search className="h-8 w-8 mx-auto mb-2 opacity-30" />
@@ -264,7 +255,6 @@ export function ClienteSearchCombobox({
           </PopoverContent>
         </Popover>
 
-        {/* Botón de limpiar separado - fuera del Popover */}
         {selectedCliente && (
           <Button
             variant="outline"
@@ -279,7 +269,6 @@ export function ClienteSearchCombobox({
         )}
       </div>
 
-      {/* Error persistente */}
       {error && !open && (
         <div className="absolute top-full left-0 right-0 mt-1 p-2 bg-red-50 border border-red-200 rounded-md z-50">
           <p className="text-xs text-red-600">{error}</p>

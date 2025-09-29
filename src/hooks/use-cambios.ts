@@ -2,8 +2,6 @@ import { useState, useCallback } from 'react';
 import { toast } from 'react-hot-toast';
 import { getAuthHeaders, getAuthHeadersForFormData, getAuthToken, handle401Error } from '../utils/auth-utils';
 
-// ===================== INTERFACES =====================
-
 interface CambiosState {
   currentStep: number;
   isLoading: boolean;
@@ -60,8 +58,6 @@ interface CambiosState {
   processResult?: any;
 }
 
-// ===================== ESTADO INICIAL =====================
-
 const initialState: CambiosState = {
   currentStep: 1,
   isLoading: false,
@@ -96,8 +92,6 @@ const initialState: CambiosState = {
   },
   processCompleted: false
 };
-
-// ===================== FUNCIONES DE LIMPIEZA =====================
 
 const cleanText = (str: string) => {
   if (!str) return "";
@@ -152,11 +146,7 @@ const cleanPatenteField = (str: string) => {
   return cleaned;
 };
 
-// ===================== FUNCIÓN DE MAPEO =====================
-
 const mapBackendDataToFrontend = (backendData: any, extractedData: any) => {
-  console.log('🔧 CAMBIOS - mapBackendDataToFrontend iniciado:', { backendData, extractedData });
-  
   const findFieldValue = (keys: string[]) => {
     for (const key of keys) {
       if (extractedData[key] && extractedData[key].toString().trim()) {
@@ -279,8 +269,6 @@ const mapBackendDataToFrontend = (backendData: any, extractedData: any) => {
   return result;
 };
 
-// ===================== HOOK PRINCIPAL =====================
-
 export function useCambios() {
   const [state, setState] = useState<CambiosState>(initialState);
 
@@ -295,14 +283,10 @@ export function useCambios() {
     }
   }, []);
 
-  // ===================== CARGAR PÓLIZAS =====================
-
   const loadPolizasByCliente = useCallback(async (clienteId: number) => {
     setState(prev => ({ ...prev, isLoading: true }));
     
-    try {
-      console.log('Cargando pólizas vigentes para cambios - cliente:', clienteId);
-      
+    try { 
       const token = getAuthToken();
       if (!token) {
         throw new Error('No se encontró token de autenticación');
@@ -326,8 +310,6 @@ export function useCambios() {
       }
 
       const polizasData = await response.json();
-      console.log('Respuesta del API:', polizasData);
-
       let polizasList: any[] = [];
       
       if (Array.isArray(polizasData)) {
@@ -337,14 +319,12 @@ export function useCambios() {
       } else if (polizasData && polizasData.polizas && Array.isArray(polizasData.polizas)) {
         polizasList = polizasData.polizas;
       } else {
-        console.error('Formato de respuesta inesperado:', polizasData);
         throw new Error('El API no devolvió un array de pólizas válido');
       }
 
       const now = new Date();
       const polizasVigentes = polizasList.filter((poliza: any) => {
         if (poliza.seccod !== 4) {
-          console.log(`Póliza ${poliza.conpol} EXCLUIDA - No es de automotor (sección: ${poliza.seccod})`);
           return false;
         }
 
@@ -357,14 +337,7 @@ export function useCambios() {
           return false;
         }
         
-        const esVigenteParaCambios = diasHastaVencimiento >= -30;
-        
-        if (!esVigenteParaCambios) {
-          console.log(`Póliza ${poliza.conpol} EXCLUIDA - Vencida hace más de 30 días`);
-        } else {
-          console.log(`Póliza ${poliza.conpol} INCLUIDA - Vigente para cambios`);
-        }
-        
+        const esVigenteParaCambios = diasHastaVencimiento >= -30;       
         return esVigenteParaCambios;
       });
 
@@ -389,7 +362,6 @@ export function useCambios() {
 
       return polizasVigentes;
     } catch (error: any) {
-      console.error('Error cargando pólizas vigentes:', error);
       toast.error('Error cargando pólizas vigentes: ' + (error.message || 'Error desconocido'));
       
       setState(prev => ({ 
@@ -406,65 +378,51 @@ export function useCambios() {
     }
   }, []);
 
-  // ===================== SELECCIONAR PÓLIZA =====================
+  const selectPolizaForChange = useCallback((poliza: any) => {
+    setState(prevState => {
+      const clienteInfoCompleta = prevState.context.clienteInfo || {
+        id: prevState.cliente.selectedId!,
+        nombre: `Cliente ${prevState.cliente.selectedId}`,
+        documento: 'No especificado',
+        activo: true
+      };
 
-const selectPolizaForChange = useCallback((poliza: any) => {
-  console.log('🔧 Seleccionando póliza para cambio:', poliza);
-  
-  setState(prevState => {
-    // 🔥 PRESERVAR: Información completa del cliente existente
-    const clienteInfoCompleta = prevState.context.clienteInfo || {
-      id: prevState.cliente.selectedId!,
-      nombre: `Cliente ${prevState.cliente.selectedId}`,
-      documento: 'No especificado',
-      activo: true
-    };
-
-    return {
-      ...prevState,
-      cliente: {
-        ...prevState.cliente,
-        selectedPoliza: poliza
-      },
-      context: {
-        ...prevState.context,
-        polizaOriginalId: poliza.id || poliza.Id,
-        companiaId: poliza.comcod || poliza.companiaId,
-        seccionId: poliza.seccod,
-        clienteInfo: clienteInfoCompleta, // 🔥 MANTENER: Info completa
-        companiaInfo: {                      
-          id: poliza.comcod || poliza.companiaId || 1,
-          nombre: poliza.compania_nombre || poliza.comnom || 'Compañía no especificada',
-          codigo: poliza.comcod || poliza.companiaId || 1
+      return {
+        ...prevState,
+        cliente: {
+          ...prevState.cliente,
+          selectedPoliza: poliza
         },
-        seccionInfo: {
-          id: poliza.seccod,
-          nombre: poliza.seccion_nombre || 'Automotor'
-        },
-        polizaOriginal: {
-          id: poliza.id || poliza.Id,
-          numero: poliza.conpol,
-          vencimiento: poliza.confchhas,
-          compania: poliza.compania_nombre || poliza.comnom || 'Sin especificar'
+        context: {
+          ...prevState.context,
+          polizaOriginalId: poliza.id || poliza.Id,
+          companiaId: poliza.comcod || poliza.companiaId,
+          seccionId: poliza.seccod,
+          clienteInfo: clienteInfoCompleta, 
+          companiaInfo: {                      
+            id: poliza.comcod || poliza.companiaId || 1,
+            nombre: poliza.compania_nombre || poliza.comnom || 'Compañía no especificada',
+            codigo: poliza.comcod || poliza.companiaId || 1
+          },
+          seccionInfo: {
+            id: poliza.seccod,
+            nombre: poliza.seccion_nombre || 'Automotor'
+          },
+          polizaOriginal: {
+            id: poliza.id || poliza.Id,
+            numero: poliza.conpol,
+            vencimiento: poliza.confchhas,
+            compania: poliza.compania_nombre || poliza.comnom || 'Sin especificar'
+          }
         }
-      }
-    };
-  });
+      };
+    });
 
-  toast.success(`Póliza ${poliza.conpol} seleccionada para cambio`);
-}, []);
-
-  // ===================== UPLOAD DE DOCUMENTO =====================
+    toast.success(`Póliza ${poliza.conpol} seleccionada para cambio`);
+  }, []);
 
   const uploadDocumentForChange = useCallback(async (file: File): Promise<boolean> => {
-    console.log('🔄 CAMBIOS - Iniciando upload específico');
-    
     if (!state.context.clienteId || !state.context.seccionId || !state.context.companiaId) {
-      console.error('❌ Contexto incompleto:', {
-        clienteId: state.context.clienteId,
-        seccionId: state.context.seccionId,
-        companiaId: state.context.companiaId
-      });
       toast.error('Contexto incompleto. Selecciona cliente y póliza correctamente.');
       return false;
     }
@@ -538,9 +496,6 @@ const selectPolizaForChange = useCallback((poliza: any) => {
       }
 
       const result = await response.json();
-      console.log('✅ CAMBIOS - Respuesta del servidor:', result);
-
-      // ✅ NUEVO: Procesamiento de datos con limpieza
       const scanResult = result.scanResult || {};
       const polizaMapping = result.polizaMapping || {};
       
@@ -548,60 +503,34 @@ const selectPolizaForChange = useCallback((poliza: any) => {
       const normalizedData = polizaMapping.normalizedData || {};
       const mappedData = polizaMapping.mappedData || {};
 
-      console.log('🔍 CAMBIOS - Datos extraídos:', {
-        original: Object.keys(originalExtractedData).length,
-        normalized: Object.keys(normalizedData).length,
-        mapped: Object.keys(mappedData).length,
-      });
-
-      // ✅ NUEVO: Usar datos normalizados si están disponibles
       const dataForDisplay = Object.keys(normalizedData).length > 0
         ? normalizedData 
         : originalExtractedData;
 
-      // ✅ NUEVO: Log de comparación de limpieza
-      if (Object.keys(normalizedData).length > 0) {
-        console.log('🔄 CAMBIOS === COMPARACIÓN ANTES/DESPUÉS DE LIMPIEZA ===');
-        
-        const vehicleFields = ['vehiculo.marca', 'vehiculo.modelo', 'vehiculo.matricula'];
-        vehicleFields.forEach(field => {
-          const original = originalExtractedData[field];
-          const normalized = normalizedData[field];
-          
-          if (original && normalized && original !== normalized) {
-            console.log(`✅ CAMBIOS - ${field}:`);
-            console.log(`   Antes: "${original}"`);
-            console.log(`   Después: "${normalized}"`);
-          }
+      const displayData = mapBackendDataToFrontend(
+        mappedData, 
+        dataForDisplay || {}
+      );
+
+      if (displayData.vehiculoMarca) {
+        console.log('🚗 CAMBIOS - Marca limpiada:', {
+          antes: dataForDisplay['vehiculo.marca'],
+          después: displayData.vehiculoMarca
         });
       }
 
-const displayData = mapBackendDataToFrontend(
-  mappedData, 
-  dataForDisplay || {}
-);
+      if (displayData.vehiculoModelo) {
+        console.log('🚗 CAMBIOS - Modelo limpiado:', {
+          antes: dataForDisplay['vehiculo.modelo'], 
+          después: displayData.vehiculoModelo
+        });
+      }
 
-if (displayData.vehiculoMarca) {
-  console.log('🚗 CAMBIOS - Marca limpiada:', {
-    antes: dataForDisplay['vehiculo.marca'],
-    después: displayData.vehiculoMarca
-  });
-}
-
-if (displayData.vehiculoModelo) {
-  console.log('🚗 CAMBIOS - Modelo limpiado:', {
-    antes: dataForDisplay['vehiculo.modelo'], 
-    después: displayData.vehiculoModelo
-  });
-}
-
-      // ✅ NUEVO: Combinar datos limpios
       const combinedExtractedData = {
         ...dataForDisplay,
         ...displayData
       };
 
-      // Detectar compañía automáticamente
       let companiaDetectada = state.context.companiaInfo;
       let companiaIdDetectada = state.context.companiaId;
 
@@ -612,7 +541,6 @@ if (displayData.vehiculoModelo) {
           nombre: result.preSelection.compania.displayName || result.preSelection.compania.comnom || 'Detectada',
           codigo: result.preSelection.compania.shortCode || result.preSelection.compania.comalias || 'DET'
         };
-        console.log('🏢 CAMBIOS - Compañía detectada automáticamente:', companiaDetectada);
       }
 
       updateState({
@@ -629,7 +557,7 @@ if (displayData.vehiculoModelo) {
         },
         scan: {
           status: 'completed' as const,
-          extractedData: combinedExtractedData, // ✅ CAMBIO: Usar datos limpios
+          extractedData: combinedExtractedData, 
           normalizedData: normalizedData,
           mappedData: mappedData,
           completionPercentage: polizaMapping.metrics?.completionPercentage || 85,
@@ -649,9 +577,7 @@ if (displayData.vehiculoModelo) {
       toast.success(`Documento procesado exitosamente (${polizaMapping.metrics?.completionPercentage || 85}% confianza)`);
       return true;
 
-    } catch (error: any) {
-      console.error('❌ CAMBIOS - Error en upload:', error);
-      
+    } catch (error: any) { 
       updateState({
         file: {
           selected: file,
@@ -672,31 +598,27 @@ if (displayData.vehiculoModelo) {
     }
   }, [state.context, state.scan, updateState]);
 
-  // ===================== OTRAS FUNCIONES =====================
-
-const setClienteData = useCallback((cliente: any) => {
-  console.log('🔧 CAMBIOS - setClienteData recibido:', cliente);
-  
-  setState(prev => ({
-    ...prev,
-    context: {
-      ...prev.context,
-      clienteId: cliente.id,
-      clienteInfo: {
-        id: cliente.id,
-        nombre: cliente.nombre || cliente.displayName || `Cliente ${cliente.id}`,
-        documento: cliente.documento || 'No especificado',
-        documentType: cliente.documentType,
-        email: cliente.email,
-        telefono: cliente.telefono,
-        direccion: cliente.direccion,
-        activo: cliente.activo !== undefined ? cliente.activo : true, // 🔥 PRESERVAR estado
-        displayName: cliente.displayName,
-        contactInfo: cliente.contactInfo
+  const setClienteData = useCallback((cliente: any) => {
+    setState(prev => ({
+      ...prev,
+      context: {
+        ...prev.context,
+        clienteId: cliente.id,
+        clienteInfo: {
+          id: cliente.id,
+          nombre: cliente.nombre || cliente.displayName || `Cliente ${cliente.id}`,
+          documento: cliente.documento || 'No especificado',
+          documentType: cliente.documentType,
+          email: cliente.email,
+          telefono: cliente.telefono,
+          direccion: cliente.direccion,
+          activo: cliente.activo !== undefined ? cliente.activo : true, 
+          displayName: cliente.displayName,
+          contactInfo: cliente.contactInfo
+        }
       }
-    }
-  }));
-}, []);
+    }));
+  }, []);
 
   const updateExtractedData = useCallback((updates: any) => {
     setState(prev => ({
@@ -723,8 +645,6 @@ const setClienteData = useCallback((cliente: any) => {
     }));
   }, []);
 
-  // ===================== NAVEGACIÓN =====================
-
   const nextStep = useCallback(() => {
     setState(prev => ({ ...prev, currentStep: Math.min(prev.currentStep + 1, 4) }));
   }, []);
@@ -737,8 +657,6 @@ const setClienteData = useCallback((cliente: any) => {
     setState(initialState);
     toast.success('Sistema de cambios reiniciado');
   }, []);
-
-  // ===================== VALIDACIONES =====================
 
   const canProceedToStep2 = useCallback(() => {
     return !!(state.context.clienteId && state.context.seccionId && state.cliente.selectedPoliza);
@@ -753,8 +671,6 @@ const setClienteData = useCallback((cliente: any) => {
     const hasMasterData = state.masterData.combustibleId && state.masterData.categoriaId;
     return !!(hasExtractedData && hasMasterData);
   }, [state.scan.extractedData, state.masterData.combustibleId, state.masterData.categoriaId]);
-
-  // ===================== RETURN =====================
 
   return {
     state,

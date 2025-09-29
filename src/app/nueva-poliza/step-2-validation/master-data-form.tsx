@@ -49,12 +49,6 @@ const ControlledSelect = ({
           </option>
         ))}
       </select>
-      {/* Debug info - solo en desarrollo */}
-      {process.env.NODE_ENV === 'development' && (
-        <p className="text-xs text-gray-500">
-          Opciones: {options.length} | Valor: "{value}" | Tipo: {typeof value}
-        </p>
-      )}
     </div>
   );
 };

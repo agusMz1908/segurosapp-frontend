@@ -1,5 +1,8 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 import { 
   Upload, 
   FileText, 
@@ -8,13 +11,23 @@ import {
   Building2,
   User,
   Calendar,
-  Edit
+  Edit,
+  AlertCircle
 } from 'lucide-react';
+import { useMasterData } from '@/hooks/use-master-data';
 import { DocumentUploader } from '../../renovaciones/step-3-validation/document-uploader';
+import type { Compania } from '@/types/master-data';
 
 interface DocumentUploadContainerProps {
   hookInstance: any;
 }
+
+const COMPANIAS_HABILITADAS = [
+  'BANCO DE SEGUROS',
+  'MAPFRE', 
+  'SURA SEGUROS',
+  'PORTO SEGUROS'
+];
 
 function ClienteContextDisplay({ clienteInfo }: { clienteInfo?: any }) {
   if (!clienteInfo) {
@@ -49,6 +62,37 @@ function ClienteContextDisplay({ clienteInfo }: { clienteInfo?: any }) {
 
 export function DocumentUploadContainer({ hookInstance }: DocumentUploadContainerProps) {
   const { state, uploadDocumentForChange, updateState } = hookInstance;
+  const { getCompanias, loading: loadingCompanias } = useMasterData();
+  
+  const [companias, setCompanias] = useState<Compania[]>([]);
+  const [usarMismaCompania, setUsarMismaCompania] = useState(true);
+  const [companiaSeleccionada, setCompaniaSeleccionada] = useState<number | null>(null);
+  const [companiaOriginalId, setCompaniaOriginalId] = useState<number | null>(null);
+
+  useEffect(() => {
+    const loadCompanias = async () => {
+      try {
+        const data = await getCompanias();
+        const filtradas = data.filter(compania => 
+          COMPANIAS_HABILITADAS.some(nombreHabilitado => 
+            compania.nombre.toUpperCase().includes(nombreHabilitado.toUpperCase())
+          )
+        );
+        setCompanias(filtradas);
+      } catch (error) {
+        console.error('Error cargando compañías:', error);
+      }
+    };
+    loadCompanias();
+  }, [getCompanias]);
+
+  useEffect(() => {
+    if (state.context.companiaInfo?.id && companiaOriginalId === null) {
+      setCompaniaOriginalId(state.context.companiaInfo.id);
+      setCompaniaSeleccionada(state.context.companiaInfo.id);
+      console.log('💾 Compañía original guardada:', state.context.companiaInfo.nombre);
+    }
+  }, [state.context.companiaInfo, companiaOriginalId]);
   
   const formatDate = (dateString: string) => {
     if (!dateString) return 'No especificado';
@@ -57,6 +101,50 @@ export function DocumentUploadContainer({ hookInstance }: DocumentUploadContaine
       month: '2-digit',
       year: 'numeric'
     });
+  };
+
+  const handleToggleUsarMisma = (checked: boolean) => {
+    setUsarMismaCompania(checked);
+    
+    if (checked && companiaOriginalId) {
+      setCompaniaSeleccionada(companiaOriginalId);
+      const companiaOriginal = companias.find(c => c.id === companiaOriginalId);
+      
+      updateState((prevState: any) => ({
+        ...prevState,
+        context: {
+          ...prevState.context,
+          companiaId: companiaOriginalId,
+          companiaInfo: companiaOriginal ? {
+            id: companiaOriginal.id,
+            nombre: companiaOriginal.nombre,
+            codigo: companiaOriginal.codigo
+          } : prevState.context.companiaInfo
+        }
+      }));
+      
+      console.log('🔄 Compañía restaurada a original:', companiaOriginal?.nombre);
+    }
+  };
+
+  const handleCompaniaChange = (companiaId: number) => {
+    setCompaniaSeleccionada(companiaId);
+    const compania = companias.find(c => c.id === companiaId);
+    
+    updateState((prevState: any) => ({
+      ...prevState,
+      context: {
+        ...prevState.context,
+        companiaId: companiaId,
+        companiaInfo: compania ? {
+          id: compania.id,
+          nombre: compania.nombre,
+          codigo: compania.codigo
+        } : prevState.context.companiaInfo
+      }
+    }));
+    
+    console.log('🏢 Nueva compañía seleccionada:', compania?.nombre);
   };
 
   const handleFileRemove = () => {
@@ -81,6 +169,11 @@ export function DocumentUploadContainer({ hookInstance }: DocumentUploadContaine
     });
   };
 
+  const canUpload = usarMismaCompania || companiaSeleccionada !== null;
+  const nombreCompaniaFinal = usarMismaCompania 
+    ? state.context.companiaInfo?.nombre 
+    : companias.find(c => c.id === companiaSeleccionada)?.nombre;
+
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
       
@@ -93,9 +186,9 @@ export function DocumentUploadContainer({ hookInstance }: DocumentUploadContaine
         </p>
       </div>
 
-        <Card className="border-blue-200 dark:border-blue-800">
-          <CardHeader className="bg-blue-50 dark:bg-blue-900/20">
-            <CardTitle className="flex items-center gap-2 text-blue-700 dark:text-blue-400">
+      <Card className="border-blue-200 dark:border-blue-800">
+        <CardHeader className="bg-blue-50 dark:bg-blue-900/20">
+          <CardTitle className="flex items-center gap-2 text-blue-700 dark:text-blue-400">
             <Info className="h-5 w-5" />
             Contexto del Cambio
           </CardTitle>
@@ -128,17 +221,8 @@ export function DocumentUploadContainer({ hookInstance }: DocumentUploadContaine
                     Póliza Vigente
                   </span>
                 </div>
-              </div>
-            </div>
-
-            <div className="space-y-3 md:col-span-2">
-              <h3 className="font-medium text-gray-900 dark:text-gray-100 flex items-center gap-2">
-                <Building2 className="h-4 w-4" />
-                Compañía de Seguros
-              </h3>
-              <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3 text-center">
-                <p className="font-medium text-lg">
-                  {state.context.companiaInfo?.nombre || 'Se detectará automáticamente'}
+                <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
+                  Compañía: {state.context.companiaInfo?.nombre}
                 </p>
               </div>
             </div>
@@ -146,24 +230,107 @@ export function DocumentUploadContainer({ hookInstance }: DocumentUploadContaine
         </CardContent>
       </Card>
 
-      <DocumentUploader 
-        onUpload={uploadDocumentForChange}
-        onFileRemove={handleFileRemove}
-        isUploading={state.isLoading}
-        uploadStatus={state.scan.status}
-        fileName={state.scan.fileName}
-        accept=".pdf,.jpg,.jpeg,.png"
-        maxSize={10}
-        errorMessage={state.scan.errorMessage}
-        progress={state.file?.uploadProgress || 0}
-        scanResult={{
-          completionPercentage: state.scan.completionPercentage || state.scan.confidence || 0,
-          extractedData: state.scan.extractedData,
-          requiresAttention: state.scan.requiresAttention || [],
-          errorMessage: state.scan.errorMessage
-        }}
-        acceptedFile={state.file?.selected}
-      />
+      <Card className={`
+        border-2 transition-all
+        ${canUpload 
+          ? 'border-green-500 bg-green-50 dark:bg-green-900/10' 
+          : 'border-yellow-500 bg-yellow-50 dark:bg-yellow-900/10'
+        }
+      `}>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Building2 className="h-5 w-5" />
+            Compañía de Seguros para el Cambio
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          
+          <div className="flex items-center justify-between p-4 bg-white dark:bg-gray-800 rounded-lg border">
+            <div className="space-y-0.5">
+              <Label htmlFor="usar-misma-compania" className="text-base font-medium">
+                Mantener la misma compañía
+              </Label>
+              <p className="text-sm text-gray-500">
+                {state.context.companiaInfo?.nombre 
+                  ? `Continuar con ${state.context.companiaInfo.nombre}`
+                  : 'Usar la misma compañía de la póliza actual'
+                }
+              </p>
+            </div>
+            <Switch
+              id="usar-misma-compania"
+              checked={usarMismaCompania}
+              onCheckedChange={handleToggleUsarMisma}
+            />
+          </div>
+
+          {!usarMismaCompania && (
+            <div className="space-y-2">
+              <Label className="flex items-center gap-2">
+                Seleccionar Nueva Compañía
+                {companiaSeleccionada && <CheckCircle className="h-4 w-4 text-green-500" />}
+              </Label>
+              <select
+                className="w-full p-3 border rounded-md text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                value={companiaSeleccionada || ''}
+                onChange={(e) => handleCompaniaChange(Number(e.target.value))}
+                disabled={loadingCompanias}
+              >
+                <option value="">Seleccionar compañía...</option>
+                {companias.map(compania => (
+                  <option key={compania.id} value={compania.id}>
+                    {compania.nombre}
+                  </option>
+                ))}
+              </select>
+              
+              {!companiaSeleccionada && (
+                <p className="text-sm text-yellow-600 dark:text-yellow-400 flex items-center gap-1">
+                  <AlertCircle className="h-4 w-4" />
+                  Debes seleccionar una compañía para continuar
+                </p>
+              )}
+            </div>
+          )}
+
+          {canUpload && (
+            <div className="p-3 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
+              <p className="text-sm text-green-700 dark:text-green-400 flex items-center gap-2">
+                <CheckCircle className="h-4 w-4" />
+                Compañía seleccionada: <strong>{nombreCompaniaFinal}</strong>
+              </p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {canUpload ? (
+        <DocumentUploader 
+          onUpload={uploadDocumentForChange}
+          onFileRemove={handleFileRemove}
+          isUploading={state.isLoading}
+          uploadStatus={state.scan.status}
+          fileName={state.scan.fileName}
+          accept=".pdf,.jpg,.jpeg,.png"
+          maxSize={10}
+          errorMessage={state.scan.errorMessage}
+          progress={state.file?.uploadProgress || 0}
+          scanResult={{
+            completionPercentage: state.scan.completionPercentage || state.scan.confidence || 0,
+            extractedData: state.scan.extractedData,
+            requiresAttention: state.scan.requiresAttention || [],
+            errorMessage: state.scan.errorMessage
+          }}
+          acceptedFile={state.file?.selected}
+        />
+      ) : (
+        <Alert className="border-yellow-300 bg-yellow-50 dark:bg-yellow-900/10">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            Selecciona una compañía de seguros antes de subir el documento
+          </AlertDescription>
+        </Alert>
+      )}
     </div>
   );
 }

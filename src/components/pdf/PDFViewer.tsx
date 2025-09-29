@@ -26,7 +26,6 @@ export function PDFViewer({ file, isOpen, onClose, className = '' }: PDFViewerPr
   const [error, setError] = useState<string | null>(null);
   const [fileUrl, setFileUrl] = useState<string | null>(null);
 
-  // Crear y limpiar URL del archivo
   useEffect(() => {
     if (file && isOpen) {
       try {
@@ -45,7 +44,6 @@ export function PDFViewer({ file, isOpen, onClose, className = '' }: PDFViewerPr
           clearTimeout(timer);
         };
       } catch (err) {
-        console.error('Error creando URL:', err);
         setError('Error procesando el archivo PDF');
         setLoading(false);
       }
@@ -102,8 +100,6 @@ export function PDFViewer({ file, isOpen, onClose, className = '' }: PDFViewerPr
 
   return (
     <div className={`h-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-lg flex flex-col rounded-lg overflow-hidden ${className}`}>
-      
-      {/* Header del visor mejorado */}
       <Card className="flex-shrink-0 rounded-none border-0 border-b border-gray-200 dark:border-gray-700">
         <CardHeader className="py-3">
           <div className="flex items-center justify-between">
@@ -111,8 +107,7 @@ export function PDFViewer({ file, isOpen, onClose, className = '' }: PDFViewerPr
               <FileText className="h-4 w-4" />
               Visor PDF
             </CardTitle>
-            
-            {/* Botones de acción */}
+
             <div className="flex items-center gap-2">
               {fileUrl && (
                 <>
@@ -162,7 +157,6 @@ export function PDFViewer({ file, isOpen, onClose, className = '' }: PDFViewerPr
         </CardHeader>
       </Card>
 
-      {/* Área de visualización del PDF mejorada */}
       <div className="flex-1 overflow-hidden bg-gray-50 dark:bg-gray-800 relative">
         {loading && (
           <div className="absolute inset-0 flex items-center justify-center bg-white/90 dark:bg-gray-900/90 z-10">
@@ -214,15 +208,13 @@ export function PDFViewer({ file, isOpen, onClose, className = '' }: PDFViewerPr
 
         {fileUrl && !error && (
           <>
-            {/* Embed PDF como alternativa más compatible */}
             <embed
               src={fileUrl}
               type="application/pdf"
               className="w-full h-full"
               style={{ minHeight: '100%' }}
             />
-            
-            {/* Fallback iframe si embed no funciona */}
+
             <noscript>
               <iframe
                 src={fileUrl}
@@ -237,8 +229,7 @@ export function PDFViewer({ file, isOpen, onClose, className = '' }: PDFViewerPr
                 allowFullScreen
               />
             </noscript>
-            
-            {/* Fallback para navegadores que no soportan PDF */}
+
             <div className="hidden" id="pdf-fallback">
               <div className="flex items-center justify-center h-full">
                 <div className="text-center p-6">

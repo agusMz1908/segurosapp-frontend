@@ -50,18 +50,10 @@ export function RenovacionesContainer() {
 
   const handleFileUpload = async (file: File): Promise<boolean> => {
     if (!state.context.clienteId || !state.context.seccionId) {
-      console.error('❌ RENOVACIONES - Contexto incompleto:', state.context);
       return false;
     }
     
-    console.log('🔄 RENOVACIONES - Iniciando upload con contexto:', {
-      clienteId: state.context.clienteId,
-      seccionId: state.context.seccionId,
-      archivo: file.name
-    });
-    
     const result = await uploadDocumentForRenovacion(file);
-    console.log('✅ RENOVACIONES - Resultado upload:', result);
     return result;
   };
 
@@ -285,7 +277,6 @@ export function RenovacionesContainer() {
 
   return (
     <div className="px-4 lg:px-6 xl:px-8 py-6 space-y-6 w-full">
-      {/* Header - Solo mostrar si no estamos en estado de éxito y no es paso 3 */}
       {state.currentStep !== 3 && (
         <div className="text-center mb-8 max-w-4xl mx-auto">
           <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-2">
@@ -297,51 +288,25 @@ export function RenovacionesContainer() {
         </div>
       )}
 
-      {/* Step Indicator - Mostrar siempre excepto que tengamos error */}
       {state.scan.status !== 'error' && (
         <div className="max-w-4xl mx-auto">
           {renderStepIndicator()}
         </div>
       )}
       
-      {/* Error State - Solo mostrar si no es paso 3 */}
       {state.currentStep !== 3 && (
         <div className="max-w-4xl mx-auto">
           {renderErrorState()}
         </div>
       )}
       
-      {/* Content Area - Usar ancho completo solo en paso 3 */}
       <div className={state.currentStep === 3 ? "min-h-[600px] w-full" : "max-w-4xl mx-auto min-h-[600px]"}>
         {renderCurrentStep()}
       </div>
 
-      {/* Navigation - Mostrar siempre excepto cuando la renovación esté completada */}
       {!(state.currentStep === 4 && state.processCompleted) && (
         <div className="max-w-4xl mx-auto">
           {renderNavigation()}
-        </div>
-      )}
-
-      {/* Debug Info - Solo en desarrollo */}
-      {process.env.NODE_ENV === 'development' && (
-        <div className="mt-8 p-4 bg-gray-100 dark:bg-gray-800 rounded-lg text-xs max-w-4xl mx-auto">
-          <details>
-            <summary className="cursor-pointer font-medium mb-2">Debug State Renovaciones</summary>
-            <pre className="whitespace-pre-wrap">
-              {JSON.stringify({
-                currentStep: state.currentStep,
-                contexto: state.context,
-                scanStatus: state.scan.status,
-                scanFileName: state.scan.fileName,
-                hasExtractedData: !!(state.scan.extractedData && Object.keys(state.scan.extractedData).length > 0),
-                hasMasterData: !!(state.masterData && Object.keys(state.masterData).length > 0),
-                canProceedToStep2,
-                canProceedToStep3,
-                canProceedToStep4
-              }, null, 2)}
-            </pre>
-          </details>
         </div>
       )}
     </div>

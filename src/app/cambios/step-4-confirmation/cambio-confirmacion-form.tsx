@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 import { 
   Send, 
   FileText, 
@@ -93,12 +92,11 @@ export function CambioConfirmationForm({ hookInstance }: CambioConfirmationFormP
 
       const requestBody = {
         PolizaAnteriorId: context.polizaOriginal.id,
-        TipoCambio: "MODIFICACION_GENERAL", // Tipo genérico de cambio
+        TipoCambio: "MODIFICACION_GENERAL",
         ValidarVigencia: true,
         Observaciones: masterData.observaciones || null,
         ComentariosUsuario: masterData.comentarios || null,
-        
-        // Master data del frontend
+
         CombustibleId: masterData.combustibleId || null,
         CategoriaId: masterData.categoriaId || null, 
         DestinoId: masterData.destinoId || null,
@@ -108,7 +106,6 @@ export function CambioConfirmationForm({ hookInstance }: CambioConfirmationFormP
         CorredorId: masterData.corredorId || null,
         MonedaId: masterData.monedaId || null,
 
-        // Extracted data del frontend
         NumeroPoliza: extractedData.numeroPoliza || extractedData.polizaNumber || null,
         FechaDesde: extractedData.fechaDesde || extractedData.vigenciaDesde || null,
         FechaHasta: extractedData.fechaHasta || extractedData.vigenciaHasta || null,
@@ -117,7 +114,6 @@ export function CambioConfirmationForm({ hookInstance }: CambioConfirmationFormP
         CantidadCuotas: extractedData.cantidadCuotas || null,
         ValorPorCuota: extractedData.valorPorCuota || extractedData.valorCuota || null,
 
-        // Datos del vehículo (si se modificaron)
         VehiculoMarca: extractedData.vehiculoMarca || extractedData.VehiculoMarca || null,
         VehiculoModelo: extractedData.vehiculoModelo || extractedData.VehiculoModelo || null,
         VehiculoAno: extractedData.vehiculoAno || extractedData.vehiculoAño || extractedData.VehiculoAño || null,
@@ -128,8 +124,6 @@ export function CambioConfirmationForm({ hookInstance }: CambioConfirmationFormP
         CamposCorregidos: [],
         ForzarCambio: false
       };
-
-      console.log('📝 CAMBIOS - Request a enviar:', requestBody);
 
       const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://localhost:7202';
       const response = await fetch(`${API_URL}/api/Document/${state.scan.scanId}/modify-in-velneo`, {
@@ -147,7 +141,6 @@ export function CambioConfirmationForm({ hookInstance }: CambioConfirmationFormP
       }
 
       const result: ModifyPolizaResponse = await response.json();
-      console.log('📋 CAMBIOS - Response del backend:', result);
 
       if (response.ok && result.success) {
         setProcessResult(result);
@@ -160,15 +153,9 @@ export function CambioConfirmationForm({ hookInstance }: CambioConfirmationFormP
         throw new Error(result.message || result.errorMessage || 'El cambio no se pudo procesar');
       }
 
-    } catch (error: any) {
-      console.error('❌ CAMBIOS - Error procesando:', error);
-      
+    } catch (error: any) {   
       const errorMessage = error.message || 'Error desconocido al procesar el cambio';
       toast.error(errorMessage);
-      
-      if (error.response) {
-        console.error('❌ CAMBIOS - Response error details:', error.response);
-      }
     } finally {
       setIsProcessing(false);
     }
@@ -183,7 +170,6 @@ export function CambioConfirmationForm({ hookInstance }: CambioConfirmationFormP
     window.location.href = '/dashboard';
   };
 
-  // Estado de procesamiento - 🔥 CAMBIO: Usar azul en lugar de violeta
   if (isProcessing) {
     return (
       <div className="space-y-6 p-6">
@@ -216,7 +202,6 @@ export function CambioConfirmationForm({ hookInstance }: CambioConfirmationFormP
     );
   }
 
-  // Estado completado
   if (processCompleted && processResult) {
     return (
       <SuccessState 
@@ -228,7 +213,6 @@ export function CambioConfirmationForm({ hookInstance }: CambioConfirmationFormP
     );
   }
 
-  // Estado de revisión - Vista por defecto
   return (
     <div className="space-y-6">
       <div className="text-center mb-6">
@@ -240,9 +224,7 @@ export function CambioConfirmationForm({ hookInstance }: CambioConfirmationFormP
         </p>
       </div>
 
-      {/* Información de la Póliza Original vs Modificada */}
       <div className="grid md:grid-cols-2 gap-6">
-        {/* Póliza Original */}
         <Card className="border-gray-200 bg-gray-50 dark:bg-gray-900/10 dark:border-gray-800">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -274,7 +256,6 @@ export function CambioConfirmationForm({ hookInstance }: CambioConfirmationFormP
           </CardContent>
         </Card>
 
-        {/* Datos Modificados - 🔥 CAMBIO: Usar azul en lugar de violeta */}
         <Card className="border-blue-200 bg-blue-50 dark:bg-blue-900/10 dark:border-blue-800">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -307,7 +288,6 @@ export function CambioConfirmationForm({ hookInstance }: CambioConfirmationFormP
         </Card>
       </div>
 
-      {/* Información de la Compañía */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -326,7 +306,6 @@ export function CambioConfirmationForm({ hookInstance }: CambioConfirmationFormP
         </CardContent>
       </Card>
 
-      {/* Botón de confirmación - 🔥 CAMBIO: Usar azul en lugar de violeta */}
       <Card>
         <CardContent className="pt-6">
           <div className="text-center space-y-4">
@@ -347,7 +326,6 @@ export function CambioConfirmationForm({ hookInstance }: CambioConfirmationFormP
               Procesar Cambio en Velneo
             </Button>
 
-            {/* Mensajes de validación */}
             {!state.scan?.scanId && (
               <p className="text-sm text-red-600">
                 No hay documento escaneado para procesar

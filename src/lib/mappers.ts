@@ -1,5 +1,3 @@
-// lib/mappers.ts - AGREGAR estas funciones al final del archivo
-
 import type {
   Cliente,
   ClienteItem,
@@ -9,11 +7,6 @@ import type {
   SeccionItem
 } from '@/types/master-data';
 
-// ... (código anterior de mappers) ...
-
-/**
- * Formatea un documento según su tipo
- */
 export function formatDocument(documento: string, type: string): string {
   if (!documento) return '';
 
@@ -21,7 +14,6 @@ export function formatDocument(documento: string, type: string): string {
 
   switch (type) {
     case 'RUT':
-      // Formato: XX.XXX.XXX.X
       if (cleanDoc.length >= 8) {
         const formatted = cleanDoc.replace(/(\d{1,2})(\d{3})(\d{3})(\d{1})/, '$1.$2.$3.$4');
         return formatted;
@@ -29,7 +21,6 @@ export function formatDocument(documento: string, type: string): string {
       break;
       
     case 'CI':
-      // Formato: X.XXX.XXX
       if (cleanDoc.length >= 7) {
         const formatted = cleanDoc.replace(/(\d{1})(\d{3})(\d{3})/, '$1.$2.$3');
         return formatted;
@@ -37,12 +28,9 @@ export function formatDocument(documento: string, type: string): string {
       break;
   }
 
-  return documento; // Devolver original si no se puede formatear
+  return documento; 
 }
 
-/**
- * Obtiene el texto de contacto de un cliente para mostrar
- */
 export function getClienteContactText(cliente: Cliente): string {
   const parts: string[] = [];
 
@@ -62,18 +50,12 @@ export function getClienteContactText(cliente: Cliente): string {
 }
 
 export function mapClienteItemToCliente(clienteItem: ClienteItem): Cliente {
-  // Obtener el nombre más apropiado
   const nombre = clienteItem.displayName || clienteItem.clinom || 'Sin nombre';
-  
-  // Obtener el documento más apropiado
   let documento = clienteItem.documentNumber || clienteItem.cliruc || clienteItem.cliced || '';
-  
-  // Limpiar formato del documento
   if (documento) {
     documento = documento.trim();
   }
   
-  // Determinar tipo de documento
   let documentType = clienteItem.documentType || '';
   if (!documentType) {
     if (clienteItem.cliruc) {
@@ -85,10 +67,7 @@ export function mapClienteItemToCliente(clienteItem: ClienteItem): Cliente {
     }
   }
 
-  // Obtener email
   const email = clienteItem.cliemail?.trim() || undefined;
-  
-  // Obtener teléfono (priorizar teléfono principal, luego corredor)
   let telefono = clienteItem.telefono?.trim();
   if (!telefono || telefono === '') {
     telefono = clienteItem.clitelcorr?.trim();
@@ -96,8 +75,6 @@ export function mapClienteItemToCliente(clienteItem: ClienteItem): Cliente {
   if (!telefono || telefono === '') {
     telefono = clienteItem.clitelcel?.trim();
   }
-
-  // Obtener dirección
   const direccion = clienteItem.fullAddress?.trim() || clienteItem.clidir?.trim() || undefined;
 
   return {
@@ -114,9 +91,6 @@ export function mapClienteItemToCliente(clienteItem: ClienteItem): Cliente {
   };
 }
 
-/**
- * Mapea un CompaniaItem del backend a una Compania para el frontend
- */
 export function mapCompaniaItemToCompania(companiaItem: CompaniaItem): Compania {
   return {
     id: companiaItem.id,
@@ -137,9 +111,6 @@ export function mapSeccionItemToSeccion(seccionItem: SeccionItem): Seccion {
   };
 }
 
-/**
- * Valida si un cliente tiene la información mínima requerida
- */
 export function validateCliente(cliente: Cliente): { isValid: boolean; errors: string[] } {
   const errors: string[] = [];
 
@@ -151,7 +122,6 @@ export function validateCliente(cliente: Cliente): { isValid: boolean; errors: s
     errors.push('El documento es requerido');
   }
 
-  // Validar formato RUT uruguayo básico
   if (cliente.documentType === 'RUT' && cliente.documento) {
     const rutPattern = /^\d{1,2}\.\d{3}\.\d{3}\.\d{1}$|^\d{12}$/;
     if (!rutPattern.test(cliente.documento.replace(/\s/g, ''))) {
@@ -159,7 +129,6 @@ export function validateCliente(cliente: Cliente): { isValid: boolean; errors: s
     }
   }
 
-  // Validar email si está presente
   if (cliente.email) {
     const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailPattern.test(cliente.email)) {

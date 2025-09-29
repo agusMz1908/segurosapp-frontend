@@ -66,7 +66,6 @@ interface MasterDataFormData {
 interface RenovacionState {
   currentStep: number;
   
-  // Estructura requerida por ClientePolizasSearchForm
   cliente: {
     selectedId: number | null;
     polizas: any[];
@@ -78,8 +77,7 @@ interface RenovacionState {
   scan: RenovacionScan;
   masterData: MasterDataFormData;
   isLoading: boolean;
-  
-  // 🔥 NUEVO: Estado para controlar cuando la renovación está completada
+
   processCompleted: boolean;
   processResult?: {
     success: boolean;
@@ -128,7 +126,6 @@ const initialState: RenovacionState = {
   },
   isLoading: false,
   
-  // 🔥 NUEVO: Inicializar estado de proceso completado
   processCompleted: false,
   processResult: undefined,
 };
@@ -139,12 +136,10 @@ export function useRenovaciones() {
   const updateState = useCallback((updates: Partial<RenovacionState> | ((prev: RenovacionState) => RenovacionState)) => {
     setState(prevState => {
       const newState = typeof updates === 'function' ? updates(prevState) : { ...prevState, ...updates };
-      console.log('🔧 RENOVACIONES - State updated:', newState);
       return newState;
     });
   }, []);
 
-  // 🔥 NUEVO: Función para marcar el proceso como completado
   const markProcessCompleted = useCallback((result: any) => {
     updateState({
       processCompleted: true,
@@ -153,7 +148,6 @@ export function useRenovaciones() {
     });
   }, [updateState]);
 
-  // 🔥 NUEVO: Función para resetear el estado de proceso completado
   const resetProcessCompleted = useCallback(() => {
     updateState({
       processCompleted: false,
@@ -161,11 +155,8 @@ export function useRenovaciones() {
     });
   }, [updateState]);
 
-  // Cargar pólizas de un cliente
   const loadPolizasByCliente = useCallback(async (clienteId: number) => {
     try {
-      console.log('🔄 Cargando pólizas para cliente:', clienteId);
-      
       const token = getAuthToken();
       if (!token) {
         throw new Error('No se encontró token de autenticación');
@@ -189,9 +180,6 @@ export function useRenovaciones() {
       }
 
       const polizasData = await response.json();
-      console.log('📋 Respuesta del API:', polizasData);
-
-      // Manejar diferentes formatos de respuesta del API
       let polizasList: any[] = [];
       
       if (Array.isArray(polizasData)) {
@@ -201,59 +189,35 @@ export function useRenovaciones() {
       } else if (polizasData && polizasData.polizas && Array.isArray(polizasData.polizas)) {
         polizasList = polizasData.polizas;
       } else {
-        console.error('❌ Formato de respuesta inesperado:', polizasData);
         throw new Error('El API no devolvió un array de pólizas válido');
       }
 
-      console.log('📋 Lista de pólizas extraída:', polizasList.length);
-
-      // Filtrar solo pólizas de AUTOMOTOR y en rango de renovación
       const now = new Date();
       const polizasRenovables = polizasList.filter((poliza: any) => {
-        console.log('🔍 Evaluando póliza:', {
-          numero: poliza.conpol,
-          seccion: poliza.seccod,
-          fechaVencimiento: poliza.confchhas,
-        });
-
-        // Verificar que sea de automotor (sección 4)
         if (poliza.seccod !== 4) {
-          console.log(`❌ Póliza ${poliza.conpol} EXCLUIDA - No es de automotor (sección: ${poliza.seccod})`);
           return false;
         }
         
-        // Calcular días hasta vencimiento
         let diasHastaVencimiento = 0;
         try {
           const fechaVencimiento = new Date(poliza.confchhas);
           diasHastaVencimiento = Math.ceil((fechaVencimiento.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-          console.log(`📅 Póliza ${poliza.conpol} - Días hasta vencimiento: ${diasHastaVencimiento}`);
         } catch (error) {
-          console.error(`❌ Error parseando fecha para póliza ${poliza.conpol}:`, error);
           return false;
         }
         
-        // Solo pólizas en rango de renovación (próximos 60 días hasta 30 días vencidas)
-        const enRangoRenovacion = diasHastaVencimiento >= -30 && diasHastaVencimiento <= 60;
-        
-        if (!enRangoRenovacion) {
-          console.log(`❌ Póliza ${poliza.conpol} EXCLUIDA - Fuera del rango de renovación (días: ${diasHastaVencimiento})`);
-        } else {
-          console.log(`✅ Póliza ${poliza.conpol} INCLUIDA - En rango de renovación`);
-        }
-        
+        const enRangoRenovacion = diasHastaVencimiento >= -30 && diasHastaVencimiento <= 60;      
         return enRangoRenovacion;
       });
 
-      console.log(`✅ Pólizas renovables: ${polizasRenovables.length}/${polizasList.length}`);
-      
-      updateState({
+      updateState(prevState => ({
+        ...prevState,
         cliente: {
-          ...state.cliente,
+          ...prevState.cliente,
           selectedId: clienteId,
           polizas: polizasRenovables
         }
-      });
+      }));
 
       if (polizasRenovables.length === 0) {
         toast('Este cliente no tiene pólizas de automotor renovables en este momento', {
@@ -266,24 +230,21 @@ export function useRenovaciones() {
 
       return polizasRenovables;
     } catch (error: any) {
-      console.error('❌ Error cargando pólizas:', error);
       toast.error('Error cargando pólizas del cliente: ' + (error.message || 'Error desconocido'));
-      
-      updateState({
+      updateState(prevState => ({
+        ...prevState,
         cliente: {
-          ...state.cliente,
+          ...prevState.cliente,
           selectedId: clienteId,
           polizas: []
         }
-      });
+      }));
       
       return [];
     }
-  }, [state.cliente, updateState]);
+  }, [updateState]);
 
   const setClienteData = useCallback((cliente: Cliente) => {
-    console.log('📝 Estableciendo datos completos del cliente:', cliente);
-    
     updateState(prevState => ({
       ...prevState,
       context: {
@@ -302,8 +263,6 @@ export function useRenovaciones() {
   }, [updateState]);
 
   const selectPolizaToRenew = useCallback((poliza: any) => {
-    console.log('🔄 Seleccionando póliza para renovar:', poliza);
-    
     updateState(prevState => ({
       ...prevState,
       cliente: {
@@ -335,13 +294,11 @@ export function useRenovaciones() {
     toast.success(`Póliza ${poliza.conpol} seleccionada para renovación`);
   }, [updateState]);
 
-  // Verificar si una póliza es renovable
   const isPolizaRenovable = useCallback((poliza: any) => {
     const dias = getDiasParaVencimiento(poliza);
     return dias >= -30 && dias <= 60;
   }, []);
 
-  // Calcular días para vencimiento
   const getDiasParaVencimiento = useCallback((poliza: any) => {
     try {
       const fechaVencimiento = new Date(poliza.confchhas);
@@ -357,12 +314,10 @@ export function useRenovaciones() {
     }
   }, []);
 
-  // Upload de documento para renovación
   const uploadDocumentForRenovacion = useCallback(async (file: File): Promise<boolean> => {
-    console.log('🔄 RENOVACIONES - Iniciando upload específico');
+    const currentState = state;
     
-    // Validar contexto
-    if (!state.context.clienteId || !state.context.seccionId) {
+    if (!currentState.context.clienteId || !currentState.context.seccionId) {
       toast.error('Contexto incompleto. Selecciona cliente y póliza.');
       return false;
     }
@@ -373,8 +328,8 @@ export function useRenovaciones() {
         throw new Error('No se encontró token de autenticación.');
       }
 
-      // Actualizar estado con archivo guardado
-      updateState({
+      updateState(prevState => ({
+        ...prevState,
         file: {
           selected: file,
           uploaded: false,
@@ -382,31 +337,23 @@ export function useRenovaciones() {
           uploadProgress: 0,
         },
         scan: {
-          ...state.scan,
+          ...prevState.scan,
           status: 'uploading',
           fileName: file.name,
           errorMessage: undefined,
         },
         isLoading: true,
-      });
+      }));
 
-      // Preparar FormData
       const formData = new FormData();
       formData.append('file', file);
-      formData.append('clienteId', state.context.clienteId.toString());
-      formData.append('companiaId', state.context.companiaId?.toString() || '1');
-      formData.append('seccionId', state.context.seccionId.toString());
+      formData.append('clienteId', currentState.context.clienteId.toString());
+      formData.append('companiaId', currentState.context.companiaId?.toString() || '1');
+      formData.append('seccionId', currentState.context.seccionId.toString());
       formData.append('notes', 'Renovación automática');
 
-      console.log('🔄 RENOVACIONES - Enviando FormData:', {
-        fileName: file.name,
-        clienteId: state.context.clienteId,
-        companiaId: state.context.companiaId || 1,
-        seccionId: state.context.seccionId,
-      });
-
-      // Cambiar estado a "scanning"
-      updateState({
+      updateState(prevState => ({
+        ...prevState,
         file: {
           selected: file,
           uploaded: false,
@@ -414,12 +361,11 @@ export function useRenovaciones() {
           uploadProgress: 50,
         },
         scan: {
-          ...state.scan,
+          ...prevState.scan,
           status: 'scanning',
         }
-      });
+      }));
 
-      // Hacer llamada al API
       const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://localhost:7202';
       const response = await fetch(`${API_URL}/api/Document/upload-with-context`, {
         method: 'POST',
@@ -447,9 +393,6 @@ export function useRenovaciones() {
       }
 
       const result = await response.json();
-      console.log('✅ RENOVACIONES - Respuesta del servidor:', result);
-
-      // Procesar respuesta
       const scanResult = result.scanResult || {};
       const polizaMapping = result.polizaMapping || {};
       
@@ -457,15 +400,8 @@ export function useRenovaciones() {
       const normalizedData = polizaMapping.normalizedData || {};
       const mappedData = polizaMapping.mappedData || {};
 
-      console.log('🔍 RENOVACIONES - Datos extraídos:', {
-        original: Object.keys(originalExtractedData).length,
-        normalized: Object.keys(normalizedData).length,
-        mapped: Object.keys(mappedData).length,
-      });
-
-      // Detectar compañía automáticamente
-      let companiaDetectada = state.context.companiaInfo;
-      let companiaIdDetectada = state.context.companiaId;
+      let companiaDetectada = currentState.context.companiaInfo;
+      let companiaIdDetectada = currentState.context.companiaId;
 
       if (result.preSelection?.compania && result.preSelection.compania.id) {
         companiaIdDetectada = result.preSelection.compania.id;
@@ -474,15 +410,12 @@ export function useRenovaciones() {
           nombre: result.preSelection.compania.displayName || result.preSelection.compania.comnom || 'Detectada',
           codigo: result.preSelection.compania.shortCode || result.preSelection.compania.comalias || 'DET'
         };
-        console.log('🏢 RENOVACIONES - Compañía detectada automáticamente:', companiaDetectada);
-      } else {
-        console.log('⚠️ RENOVACIONES - No se detectó compañía válida en preSelection:', result.preSelection);
       }
 
-      // Actualizar estado final manteniendo archivo
-      updateState({
+      updateState(prevState => ({
+        ...prevState,
         context: {
-          ...state.context,
+          ...prevState.context,
           companiaId: companiaIdDetectada,
           companiaInfo: companiaDetectada,
         },
@@ -509,15 +442,14 @@ export function useRenovaciones() {
           errorMessage: undefined,
         },
         isLoading: false,
-      });
+      }));
 
       toast.success(`Documento procesado exitosamente (${polizaMapping.metrics?.completionPercentage || 85}% confianza)`);
       return true;
 
     } catch (error: any) {
-      console.error('❌ RENOVACIONES - Error en upload:', error);
-      
-      updateState({
+      updateState(prevState => ({
+        ...prevState,
         file: {
           selected: file,
           uploaded: false,
@@ -525,42 +457,41 @@ export function useRenovaciones() {
           uploadProgress: 0,
         },
         scan: {
-          ...state.scan,
+          ...prevState.scan,
           status: 'error',
           errorMessage: error.message || 'Error procesando documento'
         },
         isLoading: false,
-      });
+      }));
 
       toast.error('Error procesando documento: ' + (error.message || 'Error desconocido'));
       return false;
     }
-  }, [state.context, state.scan, updateState]);
+  }, [state, updateState]);
 
-  // Actualizar datos extraídos
   const updateExtractedData = useCallback((updates: Record<string, any>) => {
-    updateState({
+    updateState(prevState => ({
+      ...prevState,
       scan: {
-        ...state.scan,
+        ...prevState.scan,
         extractedData: {
-          ...state.scan.extractedData,
+          ...prevState.scan.extractedData,
           ...updates
         }
       }
-    });
-  }, [state.scan, updateState]);
+    }));
+  }, [updateState]);
 
-  // Actualizar datos maestros
   const updateMasterData = useCallback((updates: Partial<MasterDataFormData>) => {
-    updateState({
+    updateState(prevState => ({
+      ...prevState,
       masterData: {
-        ...state.masterData,
+        ...prevState.masterData,
         ...updates
       }
-    });
-  }, [state.masterData, updateState]);
+    }));
+  }, [updateState]);
 
-  // Navegación entre pasos
   const nextStep = useCallback(() => {
     setState(prev => ({ ...prev, currentStep: Math.min(prev.currentStep + 1, 4) }));
   }, []);
@@ -574,7 +505,6 @@ export function useRenovaciones() {
     toast.success('Proceso de renovación reiniciado');
   }, []);
 
-  // Validaciones para navegación
   const canProceedToStep2 = Boolean(
     state.cliente.selectedId && 
     state.cliente.selectedPoliza
@@ -599,11 +529,8 @@ export function useRenovaciones() {
     nextStep,
     prevStep,
     reset,
-    
-    // 🔥 NUEVO: Exportar funciones para manejar el proceso completado
     markProcessCompleted,
     resetProcessCompleted,
-
     canProceedToStep2,
     canProceedToStep3,
     canProceedToStep4,

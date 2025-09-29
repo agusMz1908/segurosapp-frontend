@@ -1,4 +1,3 @@
-// step-3-confirmation/confirmation-form.tsx
 "use client";
 
 import React from 'react';
@@ -19,13 +18,12 @@ import {
 import { CreatePolizaHandler } from '@/components/poliza/create-poliza-handler';
 
 interface ConfirmationFormProps {
-  hookInstance: any; // Tu hook useNuevaPoliza
+  hookInstance: any;
 }
 
 export function ConfirmationForm({ hookInstance }: ConfirmationFormProps) {
   const { state, updateStep3Status } = hookInstance;
 
-  // Si ya se completó exitosamente, mostrar estado de éxito
   if (state.step3.status === 'completed') {
     return (
       <Card className="border-green-500 bg-green-50 dark:bg-green-900/20">
@@ -59,7 +57,6 @@ export function ConfirmationForm({ hookInstance }: ConfirmationFormProps) {
   }
 
   const handlePolizaSuccess = (result: any) => {
-    // Actualizar el estado del hook con la información de éxito
     updateStep3Status('completed', result.message, {
       velneoPolizaId: result.velneoPolizaId,
       polizaNumber: result.polizaNumber,
@@ -68,7 +65,6 @@ export function ConfirmationForm({ hookInstance }: ConfirmationFormProps) {
   };
 
   const handlePolizaError = (error: string) => {
-    // Actualizar el estado del hook con el error
     updateStep3Status('error', error);
   };
 
@@ -91,7 +87,6 @@ export function ConfirmationForm({ hookInstance }: ConfirmationFormProps) {
 
   return (
     <div className="space-y-6">
-      {/* Resumen de datos para confirmación */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -101,8 +96,6 @@ export function ConfirmationForm({ hookInstance }: ConfirmationFormProps) {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            
-            {/* Información del Cliente */}
             <div className="space-y-3">
               <h3 className="font-semibold flex items-center gap-2">
                 <User className="h-4 w-4" />
@@ -120,7 +113,6 @@ export function ConfirmationForm({ hookInstance }: ConfirmationFormProps) {
               </div>
             </div>
 
-            {/* Información de la Compañía */}
             <div className="space-y-3">
               <h3 className="font-semibold flex items-center gap-2">
                 <Building className="h-4 w-4" />
@@ -138,7 +130,6 @@ export function ConfirmationForm({ hookInstance }: ConfirmationFormProps) {
               </div>
             </div>
 
-            {/* Información del Vehículo */}
             <div className="space-y-3">
               <h3 className="font-semibold flex items-center gap-2">
                 <Car className="h-4 w-4" />
@@ -155,16 +146,10 @@ export function ConfirmationForm({ hookInstance }: ConfirmationFormProps) {
                   <span className="text-gray-500">Año:</span>
                   <p className="font-medium">{state.scan.extractedData?.vehiculoAno || 'No especificado'}</p>
                 </div>
-                <div>
-                  <span className="text-gray-500">Patente:</span>
-                  <p className="font-medium">{state.scan.extractedData?.vehiculoPatente || 'No especificado'}</p>
-                </div>
               </div>
             </div>
-
           </div>
 
-          {/* Información de la Póliza */}
           <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               
@@ -193,7 +178,6 @@ export function ConfirmationForm({ hookInstance }: ConfirmationFormProps) {
         </CardContent>
       </Card>
 
-      {/* Estado del documento escaneado */}
       <Card>
         <CardHeader>
           <CardTitle className="text-sm">Estado del Documento</CardTitle>
@@ -215,7 +199,6 @@ export function ConfirmationForm({ hookInstance }: ConfirmationFormProps) {
         </CardContent>
       </Card>
 
-      {/* Botón de creación con validación de duplicados */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -232,7 +215,6 @@ export function ConfirmationForm({ hookInstance }: ConfirmationFormProps) {
               </AlertDescription>
             </Alert>
 
-            {/* Usar el CreatePolizaHandler con validación de duplicados */}
             <CreatePolizaHandler
             hookInstance={hookInstance} 
               scanId={state.file.scanId}
@@ -242,8 +224,6 @@ export function ConfirmationForm({ hookInstance }: ConfirmationFormProps) {
           </div>
         </CardContent>
       </Card>
-
-      {/* Mostrar error si existe */}
       {state.step3.status === 'error' && (
         <Alert variant="destructive">
           <AlertTriangle className="h-4 w-4" />

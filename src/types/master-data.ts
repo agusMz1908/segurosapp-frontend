@@ -1,29 +1,25 @@
-// types/master-data.ts
 "use client"
-
-// =================== INTERFACES BACKEND ===================
-// Estas interfaces reflejan los DTOs del backend .NET
 
 export interface ClienteItem {
   id: number;
   corrcod: number;
   subcorr: number;
-  clinom: string;                    // Nombre cliente
+  clinom: string;                  
   telefono: string;
-  clifchnac?: string | null;         // Fecha nacimiento
-  clifching?: string | null;         // Fecha ingreso
-  clifchegr?: string | null;         // Fecha egreso
+  clifchnac?: string | null;      
+  clifching?: string | null;    
+  clifchegr?: string | null;      
   clicargo: string;
-  clicon: string;                    // Contacto
-  cliruc: string;                    // RUC
-  clirsoc: string;                   // Razón social
-  cliced: string;                    // Cédula
-  clilib: string;                    // Libreta
+  clicon: string;            
+  cliruc: string;          
+  clirsoc: string;                
+  cliced: string;             
+  clilib: string;              
   clicatlib: string;
-  clitpo: string;                    // Tipo
-  clidir: string;                    // Dirección
-  cliemail: string;                  // Email
-  clivtoced?: string | null;         // Vencimiento cédula
+  clitpo: string;            
+  clidir: string;              
+  cliemail: string;            
+  clivtoced?: string | null;         
   clivtolib?: string | null;
   cliposcod: number;
   clitelcorr: string;
@@ -84,7 +80,6 @@ export interface ClienteItem {
   last_update?: string | null;
   app_id: number;
 
-  // Propiedades calculadas del backend
   displayName: string;
   documentNumber: string;
   documentType: string;
@@ -94,12 +89,12 @@ export interface ClienteItem {
 
 export interface CompaniaItem {
   id: number;
-  comnom: string;                    // Nombre compañía
-  comrazsoc: string;                 // Razón social
-  comruc: string;                    // RUC
-  comdom: string;                    // Domicilio
-  comtel: string;                    // Teléfono
-  comfax: string;                    // Fax
+  comnom: string;                  
+  comrazsoc: string;              
+  comruc: string;                   
+  comdom: string;               
+  comtel: string;                   
+  comfax: string;                  
   comsumodia: string;
   comcntcli: number;
   comcntcon: number;
@@ -109,32 +104,26 @@ export interface CompaniaItem {
   comcomido: number;
   comtotcomi: number;
   comtotpre: number;
-  comalias: string;                  // Alias (ej: "SURA")
+  comalias: string;               
   comlog: string;
   broker: boolean;
   cod_srvcompanias: string;
   no_utiles: string;
   paq_dias: number;
-  
-  // Propiedades calculadas del backend
-  displayName: string;               // "SURA SEGUROS"
+
+  displayName: string;               
   isActive: boolean;
-  shortCode: string;                 // "SURA"
+  shortCode: string;                
 }
 
 export interface SeccionItem {
   id: number;
-  seccion: string;                   // "INCENDIO"
+  seccion: string;                  
   icono: string;
-  
-  // Propiedades calculadas del backend
-  displayName: string;               // "INCENDIO"
-  code: string;                      // "INCENDIO"
+  displayName: string;            
+  code: string;                    
   isActive: boolean;
 }
-
-// =================== INTERFACES FRONTEND SIMPLIFICADAS ===================
-// Estas son las interfaces que usamos en el frontend para simplificar
 
 export interface Cliente {
   id: number;
@@ -173,8 +162,6 @@ export interface MasterDataItem {
   valor?: string;
   activo: boolean;
 }
-
-// =================== API RESPONSE TYPES ===================
 
 export interface ApiResponse<T> {
   success: boolean;

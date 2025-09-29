@@ -86,14 +86,12 @@ export default function DashboardPage() {
   const { isAuthenticated, isLoading, user } = useAuth()
 
   useEffect(() => {
-    // Solo redirigir si ya terminó de cargar y no está autenticado
     if (!isLoading && !isAuthenticated) {
       console.log('Dashboard: Not authenticated, redirecting to login')
       router.replace('/login')
     }
   }, [isAuthenticated, isLoading, router])
 
-  // Mostrar loading mientras se verifica autenticación
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
@@ -115,7 +113,6 @@ export default function DashboardPage() {
     )
   }
 
-  // Si no está autenticado después del loading, mostrar brevemente antes de redirect
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
@@ -136,7 +133,6 @@ export default function DashboardPage() {
   return (
     <AppLayout>
       <div className="space-y-8 py-10">
-        {/* Header con saludo personalizado */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
             <h1 className="text-3xl font-bold tracking-tight">
@@ -155,7 +151,6 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Métricas principales */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
           {metrics.map((metric) => {
             const Icon = metric.icon
@@ -189,7 +184,6 @@ export default function DashboardPage() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Actividad Reciente */}
           <Card className="hover:shadow-lg transition-shadow">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -230,7 +224,6 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
 
-          {/* Métricas del Mes */}
           <Card className="hover:shadow-lg transition-shadow">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -265,7 +258,6 @@ export default function DashboardPage() {
           </Card>
         </div>
 
-        {/* Acciones rápidas */}
         <Card className="hover:shadow-lg transition-shadow">
           <CardHeader>
             <CardTitle>Acciones Rápidas</CardTitle>

@@ -1,7 +1,3 @@
-// src/app/cambios/step-3-validation/extracted-data-form.tsx
-// ✅ ADAPTADO DE RENOVACIONES: Usar la misma lógica de extracción de datos
-// ✅ CORREGIDO: Eliminar prefijos duplicados en campos del vehículo
-
 import React, { useEffect, useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -15,8 +11,6 @@ export function ExtractedDataForm({ hookInstance }: ExtractedDataFormProps) {
   const { state, updateExtractedData } = hookInstance;
   const [editedData, setEditedData] = useState<any>({});
   const [isInitialized, setIsInitialized] = useState(false);
-
-  // ✅ USAR: mappedData si está disponible, sino normalizedData, sino extractedData
   const dataSource = state.scan.mappedData && Object.keys(state.scan.mappedData).length > 0 
     ? state.scan.mappedData 
     : state.scan.normalizedData && Object.keys(state.scan.normalizedData).length > 0
@@ -31,7 +25,6 @@ export function ExtractedDataForm({ hookInstance }: ExtractedDataFormProps) {
              dataSource === state.scan.normalizedData ? 'normalizedData' : 'extractedData'
   });
 
-  // Inicializar datos cuando lleguen del escaneo
   useEffect(() => {
     if (dataSource && Object.keys(dataSource).length > 0) {
       console.log('✅ EXTRACTED DATA FORM CAMBIOS - Inicializando con datos:', dataSource);
@@ -45,8 +38,7 @@ export function ExtractedDataForm({ hookInstance }: ExtractedDataFormProps) {
       ...prev,
       [fieldName]: value
     }));
-    
-    // Actualizar el estado global usando updateExtractedData
+
     if (updateExtractedData) {
       updateExtractedData({ [fieldName]: value });
     }
@@ -70,29 +62,25 @@ export function ExtractedDataForm({ hookInstance }: ExtractedDataFormProps) {
     }).format(numValue);
   };
 
-  // ✅ FUNCIÓN: Limpiar números para inputs numéricos
   const cleanNumberForInput = (value: string | number) => {
     if (!value) return '';
     const numValue = typeof value === 'string' ? parseFloat(value.replace(/[^\d.-]/g, '')) : value;
     if (isNaN(numValue)) return '';
-    // Devolver número limpio redondeado a 2 decimales para inputs type="number"
     return (Math.round(numValue * 100) / 100).toString();
   };
 
-  // ✅ FUNCIÓN: Extraer valor por cuota usando la misma lógica
   const extractValorPorCuota = (data: any) => {
     if (!data) return "";
     
     console.log('🔍 CAMBIOS - Buscando valor por cuota en:', data);
-    
-    // Buscar diferentes formatos según la compañía
+
     const cuotaFields = [
-      "pago.cuota_monto[1]",      // MAPFRE - primera cuota
-      "pago.cuotas[0].prima",     // BSE - primera cuota
-      "pago.prima_cuota[1]",      // SURA - primera cuota
-      "pago.primera_cuota",       // Generic
-      "valorPorCuota",            // Directo desde backend
-      "valorCuota"                // Alternativa
+      "pago.cuota_monto[1]",     
+      "pago.cuotas[0].prima",   
+      "pago.prima_cuota[1]",    
+      "pago.primera_cuota",     
+      "valorPorCuota",            
+      "valorCuota"               
     ];
 
     for (const field of cuotaFields) {
@@ -103,7 +91,6 @@ export function ExtractedDataForm({ hookInstance }: ExtractedDataFormProps) {
       }
     }
     
-    // ✅ FALLBACK: Calcular desde el total si tenemos cantidad de cuotas
     const total = data.premioTotal || data.montoTotal || data.premio || data["financiero.premio_total"];
     const cuotas = parseInt(data.cantidadCuotas || "1");
     
@@ -120,25 +107,22 @@ export function ExtractedDataForm({ hookInstance }: ExtractedDataFormProps) {
     return "";
   };
 
-  // ✅ FUNCIÓN NUEVA: Limpiar prefijos duplicados en campos del vehículo
   const cleanVehicleField = (value: string | any, fieldType: 'marca' | 'modelo' | 'other' = 'other') => {
     if (!value) return '';
     
     const stringValue = typeof value === 'string' ? value : value.toString();
-    
-    // Si es marca, remover prefijos "MARCA" duplicados
+  
     if (fieldType === 'marca') {
       return stringValue
-        .replace(/^MARCA\s*/i, '') // Remover "MARCA" al inicio
-        .replace(/^Marca\s*/i, '') // Remover "Marca" al inicio
+        .replace(/^MARCA\s*/i, '') 
+        .replace(/^Marca\s*/i, '') 
         .trim();
     }
-    
-    // Si es modelo, remover prefijos "MODELO" duplicados
+
     if (fieldType === 'modelo') {
       return stringValue
-        .replace(/^MODELO\s*/i, '') // Remover "MODELO" al inicio
-        .replace(/^Modelo\s*/i, '') // Remover "Modelo" al inicio  
+        .replace(/^MODELO\s*/i, '') 
+        .replace(/^Modelo\s*/i, '') 
         .trim();
     }
     
@@ -158,8 +142,6 @@ export function ExtractedDataForm({ hookInstance }: ExtractedDataFormProps) {
 
   return (
     <div className="space-y-6">
-      
-      {/* Información básica de la póliza modificada */}
       <div className="space-y-4">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
           Información de la Póliza Modificada
@@ -202,7 +184,6 @@ export function ExtractedDataForm({ hookInstance }: ExtractedDataFormProps) {
         </div>
       </div>
 
-      {/* Fechas de vigencia de la póliza modificada */}
       <div className="space-y-4">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
           Vigencia de la Póliza Modificada
@@ -237,7 +218,6 @@ export function ExtractedDataForm({ hookInstance }: ExtractedDataFormProps) {
         </div>
       </div>
 
-      {/* Información financiera */}
       <div className="space-y-4">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
           Información Financiera del Cambio
@@ -271,7 +251,6 @@ export function ExtractedDataForm({ hookInstance }: ExtractedDataFormProps) {
               onChange={(e) => handleFieldChange('valorPorCuota', e.target.value)}
               placeholder="0.00"
             />
-            {/* ✅ MOSTRAR VALOR FORMATEADO */}
             {(editedData.valorPorCuota || editedData.valorCuota || extractValorPorCuota(editedData)) && (
               <p className="text-xs text-muted-foreground">
                 {formatCurrency(editedData.valorPorCuota || editedData.valorCuota || extractValorPorCuota(editedData))}
@@ -300,7 +279,6 @@ export function ExtractedDataForm({ hookInstance }: ExtractedDataFormProps) {
         </div>
       </div>
 
-      {/* ✅ DATOS DEL VEHÍCULO CORREGIDOS - Eliminar prefijos duplicados */}
       <div className="space-y-4">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
           Información del Vehículo (si modificada)
@@ -386,29 +364,6 @@ export function ExtractedDataForm({ hookInstance }: ExtractedDataFormProps) {
           </div>
         </div>
       </div>
-
-      {/* Debug en desarrollo */}
-      {process.env.NODE_ENV === 'development' && (
-        <details className="mt-4 text-xs">
-          <summary className="cursor-pointer font-medium">Debug ExtractedData Cambios</summary>
-          <pre className="mt-2 p-2 bg-gray-100 dark:bg-gray-800 rounded text-xs overflow-auto">
-            {JSON.stringify({
-              editedData,
-              valorPorCuotaExtraido: extractValorPorCuota(editedData),
-              dataSourceKeys: Object.keys(dataSource || {}),
-              marcaLimpia: cleanVehicleField(editedData.vehiculoMarca || editedData.VehiculoMarca || '', 'marca'),
-              modeloLimpio: cleanVehicleField(editedData.vehiculoModelo || editedData.VehiculoModelo || '', 'modelo'),
-              cuotaFields: [
-                "pago.cuota_monto[1]",
-                "pago.cuotas[0].prima", 
-                "pago.prima_cuota[1]",
-                "valorPorCuota",
-                "valorCuota"
-              ].map(field => ({ field, value: editedData[field] }))
-            }, null, 2)}
-          </pre>
-        </details>
-      )}
     </div>
   );
 }

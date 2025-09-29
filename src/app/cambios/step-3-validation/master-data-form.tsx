@@ -1,10 +1,5 @@
-// src/app/cambios/step-3-validation/master-data-form.tsx
-// ✅ ADAPTADO DE RENOVACIONES: Usar la misma lógica que funciona
-// ✅ CORREGIDO: Usar colores consistentes con Nueva Póliza y Renovaciones
-
 import React, { useEffect, useState, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Label } from '@/components/ui/label';
 import { CheckCircle, Loader2 } from 'lucide-react';
 import { useMasterData } from '../../../hooks/use-master-data';
 import { intelligentMapping, type MasterDataFormData, type MasterDataSets } from '@/utils/intelligent-mapping';
@@ -14,7 +9,6 @@ interface MasterDataFormProps {
   hookInstance: any;
 }
 
-// Componente controlado simple y confiable - COPIADO DE RENOVACIONES
 const ControlledSelect = ({ 
   label, 
   value, 
@@ -53,21 +47,14 @@ const ControlledSelect = ({
           </option>
         ))}
       </select>
-      {/* Debug info - solo en desarrollo */}
-      {process.env.NODE_ENV === 'development' && (
-        <p className="text-xs text-gray-500">
-          Opciones: {options.length} | Valor: "{value}" | Tipo: {typeof value}
-        </p>
-      )}
     </div>
   );
 };
 
 export function MasterDataForm({ hookInstance }: MasterDataFormProps) {
+
   const { state, updateState } = hookInstance;
   const { getMasterDataByType, loading: masterDataLoading } = useMasterData();
-
-  // Estados locales - COPIADO DE RENOVACIONES
   const [combustibles, setCombustibles] = useState<MasterDataItem[]>([]);
   const [categorias, setCategorias] = useState<MasterDataItem[]>([]);
   const [destinos, setDestinos] = useState<MasterDataItem[]>([]);
@@ -77,7 +64,6 @@ export function MasterDataForm({ hookInstance }: MasterDataFormProps) {
   const [loadingData, setLoadingData] = useState(true);
   const [autoMappingExecuted, setAutoMappingExecuted] = useState(false);
 
-  // Acceder directamente a state.masterData para evitar problemas de referencia
   const formData = state.masterData || {
     combustibleId: '',
     categoriaId: '',
@@ -89,26 +75,11 @@ export function MasterDataForm({ hookInstance }: MasterDataFormProps) {
     observaciones: ''
   };
 
-  // Debug logs mejorados
-  console.log('🔍 CAMBIOS MASTER DATA - formData actual:', formData);
-  console.log('🔍 CAMBIOS MASTER DATA - state.masterData:', state.masterData);
-  console.log('🔍 CAMBIOS MASTER DATA - autoMappingExecuted:', autoMappingExecuted);
-
-  // DEBUG: useEffect para monitorear cambios en state.masterData
-  useEffect(() => {
-    console.log('🔧 CAMBIOS useEffect - state.masterData cambió:', state.masterData);
-  }, [state.masterData]);
-
-  // Cargar datos maestros - ADAPTADO PARA CAMBIOS
   useEffect(() => {
     const loadMasterData = async () => {
       try {
         setLoadingData(true);
-        console.log('🔄 CAMBIOS - Cargando datos maestros...');
-        
-        // Obtener companiaId del contexto heredado
         const companiaId = state.context?.companiaId;
-        console.log('🏢 CAMBIOS - CompaniaId del contexto:', companiaId);
         
         const [
           combustiblesData, 
@@ -123,7 +94,7 @@ export function MasterDataForm({ hookInstance }: MasterDataFormProps) {
           getMasterDataByType('destinos'),
           getMasterDataByType('departamentos'),
           getMasterDataByType('calidades'),
-          getMasterDataByType('tarifas', companiaId) // Usar companiaId heredado
+          getMasterDataByType('tarifas', companiaId)
         ]);
         
         setCombustibles(combustiblesData);
@@ -132,18 +103,7 @@ export function MasterDataForm({ hookInstance }: MasterDataFormProps) {
         setDepartamentos(departamentosData);
         setCalidades(calidadesData);
         setTarifas(tarifasData);
-        
-        console.log('✅ CAMBIOS - Datos maestros cargados:', {
-          combustibles: combustiblesData.length,
-          categorias: categoriasData.length,
-          destinos: destinosData.length,
-          departamentos: departamentosData.length,
-          calidades: calidadesData.length,
-          tarifas: tarifasData.length,
-          tarifasParaCompania: companiaId
-        });
       } catch (error) {
-        console.error('❌ CAMBIOS - Error loading master data:', error);
       } finally {
         setLoadingData(false);
       }
@@ -152,18 +112,12 @@ export function MasterDataForm({ hookInstance }: MasterDataFormProps) {
     loadMasterData();
   }, [getMasterDataByType, state.context?.companiaId]);
 
-  // Mapeo inteligente - COPIADO DE RENOVACIONES
   const executeIntelligentMapping = useCallback(() => {
     if (!state.scan?.extractedData || Object.keys(state.scan.extractedData).length === 0) {
-      console.log('⚠️ CAMBIOS - No hay datos extraídos para mapear');
       return;
     }
 
-    // Log de compañía al ejecutar mapeo
     const companiaId = state.context?.companiaId;
-    console.log('🤖 CAMBIOS - Ejecutando mapeo inteligente con compañía:', companiaId);
-    console.log('🔍 CAMBIOS - ANTES del mapeo - formData actual:', formData);
-
     const currentFormData: MasterDataFormData = {
       combustibleId: formData.combustibleId || '',
       destinoId: formData.destinoId || '',
@@ -182,57 +136,30 @@ export function MasterDataForm({ hookInstance }: MasterDataFormProps) {
       tarifas
     };
 
-    console.log('🔍 CAMBIOS - Datos para mapeo:', {
-      extractedData: state.scan.extractedData,
-      currentFormData,
-      companiaId,
-      masterDataSets: {
-        combustibles: combustibles.length,
-        destinos: destinos.length,
-        departamentos: departamentos.length,
-        calidades: calidades.length,
-        categorias: categorias.length,
-        tarifas: tarifas.length
-      }
-    });
-
     const mappedData = intelligentMapping(
       state.scan.extractedData,
       currentFormData,
       masterDataSets
     );
 
-    console.log('🔍 CAMBIOS - RESULTADO del mapeo:', mappedData);
-
     const hasChanges = Object.keys(mappedData).some(key => 
       mappedData[key as keyof MasterDataFormData] !== currentFormData[key as keyof MasterDataFormData]
     );
 
-    console.log('🔍 CAMBIOS - ¿Hay cambios?', hasChanges);
-
     if (hasChanges) {
-      // Crear objeto completo manteniendo valores existentes
       const updatedFormData = {
-        ...formData, // Mantener todos los campos existentes
-        ...mappedData // Sobrescribir solo los mapeados
+        ...formData, 
+        ...mappedData 
       };
-      
-      console.log('🔍 CAMBIOS - ANTES de updateState:', updatedFormData);
-      
-      // Forzar un re-render usando una función de actualización
+
       updateState((prevState: any) => {
-        console.log('🔧 CAMBIOS - updateState - prevState:', prevState);
         const newState = {
           ...prevState,
           masterData: updatedFormData
         };
-        console.log('🔧 CAMBIOS - updateState - newState:', newState);
         return newState;
       });
-      
-      console.log('✅ CAMBIOS - updateState llamado con:', { masterData: updatedFormData });
-      
-      // Mostrar en consola qué campos se mapearon
+
       const mappedFields = [];
       if (mappedData.combustibleId !== currentFormData.combustibleId) mappedFields.push('Combustible');
       if (mappedData.destinoId !== currentFormData.destinoId) mappedFields.push('Destino');
@@ -240,8 +167,6 @@ export function MasterDataForm({ hookInstance }: MasterDataFormProps) {
       if (mappedData.calidadId !== currentFormData.calidadId) mappedFields.push('Calidad');
       if (mappedData.categoriaId !== currentFormData.categoriaId) mappedFields.push('Categoría');
       if (mappedData.tarifaId !== currentFormData.tarifaId) mappedFields.push('Tarifa');
-      
-      console.log('✅ CAMBIOS - Campos mapeados:', mappedFields.join(', ') || 'Ninguno');
       setAutoMappingExecuted(true);
     }
   }, [
@@ -259,7 +184,6 @@ export function MasterDataForm({ hookInstance }: MasterDataFormProps) {
     updateState
   ]);
 
-  // Ejecutar mapeo automático - COPIADO DE RENOVACIONES
   useEffect(() => {
     if (!loadingData && 
         !autoMappingExecuted && 
@@ -281,24 +205,17 @@ export function MasterDataForm({ hookInstance }: MasterDataFormProps) {
     executeIntelligentMapping
   ]);
 
-  // Manejar cambios de campos - COPIADO DE RENOVACIONES
   const handleFieldChange = (fieldName: string, value: string | number) => {
-    console.log(`🔧 CAMBIOS - handleFieldChange: ${fieldName} = ${value}`);
-    
     const newFormData = {
       ...formData,
       [fieldName]: value
     };
     
-    console.log('🔧 CAMBIOS - handleFieldChange - newFormData:', newFormData);
-    
-    // Usar función de actualización para asegurar consistencia
     updateState((prevState: any) => {
       const newState = {
         ...prevState,
         masterData: newFormData
       };
-      console.log('🔧 CAMBIOS - handleFieldChange - updateState newState:', newState);
       return newState;
     });
   };
@@ -314,7 +231,6 @@ export function MasterDataForm({ hookInstance }: MasterDataFormProps) {
               • Mapeo automático aplicado
             </span>
           )}
-          {/* 🔥 CAMBIO: Usar azul en lugar de violeta para consistencia */}
           {state.context?.companiaInfo && (
             <span className="text-blue-600 dark:text-blue-400 ml-2">
               • {state.context.companiaInfo.nombre}
@@ -323,10 +239,7 @@ export function MasterDataForm({ hookInstance }: MasterDataFormProps) {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        {/* Grid de 2 columnas - IGUAL QUE RENOVACIONES */}
         <div className="grid md:grid-cols-2 gap-x-6 gap-y-4">
-          
-          {/* Tipo de Combustible */}
           <ControlledSelect
             label="Tipo de Combustible"
             value={formData.combustibleId}
@@ -336,7 +249,6 @@ export function MasterDataForm({ hookInstance }: MasterDataFormProps) {
             loading={loadingData}
           />
 
-          {/* Categoría */}
           <ControlledSelect
             label="Categoría"
             value={formData.categoriaId}
@@ -346,7 +258,6 @@ export function MasterDataForm({ hookInstance }: MasterDataFormProps) {
             loading={loadingData}
           />
 
-          {/* Destino del Vehículo */}
           <ControlledSelect
             label="Destino del Vehículo"
             value={formData.destinoId}
@@ -356,7 +267,6 @@ export function MasterDataForm({ hookInstance }: MasterDataFormProps) {
             loading={loadingData}
           />
 
-          {/* Departamento */}
           <ControlledSelect
             label="Departamento"
             value={formData.departamentoId}
@@ -366,7 +276,6 @@ export function MasterDataForm({ hookInstance }: MasterDataFormProps) {
             loading={loadingData}
           />
 
-          {/* Calidad */}
           <ControlledSelect
             label="Calidad"
             value={formData.calidadId}
@@ -376,7 +285,6 @@ export function MasterDataForm({ hookInstance }: MasterDataFormProps) {
             loading={loadingData}
           />
 
-          {/* Tarifa */}
           <ControlledSelect
             label={`Tarifa ${tarifas.length > 0 ? `(${tarifas.length} opciones)` : ''}`}
             value={formData.tarifaId}
@@ -392,30 +300,6 @@ export function MasterDataForm({ hookInstance }: MasterDataFormProps) {
             <Loader2 className="h-4 w-4 animate-spin" />
             Cargando datos maestros para cambio...
           </div>
-        )}
-
-        {/* Debug en desarrollo */}
-        {process.env.NODE_ENV === 'development' && (
-          <details className="mt-4 text-xs">
-            <summary className="cursor-pointer font-medium">Debug Info Cambios</summary>
-            <pre className="mt-2 p-2 bg-gray-100 dark:bg-gray-800 rounded text-xs overflow-auto">
-              {JSON.stringify({
-                formData,
-                companiaId: state?.context?.companiaId,
-                autoMappingExecuted,
-                hasExtractedData: !!(state?.scan?.extractedData && Object.keys(state.scan.extractedData).length > 0),
-                loadingData,
-                optionsCounts: {
-                  combustibles: combustibles.length,
-                  categorias: categorias.length,
-                  destinos: destinos.length,
-                  departamentos: departamentos.length,
-                  calidades: calidades.length,
-                  tarifas: tarifas.length
-                }
-              }, null, 2)}
-            </pre>
-          </details>
         )}
       </CardContent>
     </Card>

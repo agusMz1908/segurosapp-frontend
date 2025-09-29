@@ -62,7 +62,6 @@ export function RenovacionConfirmationForm({ hookInstance }: RenovacionConfirmat
     if (!dateStr) return 'No especificado';
     try {
       if (typeof dateStr === 'string') {
-        // Intentar diferentes formatos
         const date = new Date(dateStr);
         if (!isNaN(date.getTime())) {
           return date.toLocaleDateString('es-UY');
@@ -98,8 +97,7 @@ export function RenovacionConfirmationForm({ hookInstance }: RenovacionConfirmat
         ValidarVencimiento: true,
         Observaciones: masterData.observaciones || null,
         ComentariosUsuario: masterData.comentarios || null,
-        
-        // Master data del frontend
+
         CombustibleId: masterData.combustibleId || null,
         CategoriaId: masterData.categoriaId || null, 
         DestinoId: masterData.destinoId || null,
@@ -109,7 +107,6 @@ export function RenovacionConfirmationForm({ hookInstance }: RenovacionConfirmat
         CorredorId: masterData.corredorId || null,
         MonedaId: masterData.monedaId || null,
 
-        // Extracted data del frontend
         NumeroPoliza: extractedData.numeroPoliza || extractedData.polizaNumber || null,
         FechaDesde: extractedData.fechaDesde || extractedData.vigenciaDesde || null,
         FechaHasta: extractedData.fechaHasta || extractedData.vigenciaHasta || null,
@@ -118,7 +115,6 @@ export function RenovacionConfirmationForm({ hookInstance }: RenovacionConfirmat
         CantidadCuotas: extractedData.cantidadCuotas || null,
         ValorPorCuota: extractedData.valorPorCuota || extractedData.valorCuota || null,
 
-        // Datos del vehículo
         VehiculoMarca: extractedData.vehiculoMarca || extractedData.VehiculoMarca || null,
         VehiculoModelo: extractedData.vehiculoModelo || extractedData.VehiculoModelo || null,
         VehiculoAno: extractedData.vehiculoAno || extractedData.vehiculoAño || extractedData.VehiculoAño || null,
@@ -129,8 +125,6 @@ export function RenovacionConfirmationForm({ hookInstance }: RenovacionConfirmat
         CamposCorregidos: [],
         ForzarRenovacion: false
       };
-
-      console.log('📝 RENOVACIONES - Request a enviar:', requestBody);
 
       const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://localhost:7202';
       const response = await fetch(`${API_URL}/api/Document/${state.scan.scanId}/renew-in-velneo`, {
@@ -148,7 +142,6 @@ export function RenovacionConfirmationForm({ hookInstance }: RenovacionConfirmat
       }
 
       const result: RenewPolizaResponse = await response.json();
-      console.log('📋 RENOVACIONES - Response del backend:', result);
 
       if (response.ok && result.success) {
         setProcessResult(result);
@@ -162,8 +155,6 @@ export function RenovacionConfirmationForm({ hookInstance }: RenovacionConfirmat
       }
 
     } catch (error: any) {
-      console.error('❌ RENOVACIONES - Error procesando:', error);
-      
       const errorMessage = error.message || 'Error desconocido al procesar la renovación';
       toast.error(errorMessage);
       
@@ -176,17 +167,14 @@ export function RenovacionConfirmationForm({ hookInstance }: RenovacionConfirmat
   };
 
   const handleStartNewRenovation = () => {
-    // Reiniciar el hook completamente
     reset();
     toast.success('¡Lista para nueva renovación!');
   };
 
   const handleGoToDashboard = () => {
-    // Redirigir al dashboard principal
     window.location.href = '/dashboard';
   };
 
-  // ✅ ESTADO DE PROCESAMIENTO
   if (isProcessing) {
     return (
       <div className="space-y-6 p-6">
@@ -219,7 +207,6 @@ export function RenovacionConfirmationForm({ hookInstance }: RenovacionConfirmat
     );
   }
 
-  // ✅ ESTADO COMPLETADO CON NUEVOS BOTONES
   if (processCompleted && processResult) {
     return (
       <SuccessState 
@@ -231,7 +218,6 @@ export function RenovacionConfirmationForm({ hookInstance }: RenovacionConfirmat
     );
   }
 
-  // ✅ ESTADO DE REVISIÓN - Vista por defecto
   return (
     <div className="space-y-6">
       <div className="text-center mb-6">
@@ -243,9 +229,7 @@ export function RenovacionConfirmationForm({ hookInstance }: RenovacionConfirmat
         </p>
       </div>
 
-      {/* Comparación Póliza Original vs Nueva */}
       <div className="grid md:grid-cols-2 gap-6">
-        {/* Póliza Original */}
         <Card className="border-blue-200 bg-blue-50 dark:bg-blue-900/10 dark:border-blue-800">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -283,7 +267,6 @@ export function RenovacionConfirmationForm({ hookInstance }: RenovacionConfirmat
           </CardContent>
         </Card>
 
-        {/* Nueva Póliza */}
         <Card className="border-green-200 bg-green-50 dark:bg-green-900/10 dark:border-green-800">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -322,7 +305,6 @@ export function RenovacionConfirmationForm({ hookInstance }: RenovacionConfirmat
         </Card>
       </div>
 
-      {/* Información de la Compañía */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -341,7 +323,6 @@ export function RenovacionConfirmationForm({ hookInstance }: RenovacionConfirmat
         </CardContent>
       </Card>
 
-      {/* Alert importante */}
       <Alert>
         <Info className="h-4 w-4" />
         <AlertDescription>
@@ -349,7 +330,6 @@ export function RenovacionConfirmationForm({ hookInstance }: RenovacionConfirmat
         </AlertDescription>
       </Alert>
 
-      {/* Botón de confirmación */}
       <Card>
         <CardContent className="pt-6">
           <div className="text-center space-y-4">
@@ -370,7 +350,6 @@ export function RenovacionConfirmationForm({ hookInstance }: RenovacionConfirmat
               Procesar Renovación en Velneo
             </Button>
 
-            {/* Mensajes de validación */}
             {!state.scan?.scanId && (
               <p className="text-sm text-red-600">
                 No hay documento escaneado para procesar

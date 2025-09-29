@@ -1,6 +1,3 @@
-// src/app/renovaciones/step-3-validation/extracted-data-form.tsx
-// ✅ CORREGIDO: Usar la misma lógica de extracción de datos que nueva póliza
-
 import React, { useEffect, useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -15,25 +12,14 @@ export function ExtractedDataForm({ hookInstance }: ExtractedDataFormProps) {
   const [editedData, setEditedData] = useState<any>({});
   const [isInitialized, setIsInitialized] = useState(false);
 
-  // ✅ CORREGIDO: Usar mappedData si está disponible, sino normalizedData, sino extractedData
   const dataSource = state.scan.mappedData && Object.keys(state.scan.mappedData).length > 0 
     ? state.scan.mappedData 
     : state.scan.normalizedData && Object.keys(state.scan.normalizedData).length > 0
     ? state.scan.normalizedData
     : state.scan.extractedData;
 
-  console.log('🔍 EXTRACTED DATA FORM RENOVACIONES - Usando dataSource:', {
-    mappedData: Object.keys(state.scan.mappedData || {}).length,
-    normalizedData: Object.keys(state.scan.normalizedData || {}).length,
-    extractedData: Object.keys(state.scan.extractedData || {}).length,
-    elegido: dataSource === state.scan.mappedData ? 'mappedData' : 
-             dataSource === state.scan.normalizedData ? 'normalizedData' : 'extractedData'
-  });
-
-  // Inicializar datos cuando lleguen del escaneo
   useEffect(() => {
     if (dataSource && Object.keys(dataSource).length > 0) {
-      console.log('✅ EXTRACTED DATA FORM RENOVACIONES - Inicializando con datos:', dataSource);
       setEditedData(dataSource);
       setIsInitialized(true);
     }
@@ -45,7 +31,6 @@ export function ExtractedDataForm({ hookInstance }: ExtractedDataFormProps) {
       [fieldName]: value
     }));
     
-    // Actualizar el estado global usando updateExtractedData
     if (updateExtractedData) {
       updateExtractedData({ [fieldName]: value });
     }
@@ -69,40 +54,31 @@ export function ExtractedDataForm({ hookInstance }: ExtractedDataFormProps) {
     }).format(numValue);
   };
 
-  // ✅ FUNCIÓN CORREGIDA: Limpiar números para inputs numéricos
   const cleanNumberForInput = (value: string | number) => {
     if (!value) return '';
     const numValue = typeof value === 'string' ? parseFloat(value.replace(/[^\d.-]/g, '')) : value;
     if (isNaN(numValue)) return '';
-    // Devolver número limpio redondeado a 2 decimales para inputs type="number"
     return (Math.round(numValue * 100) / 100).toString();
   };
 
-  // ✅ NUEVA FUNCIÓN: Extraer valor por cuota usando la misma lógica de nueva póliza
   const extractValorPorCuota = (data: any) => {
     if (!data) return "";
-    
-    console.log('🔍 RENOVACIONES - Buscando valor por cuota en:', data);
-    
-    // Buscar diferentes formatos según la compañía - IGUAL QUE NUEVA POLIZA
     const cuotaFields = [
-      "pago.cuota_monto[1]",      // MAPFRE - primera cuota
-      "pago.cuotas[0].prima",     // BSE - primera cuota
-      "pago.prima_cuota[1]",      // SURA - primera cuota
-      "pago.primera_cuota",       // Generic
-      "valorPorCuota",            // Directo desde backend
-      "valorCuota"                // Alternativa
+      "pago.cuota_monto[1]",      
+      "pago.cuotas[0].prima",    
+      "pago.prima_cuota[1]",      
+      "pago.primera_cuota",      
+      "valorPorCuota",            
+      "valorCuota"                
     ];
 
     for (const field of cuotaFields) {
       if (data[field]) {
         const valor = data[field].toString();
-        console.log(`✅ RENOVACIONES - Valor por cuota encontrado en ${field}:`, valor);
         return valor;
       }
     }
     
-    // ✅ FALLBACK: Calcular desde el total si tenemos cantidad de cuotas
     const total = data.premioTotal || data.montoTotal || data.premio || data["financiero.premio_total"];
     const cuotas = parseInt(data.cantidadCuotas || "1");
     
@@ -110,12 +86,10 @@ export function ExtractedDataForm({ hookInstance }: ExtractedDataFormProps) {
       const totalNum = parseFloat(total.toString().replace(/[^\d.-]/g, ''));
       if (!isNaN(totalNum)) {
         const valorCalculado = totalNum / cuotas;
-        console.log(`🧮 RENOVACIONES - Valor por cuota calculado: ${total} / ${cuotas} = ${valorCalculado}`);
         return valorCalculado.toString();
       }
     }
-    
-    console.log('❌ RENOVACIONES - No se encontró valor de cuota');
+
     return "";
   };
 
@@ -132,8 +106,6 @@ export function ExtractedDataForm({ hookInstance }: ExtractedDataFormProps) {
 
   return (
     <div className="space-y-6">
-      
-      {/* Información básica de la póliza */}
       <div className="space-y-4">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
           Información de la Nueva Póliza
@@ -176,7 +148,6 @@ export function ExtractedDataForm({ hookInstance }: ExtractedDataFormProps) {
         </div>
       </div>
 
-      {/* Fechas de vigencia */}
       <div className="space-y-4">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
           Vigencia de la Nueva Póliza
@@ -211,7 +182,6 @@ export function ExtractedDataForm({ hookInstance }: ExtractedDataFormProps) {
         </div>
       </div>
 
-      {/* Información financiera */}
       <div className="space-y-4">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
           Información Financiera
@@ -245,7 +215,7 @@ export function ExtractedDataForm({ hookInstance }: ExtractedDataFormProps) {
               onChange={(e) => handleFieldChange('valorPorCuota', e.target.value)}
               placeholder="0.00"
             />
-            {/* ✅ MOSTRAR VALOR FORMATEADO */}
+
             {(editedData.valorPorCuota || editedData.valorCuota || extractValorPorCuota(editedData)) && (
               <p className="text-xs text-muted-foreground">
                 {formatCurrency(editedData.valorPorCuota || editedData.valorCuota || extractValorPorCuota(editedData))}
@@ -274,7 +244,6 @@ export function ExtractedDataForm({ hookInstance }: ExtractedDataFormProps) {
         </div>
       </div>
 
-      {/* Datos del vehículo */}
       <div className="space-y-4">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
           Información del Vehículo
@@ -360,27 +329,6 @@ export function ExtractedDataForm({ hookInstance }: ExtractedDataFormProps) {
           </div>
         </div>
       </div>
-
-      {/* Debug en desarrollo */}
-      {process.env.NODE_ENV === 'development' && (
-        <details className="mt-4 text-xs">
-          <summary className="cursor-pointer font-medium">Debug ExtractedData Renovaciones</summary>
-          <pre className="mt-2 p-2 bg-gray-100 dark:bg-gray-800 rounded text-xs overflow-auto">
-            {JSON.stringify({
-              editedData,
-              valorPorCuotaExtraido: extractValorPorCuota(editedData),
-              dataSourceKeys: Object.keys(dataSource || {}),
-              cuotaFields: [
-                "pago.cuota_monto[1]",
-                "pago.cuotas[0].prima", 
-                "pago.prima_cuota[1]",
-                "valorPorCuota",
-                "valorCuota"
-              ].map(field => ({ field, value: editedData[field] }))
-            }, null, 2)}
-          </pre>
-        </details>
-      )}
     </div>
   );
 }

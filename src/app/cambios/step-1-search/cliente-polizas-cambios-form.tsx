@@ -45,7 +45,42 @@ export function ClientePolizasCambiosForm({ hookInstance }: ClientePolizasCambio
   };
 
   const handlePolizaSelect = (poliza: any) => {
+    console.log('📋 Póliza seleccionada completa:', poliza);
+    
     selectPolizaForChange(poliza);
+
+    const companiaId = poliza.comcod;
+    let companiaNombre = poliza.comnom;
+
+    if (!companiaNombre || companiaNombre.trim() === '') {
+      const mapeoCompanias: Record<number, string> = {
+        1: 'BANCO DE SEGUROS',
+        2: 'SURA SEGUROS',
+        3: 'MAPFRE',
+        4: 'PORTO SEGUROS'
+      };
+      companiaNombre = mapeoCompanias[companiaId] || `Compañía ${companiaId}`;
+    }
+
+    hookInstance.updateState((prevState: any) => ({
+      ...prevState,
+      context: {
+        ...prevState.context,
+        companiaId: companiaId,
+        companiaInfo: {
+          id: companiaId,
+          nombre: companiaNombre,
+          codigo: companiaId.toString()
+        },
+        polizaOriginal: {
+          id: poliza.id,
+          numero: poliza.conpol,
+          vencimiento: poliza.confchhas
+        }
+      }
+    }));
+    
+    console.log('✅ Contexto actualizado - Compañía:', companiaNombre);
   };
 
   const formatCurrency = (amount: number) => {
@@ -63,30 +98,30 @@ export function ClientePolizasCambiosForm({ hookInstance }: ClientePolizasCambio
     });
   };
 
-const getVigenciaStatus = (poliza: any) => {
-  const fechaVencimiento = new Date(poliza.confchhas);
-  const hoy = new Date();
-  const diasParaVencimiento = Math.ceil((fechaVencimiento.getTime() - hoy.getTime()) / (1000 * 60 * 60 * 24));
-  
-  if (diasParaVencimiento > 30) {
-    return { color: 'green', text: 'Vigente', vigente: true };
-  } else if (diasParaVencimiento > 0) {
-    return { color: 'blue', text: `Vence en ${diasParaVencimiento} días`, vigente: true };
-  } else if (diasParaVencimiento === 0) {
-    return { color: 'yellow', text: 'Vence hoy', vigente: true };
-  } else if (diasParaVencimiento > -30) {
-    return { color: 'yellow', text: `Vencida hace ${Math.abs(diasParaVencimiento)} días`, vigente: true };
-  } else {
-    return { color: 'red', text: `Vencida hace ${Math.abs(diasParaVencimiento)} días`, vigente: false };
-  }
-};
+  const getVigenciaStatus = (poliza: any) => {
+    const fechaVencimiento = new Date(poliza.confchhas);
+    const hoy = new Date();
+    const diasParaVencimiento = Math.ceil((fechaVencimiento.getTime() - hoy.getTime()) / (1000 * 60 * 60 * 24));
+    
+    if (diasParaVencimiento > 30) {
+      return { color: 'green', text: 'Vigente', vigente: true };
+    } else if (diasParaVencimiento > 0) {
+      return { color: 'blue', text: `Vence en ${diasParaVencimiento} días`, vigente: true };
+    } else if (diasParaVencimiento === 0) {
+      return { color: 'yellow', text: 'Vence hoy', vigente: true };
+    } else if (diasParaVencimiento > -30) {
+      return { color: 'yellow', text: `Vencida hace ${Math.abs(diasParaVencimiento)} días`, vigente: true };
+    } else {
+      return { color: 'red', text: `Vencida hace ${Math.abs(diasParaVencimiento)} días`, vigente: false };
+    }
+  };
+
   const isPolizaSelected = (polizaId: number) => {
     return state.cliente.selectedPoliza?.id === polizaId;
   };
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
-      {/* Header */}
       <div className="text-center mb-6">
         <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">
           Buscar Póliza para Cambios
@@ -96,7 +131,6 @@ const getVigenciaStatus = (poliza: any) => {
         </p>
       </div>
 
-      {/* Búsqueda de Cliente */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -138,7 +172,6 @@ const getVigenciaStatus = (poliza: any) => {
         </CardContent>
       </Card>
 
-      {/* Listado de Pólizas */}
       {state.cliente.selectedId && (
         <Card>
           <CardHeader>
@@ -190,7 +223,6 @@ const getVigenciaStatus = (poliza: any) => {
                     >
                       <div className="flex justify-between items-start mb-3">
                         <div className="flex items-center gap-3">
-                          {/* 🔥 CORREGIDO: Indicador visual azul cuando está seleccionada */}
                           <div className={`
                             w-3 h-3 rounded-full transition-colors
                             ${isSelected 
@@ -220,14 +252,12 @@ const getVigenciaStatus = (poliza: any) => {
                             {vigenciaStatus.text}
                           </Badge>
                           
-                          {/* 🔥 CORREGIDO: Icono azul cuando está seleccionada */}
                           {isSelected && (
                             <CheckCircle className="h-5 w-5 text-blue-500" />
                           )}
                         </div>
                       </div>
 
-                      {/* Información simplificada */}
                       <div className="flex items-center justify-between mb-4 text-sm">
                         <div className="flex items-center gap-6">
                           <div className="flex items-center gap-2">
@@ -238,7 +268,6 @@ const getVigenciaStatus = (poliza: any) => {
                         </div>
                       </div>
 
-                      {/* Footer de la tarjeta */}
                       <div className="flex justify-between items-center pt-2 border-t border-gray-200 dark:border-gray-700">
                         <div className="flex items-center gap-2">
                           {vigente ? (
@@ -251,7 +280,6 @@ const getVigenciaStatus = (poliza: any) => {
                           </span>
                         </div>
 
-                        {/* 🔥 CORREGIDO: Botones con colores azules */}
                         {vigente && !isSelected && (
                           <Button
                             onClick={(e) => {

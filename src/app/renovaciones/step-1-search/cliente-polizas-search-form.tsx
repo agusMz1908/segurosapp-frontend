@@ -28,7 +28,6 @@ export function ClientePolizasSearchForm({ hookInstance }: ClientePolizasSearchF
   const [selectedCliente, setSelectedCliente] = useState<Cliente | undefined>();
 
 const handleClienteChange = async (clienteId: number | undefined, cliente?: Cliente) => {
-  console.log('👤 Cliente seleccionado completo:', cliente);
   setSelectedCliente(cliente);
   
   if (clienteId && cliente) {
@@ -44,9 +43,40 @@ const handleClienteChange = async (clienteId: number | undefined, cliente?: Clie
   }
 };
 
-  const handlePolizaSelect = (poliza: any) => {
-    selectPolizaToRenew(poliza);
-  };
+const handlePolizaSelect = (poliza: any) => {
+  selectPolizaToRenew(poliza);
+
+  const companiaId = poliza.comcod;
+  let companiaNombre = poliza.comnom;
+
+  if (!companiaNombre || companiaNombre.trim() === '') {
+    const mapeoCompanias: Record<number, string> = {
+      1: 'BANCO DE SEGUROS',
+      2: 'SURA SEGUROS',
+      3: 'MAPFRE',
+      4: 'PORTO SEGUROS'
+    };
+    companiaNombre = mapeoCompanias[companiaId] || `Compañía ${companiaId}`;
+  }
+
+  hookInstance.updateState((prevState: any) => ({
+    ...prevState,
+    context: {
+      ...prevState.context,
+      companiaId: companiaId,
+      companiaInfo: {
+        id: companiaId,
+        nombre: companiaNombre,
+        codigo: companiaId.toString()
+      },
+      polizaOriginal: {
+        id: poliza.id,
+        numero: poliza.conpol,
+        vencimiento: poliza.confchhas
+      }
+    }
+  }));
+};
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('es-UY', {
@@ -86,7 +116,6 @@ const handleClienteChange = async (clienteId: number | undefined, cliente?: Clie
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
-      {/* Header */}
       <div className="text-center mb-6">
         <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">
           Buscar Póliza a Renovar
@@ -96,7 +125,6 @@ const handleClienteChange = async (clienteId: number | undefined, cliente?: Clie
         </p>
       </div>
 
-      {/* Búsqueda de Cliente */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -114,31 +142,11 @@ const handleClienteChange = async (clienteId: number | undefined, cliente?: Clie
               onValueChange={handleClienteChange}
               placeholder="Buscar cliente por nombre, documento o email..."
               className="w-full"
-            />
-
-            {selectedCliente && (
-              <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg p-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <CheckCircle className="h-4 w-4 text-blue-600" />
-                  <span className="font-medium text-blue-800 dark:text-blue-200">Cliente Seleccionado</span>
-                </div>
-                <div className="grid md:grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <span className="font-medium text-blue-700 dark:text-blue-300">Nombre:</span>
-                    <p className="text-blue-600 dark:text-blue-200">{selectedCliente.nombre}</p>
-                  </div>
-                  <div>
-                    <span className="font-medium text-blue-700 dark:text-blue-300">Documento:</span>
-                    <p className="text-blue-600 dark:text-blue-200">{selectedCliente.documento}</p>
-                  </div>
-                </div>
-              </div>
-            )}
+            />        
           </div>
         </CardContent>
       </Card>
 
-      {/* Listado de Pólizas */}
       {state.cliente.selectedId && (
         <Card>
           <CardHeader>
@@ -190,7 +198,6 @@ const handleClienteChange = async (clienteId: number | undefined, cliente?: Clie
                     >
                       <div className="flex justify-between items-start mb-3">
                         <div className="flex items-center gap-3">
-                          {/* Indicador visual de selección */}
                           <div className={`
                             w-3 h-3 rounded-full transition-colors
                             ${isSelected 
@@ -219,14 +226,12 @@ const handleClienteChange = async (clienteId: number | undefined, cliente?: Clie
                             {vencimientoStatus.text}
                           </Badge>
                           
-                          {/* Icono de selección */}
                           {isSelected && (
                             <CheckCircle className="h-5 w-5 text-blue-500" />
                           )}
                         </div>
                       </div>
 
-                      {/* Información simplificada */}
                       <div className="flex items-center justify-between mb-4 text-sm">
                         <div className="flex items-center gap-6">
                           <div className="flex items-center gap-2">
@@ -237,7 +242,6 @@ const handleClienteChange = async (clienteId: number | undefined, cliente?: Clie
                         </div>
                       </div>
 
-                      {/* Footer de la tarjeta */}
                       <div className="flex justify-between items-center pt-2 border-t border-gray-200 dark:border-gray-700">
                         <div className="flex items-center gap-2">
                           {renovable ? (
@@ -250,7 +254,6 @@ const handleClienteChange = async (clienteId: number | undefined, cliente?: Clie
                           </span>
                         </div>
 
-                        {/* Botón de selección */}
                         {renovable && !isSelected && (
                           <Button
                             onClick={(e) => {

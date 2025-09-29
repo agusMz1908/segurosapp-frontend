@@ -30,7 +30,6 @@ export function ValidationForm({ hookInstance }: ValidationFormProps) {
   const { state, updateState, updateExtractedData, updateMasterData } = hookInstance;
   const { isViewerOpen, openViewer, closeViewer } = usePDFViewer();
 
-  // Datos para mostrar
   const displayData = state.scan.normalizedData && Object.keys(state.scan.normalizedData).length > 0 
     ? state.scan.normalizedData 
     : state.scan.extractedData || {};
@@ -48,19 +47,13 @@ export function ValidationForm({ hookInstance }: ValidationFormProps) {
     });
   };
 
-  // Si hay datos extraídos, mostrar el formulario completo de validación
   if (scanStatus === 'completed' && displayData && Object.keys(displayData).length > 0) {
     return (
       <div className="w-full">
-        {/* Layout principal usando flexbox horizontal igual que Renovaciones */}
         <div className={`flex gap-6 ${isViewerOpen ? '' : 'justify-center'}`}>
-          
-          {/* Columna del formulario */}
           <div className={`space-y-6 transition-all duration-300 ${
-            isViewerOpen ? 'w-1/2 flex-shrink-0' : 'w-full max-w-4xl'
-          }`}>
+            isViewerOpen ? 'w-1/2 flex-shrink-0' : 'w-full max-w-4xl'}`}>
             
-            {/* Header del paso - Solo cuando PDF está cerrado */}
             {!isViewerOpen && (
               <div className="text-center mb-6">
                 <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">
@@ -72,7 +65,6 @@ export function ValidationForm({ hookInstance }: ValidationFormProps) {
               </div>
             )}
 
-            {/* 🔥 CAMBIO: Usar colores azules como Nueva Póliza en lugar de violeta */}
             <div className="grid grid-cols-3 gap-2 p-3 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-lg border border-blue-200 dark:border-blue-700">
               <div className="flex items-center gap-1">
                 <User className="h-3 w-3 text-blue-600 dark:text-blue-400" />
@@ -106,7 +98,6 @@ export function ValidationForm({ hookInstance }: ValidationFormProps) {
             <Card className="shadow-lg">
               <CardContent className={`space-y-6 ${isViewerOpen ? 'p-4' : 'p-8'}`}>
                 
-                {/* 1. Datos del Documento - 🔥 CAMBIO: Usar azul en lugar de violeta */}
                 <div className="space-y-4">
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-2">
@@ -123,7 +114,6 @@ export function ValidationForm({ hookInstance }: ValidationFormProps) {
                       </div>
                     </div>
                     
-                    {/* Botón Ver PDF - 🔥 CAMBIO: Usar azul en lugar de violeta */}
                     {(state.file?.selected || state.scan?.file) ? (
                       <Button
                         variant={isViewerOpen ? "secondary" : "default"}
@@ -154,7 +144,6 @@ export function ValidationForm({ hookInstance }: ValidationFormProps) {
 
                 <Separator className="my-4" />
 
-                {/* 2. Datos Maestros - 🔥 CAMBIO: Usar verde en lugar de indigo */}
                 <div className="space-y-4">
                   <div className="flex items-center gap-2 mb-3">
                     <div className={`p-1.5 bg-green-100 dark:bg-green-800 rounded-lg ${isViewerOpen ? 'p-1' : 'p-2'}`}>
@@ -177,7 +166,6 @@ export function ValidationForm({ hookInstance }: ValidationFormProps) {
 
                 <Separator className="my-4" />
 
-                {/* 3. Observaciones */}
                 <div className="space-y-3">
                   <div className="flex items-center gap-2 mb-3">
                     <div className={`p-1.5 bg-amber-100 dark:bg-amber-800 rounded-lg ${isViewerOpen ? 'p-1' : 'p-2'}`}>
@@ -212,7 +200,6 @@ export function ValidationForm({ hookInstance }: ValidationFormProps) {
             </Card>
           </div>
 
-          {/* Columna del visor PDF */}
           {isViewerOpen && (
             <div className="w-1/2 flex-1 min-h-0">
               <PDFViewer
@@ -220,16 +207,6 @@ export function ValidationForm({ hookInstance }: ValidationFormProps) {
                 isOpen={isViewerOpen}
                 onClose={closeViewer}
               />
-              
-              {/* Debug info para ayudar con el troubleshooting */}
-              {process.env.NODE_ENV === 'development' && (
-                <div className="mt-2 text-xs text-gray-500">
-                  <p>Debug PDF:</p>
-                  <p>state.file?.selected: {state.file?.selected ? 'Sí' : 'No'}</p>
-                  <p>state.scan?.file: {state.scan?.file ? 'Sí' : 'No'}</p>
-                  <p>fileName: {state.scan?.fileName || 'N/A'}</p>
-                </div>
-              )}
             </div>
           )}
         </div>
@@ -237,7 +214,6 @@ export function ValidationForm({ hookInstance }: ValidationFormProps) {
     );
   }
 
-  // Estado de carga o error
   return (
     <div className="space-y-6 p-6">
       <div className="text-center mb-6">

@@ -1,23 +1,14 @@
-// src/utils/intelligent-mapping.ts
-// Implementación universal del mapeo inteligente (sin referencias específicas a compañías)
-
 import { toast } from 'react-hot-toast';
 import type { MasterDataItem } from '@/types/master-data';
 
-/**
- * Función auxiliar para calcular similitud entre strings
- */
 const calculateSimilarity = (text1: string, text2: string): number => {
   const str1 = text1.toLowerCase().trim();
   const str2 = text2.toLowerCase().trim();
-  
-  // Coincidencia exacta
+
   if (str1 === str2) return 1.0;
   
-  // Uno contiene al otro
   if (str1.includes(str2) || str2.includes(str1)) return 0.9;
-  
-  // Similitud por palabras comunes
+
   const words1 = str1.split(/\s+/);
   const words2 = str2.split(/\s+/);
   const commonWords = words1.filter(word => 
@@ -28,7 +19,6 @@ const calculateSimilarity = (text1: string, text2: string): number => {
     return commonWords.length / Math.max(words1.length, words2.length);
   }
   
-  // Similitud por caracteres comunes (básico)
   let matches = 0;
   const minLength = Math.min(str1.length, str2.length);
   for (let i = 0; i < minLength; i++) {
@@ -38,45 +28,27 @@ const calculateSimilarity = (text1: string, text2: string): number => {
   return matches / Math.max(str1.length, str2.length);
 };
 
-/**
- * Función para encontrar la mejor coincidencia
- */
 const findBestMatch = (extractedValue: string, masterDataList: MasterDataItem[], threshold = 0.7): MasterDataItem | null => {
   if (!extractedValue || !masterDataList.length) return null;
   
-  // Limpiar el valor extraído
   const cleanValue = extractedValue
-    .replace(/^[A-Z\s]+\n/, '') // Remover prefijos como "COMBUSTIBLE\n"
-    .replace(/[.:\n]/g, ' ')    // Remover puntos, dos puntos, saltos de línea
+    .replace(/^[A-Z\s]+\n/, '') 
+    .replace(/[.:\n]/g, ' ')  
     .trim();
-  
-  console.log(`🔍 Buscando coincidencia para: "${cleanValue}"`);
   
   let bestMatch: MasterDataItem | null = null;
   let bestScore = 0;
   
   for (const item of masterDataList) {
     const score = calculateSimilarity(cleanValue, item.nombre);
-    console.log(`   - "${item.nombre}": ${(score * 100).toFixed(1)}%`);
-    
     if (score > bestScore && score >= threshold) {
       bestScore = score;
       bestMatch = item;
     }
   }
-  
-  if (bestMatch) {
-    console.log(`✅ Mejor coincidencia: "${bestMatch.nombre}" (${(bestScore * 100).toFixed(1)}%)`);
-  } else {
-    console.log(`❌ No se encontró coincidencia suficiente (threshold: ${threshold * 100}%)`);
-  }
-  
   return bestMatch;
 };
 
-/**
- * Interface para los datos del formulario
- */
 export interface MasterDataFormData {
   combustibleId: string;
   destinoId: string;
@@ -86,9 +58,6 @@ export interface MasterDataFormData {
   tarifaId: string;
 }
 
-/**
- * Interface para los datos maestros necesarios
- */
 export interface MasterDataSets {
   combustibles: MasterDataItem[];
   destinos: MasterDataItem[];
@@ -98,10 +67,6 @@ export interface MasterDataSets {
   tarifas: MasterDataItem[];
 }
 
-/**
- * FUNCIÓN PRINCIPAL DE MAPEO INTELIGENTE UNIVERSAL
- * Funciona con datos ya normalizados por el backend
- */
 export const intelligentMapping = (
   extractedData: Record<string, any>,
   currentFormData: MasterDataFormData,
@@ -112,17 +77,6 @@ export const intelligentMapping = (
   const newFormData = { ...currentFormData };
   let hasChanges = false;
 
-  console.log('🤖 Iniciando mapeo inteligente universal...');
-  console.log('📊 Datos disponibles:', {
-    combustibles: combustibles.length,
-    destinos: destinos.length,
-    departamentos: departamentos.length,
-    calidades: calidades.length,
-    categorias: categorias.length,
-    tarifas: tarifas.length
-  });
-
-  // Función auxiliar para buscar en múltiples campos posibles
   const findValueInFields = (possibleFields: string[]) => {
     for (const field of possibleFields) {
       if (extractedData[field]) {
@@ -132,35 +86,32 @@ export const intelligentMapping = (
     return null;
   };
 
-  // MAPEAR COMBUSTIBLE
   if (combustibles.length > 0 && !newFormData.combustibleId) {
     const combustibleText = findValueInFields([
-      "vehiculo.combustible",      // Campo normalizado
-      "combustible",               // Campo directo
-      "vehiculoTipoCombustible"    // Frontend field
+      "vehiculo.combustible",    
+      "combustible",              
+      "vehiculoTipoCombustible"  
     ]);
     
     if (combustibleText) {
-      // Mapeos específicos conocidos para combustibles uruguayos
       const combustibleMappings: { [key: string]: string } = {
-        'NAFTA': 'GAS',           // NAFTA → GASOLINA
-        'GASOLINA': 'GAS',        // GASOLINA → GASOLINA
-        'DIESEL': 'DIS',          // DIESEL → DISEL
-        'DISEL': 'DIS',           // DISEL → DISEL
-        'GAS-OIL': 'DIS',         // GAS-OIL → DISEL
-        'GASOIL': 'DIS',          // GASOIL → DISEL
-        'ELECTRICO': 'ELE',       // ELECTRICO → ELECTRICOS
-        'ELÉCTRICO': 'ELE',       // ELÉCTRICO → ELECTRICOS
-        'HIBRIDO': 'HYB',         // HIBRIDO → HYBRIDO
-        'HÍBRIDO': 'HYB',         // HÍBRIDO → HYBRIDO
-        'HYBRID': 'HYB',          // HYBRID → HYBRIDO
-        'GLP': 'GLP',             // GLP → GLP
-        'GNC': 'GNC'              // GNC → GNC
+        'NAFTA': 'GAS',          
+        'GASOLINA': 'GAS',      
+        'DIESEL': 'DIS',         
+        'DISEL': 'DIS',          
+        'GAS-OIL': 'DIS',        
+        'GASOIL': 'DIS',        
+        'ELECTRICO': 'ELE',       
+        'ELÉCTRICO': 'ELE',   
+        'HIBRIDO': 'HYB',       
+        'HÍBRIDO': 'HYB',        
+        'HYBRID': 'HYB',        
+        'GLP': 'GLP',           
+        'GNC': 'GNC'            
       };
 
       const cleanCombustible = combustibleText.replace(/COMBUSTIBLE\n?/i, '').trim();
-      
-      // Buscar mapeo directo primero
+
       let combustibleMatch: MasterDataItem | null = null;
       const directMapping = combustibleMappings[cleanCombustible.toUpperCase()];
       if (directMapping) {
@@ -170,8 +121,7 @@ export const intelligentMapping = (
           c.nombre.toUpperCase().includes(directMapping)
         ) || null;
       }
-      
-      // Si no hay mapeo directo, usar similitud
+
       if (!combustibleMatch) {
         combustibleMatch = findBestMatch(combustibleText, combustibles, 0.6);
       }
@@ -179,24 +129,20 @@ export const intelligentMapping = (
       if (combustibleMatch) {
         newFormData.combustibleId = combustibleMatch.id.toString();
         hasChanges = true;
-        console.log(`🚗 Combustible mapeado: "${cleanCombustible}" → "${combustibleMatch.nombre}"`);
       }
     }
   }
 
-  // MAPEAR DESTINO
   if (destinos.length > 0 && !newFormData.destinoId) {
     const destinoText = findValueInFields([
-      "vehiculo.destino_del_vehiculo",  // BSE
-      "vehiculo.tipo_de_uso",           // MAPFRE/SURA
-      "tipoUso",                        // Frontend
-      "destino"                         // Generic
+      "vehiculo.destino_del_vehiculo", 
+      "vehiculo.tipo_de_uso",           
+      "tipoUso",                       
+      "destino"                     
     ]);
     
     if (destinoText) {
       const cleanDestino = destinoText.replace(/^Tipo de uso\s+/i, '').trim();
-      
-      // Mapeos universales para destinos uruguayos
       const destinoMappings: { [key: string]: string[] } = {
         'COMERCIAL': ['TRABAJO', 'COMERCIAL', 'LABORAL', 'PROFESSIONAL'],
         'PARTICULAR': ['PARTICULAR', 'PERSONAL', 'PRIVADO', 'PRIVATE'],
@@ -209,7 +155,6 @@ export const intelligentMapping = (
 
       let destinoMatch: MasterDataItem | null = null;
       
-      // Buscar mapeo directo primero
       for (const [key, valores] of Object.entries(destinoMappings)) {
         if (cleanDestino.toUpperCase().includes(key)) {
           for (const valor of valores) {
@@ -221,8 +166,7 @@ export const intelligentMapping = (
           if (destinoMatch) break;
         }
       }
-      
-      // Si no hay mapeo directo, usar similitud con umbral más bajo
+
       if (!destinoMatch) {
         destinoMatch = findBestMatch(cleanDestino, destinos, 0.5);
       }
@@ -230,12 +174,10 @@ export const intelligentMapping = (
       if (destinoMatch) {
         newFormData.destinoId = destinoMatch.id.toString();
         hasChanges = true;
-        console.log(`🎯 Destino mapeado: "${cleanDestino}" → "${destinoMatch.nombre}"`);
       }
     }
   }
 
-  // MAPEAR DEPARTAMENTO
   if (departamentos.length > 0 && !newFormData.departamentoId) {
     const departamentoText = findValueInFields([
       "asegurado.departamento",
@@ -250,12 +192,10 @@ export const intelligentMapping = (
       if (deptMatch) {
         newFormData.departamentoId = deptMatch.id.toString();
         hasChanges = true;
-        console.log(`🏢 Departamento mapeado: "${deptMatch.nombre}"`);
       }
     }
   }
 
-  // MAPEAR CALIDAD (desde vehiculo.calidad_contratante)
   if (calidades.length > 0 && !newFormData.calidadId) {
     const calidadText = findValueInFields([
       "vehiculo.calidad_contratante",
@@ -269,24 +209,21 @@ export const intelligentMapping = (
       if (calidadMatch) {
         newFormData.calidadId = calidadMatch.id.toString();
         hasChanges = true;
-        console.log(`👤 Calidad mapeada: "${calidadMatch.nombre}"`);
       }
     }
   }
 
-  // MAPEAR CATEGORÍA VEHICULAR
   if (categorias.length > 0 && !newFormData.categoriaId) {
     const categoriaText = findValueInFields([
-      "vehiculo.tipo_vehiculo",         // BSE
-      "vehiculo.tipo",                  // MAPFRE
-      "vehiculoTipo",                   // Frontend
-      "categoria"                       // Generic
+      "vehiculo.tipo_vehiculo",        
+      "vehiculo.tipo",                 
+      "vehiculoTipo",                
+      "categoria"              
     ]);
     
     if (categoriaText) {
       const cleanCategoria = categoriaText.replace(/^Tipo\s+/i, '').trim();
-      
-      // Mapeos universales para categorías vehiculares uruguayas
+
       const categoriaMappings: { [key: string]: string[] } = {
         'AUTOMOVIL': ['Automóvil', 'AUTO', 'SEDAN'],
         'AUTO': ['Automóvil', 'AUTO', 'SEDAN'],
@@ -307,7 +244,6 @@ export const intelligentMapping = (
 
       let categoriaMatch: MasterDataItem | null = null;
       
-      // Buscar en mapeos específicos
       for (const [key, valores] of Object.entries(categoriaMappings)) {
         if (cleanCategoria.toUpperCase().includes(key)) {
           for (const valor of valores) {
@@ -319,8 +255,7 @@ export const intelligentMapping = (
           if (categoriaMatch) break;
         }
       }
-      
-      // Si no hay mapeo específico, usar similitud
+
       if (!categoriaMatch) {
         categoriaMatch = findBestMatch(cleanCategoria, categorias, 0.6);
       }
@@ -328,30 +263,24 @@ export const intelligentMapping = (
       if (categoriaMatch) {
         newFormData.categoriaId = categoriaMatch.id.toString();
         hasChanges = true;
-        console.log(`🚙 Categoría mapeada: "${cleanCategoria}" → "${categoriaMatch.nombre}"`);
       }
     }
   }
 
-  // ✅ MAPEAR TARIFA - VERSIÓN CORREGIDA
   if (tarifas.length > 0 && !newFormData.tarifaId) {
     let tarifaMatch: MasterDataItem | null = null;
     
     const modalidad = findValueInFields([
-      "poliza.modalidad_normalizada",   // Usar campo normalizado del backend
-      "poliza.modalidad",               // Fallback al original
+      "poliza.modalidad_normalizada",   
+      "poliza.modalidad",               
       "modalidad",
       "cobertura"
     ]);
     
     if (modalidad) {
-      console.log(`🔍 Buscando tarifa para modalidad: "${modalidad}"`);
-      
-      // ✅ MEJORA: Procesar modalidades con prioridad
       const modalidadUpper = modalidad.toUpperCase();
       let modalidadDetectada = '';
-      
-      // Buscar la modalidad más específica primero
+
       if (modalidadUpper.includes('TODO RIESGO') && modalidadUpper.includes('TOTAL')) {
         modalidadDetectada = 'TODO RIESGO TOTAL';
       } else if (modalidadUpper.includes('TODO RIESGO')) {
@@ -367,9 +296,6 @@ export const intelligentMapping = (
       }
       
       if (modalidadDetectada) {
-        console.log(`🎯 Modalidad detectada: "${modalidadDetectada}" para "${modalidad}"`);
-        
-        // Mapeos específicos de modalidades a tarifas
         const modalidadToTarifa: { [key: string]: string[] } = {
           'TODO RIESGO TOTAL': ['TODO RIESGO', 'TOTAL', 'COMPLETA', 'INTEGRAL', 'PREMIUM'],
           'TODO RIESGO': ['TODO RIESGO', 'TOTAL', 'COMPLETA', 'INTEGRAL'],
@@ -385,73 +311,46 @@ export const intelligentMapping = (
             t.nombre.toUpperCase().includes(tarifaName)
           ) || null;
           if (tarifaMatch) {
-            console.log(`✅ Tarifa encontrada: "${tarifaName}" → "${tarifaMatch.nombre}"`);
             break;
           }
         }
       }
       
-      // Si no encontró por mapeo específico, usar similitud
       if (!tarifaMatch) {
         tarifaMatch = findBestMatch(modalidad, tarifas, 0.6);
-        if (tarifaMatch) {
-          console.log(`✅ Tarifa encontrada por similitud: "${modalidad}" → "${tarifaMatch.nombre}"`);
-        }
       }
     }
-    
-    // ✅ CRÍTICO: Solo aplicar estrategias alternativas si NO se encontró tarifa por modalidad
+
     if (!tarifaMatch) {
-      console.log(`⚠️ No se encontró tarifa por modalidad, aplicando estrategias alternativas...`);
-      
-      // Estrategia 2: Si hay categoría seleccionada, buscar tarifa relacionada
       if (newFormData.categoriaId) {
         const categoriaSeleccionada = categorias.find(c => c.id.toString() === newFormData.categoriaId);
         if (categoriaSeleccionada) {
           tarifaMatch = findBestMatch(categoriaSeleccionada.nombre, tarifas, 0.7);
-          if (tarifaMatch) {
-            console.log(`✅ Tarifa encontrada por categoría: "${categoriaSeleccionada.nombre}" → "${tarifaMatch.nombre}"`);
-          }
         }
       }
       
-      // Estrategia 3: Fallback a tarifa por defecto (SOLO si no hay nada)
       if (!tarifaMatch && tarifas.length > 0) {
-        console.log(`⚠️ Aplicando fallback para tarifa por defecto`);
         tarifaMatch = tarifas.find(t => 
           t.nombre.toLowerCase().includes('general') || 
           t.nombre.toLowerCase().includes('estandar') ||
           t.nombre.toLowerCase().includes('normal')
-        ) || tarifas[0]; // Evitar 'basica' en el fallback
-        
-        if (tarifaMatch) {
-          console.log(`🔄 Tarifa fallback seleccionada: "${tarifaMatch.nombre}"`);
-        }
+        ) || tarifas[0]; 
       }
     }
-    
-    // ✅ APLICAR TARIFA SOLO SI SE ENCONTRÓ UNA
+
     if (tarifaMatch) {
       newFormData.tarifaId = tarifaMatch.id.toString();
       hasChanges = true;
-      console.log(`💰 Tarifa FINAL mapeada: "${tarifaMatch.nombre}" (ID: ${tarifaMatch.id})`);
     } else {
       console.log(`❌ No se pudo mapear ninguna tarifa para modalidad: "${modalidad || 'N/A'}"`);
     }
   }
 
-  // ✅ DEBUG FINAL: Estado de tarifaId después del mapeo
-  console.log('🔍 ESTADO FINAL newFormData.tarifaId:', newFormData.tarifaId);
   if (newFormData.tarifaId) {
     const tarifaFinal = tarifas.find(t => t.id.toString() === newFormData.tarifaId);
-    console.log('🔍 TARIFA FINAL SELECCIONADA:', tarifaFinal?.nombre || 'NO ENCONTRADA');
   }
 
-  // Aplicar cambios si los hay
   if (hasChanges) {
-    console.log('✅ Mapeo inteligente universal completado con cambios aplicados');
-    
-    // Mostrar resumen de mapeos
     const mappedFields = [];
     if (newFormData.combustibleId !== currentFormData.combustibleId) mappedFields.push('Combustible');
     if (newFormData.destinoId !== currentFormData.destinoId) mappedFields.push('Destino');
@@ -464,7 +363,7 @@ export const intelligentMapping = (
       toast.success(`Datos maestros mapeados automáticamente: ${mappedFields.join(', ')}`);
     }
   } else {
-    console.log('ℹ️ Mapeo inteligente universal completado sin cambios');
+    console.log('Mapeo inteligente universal completado sin cambios');
   }
 
   return newFormData;

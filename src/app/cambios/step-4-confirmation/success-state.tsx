@@ -42,7 +42,6 @@ export function SuccessState({
 
   return (
     <div className="space-y-6 p-6 max-w-4xl mx-auto">
-      {/* Header de éxito - 🔥 CAMBIO: Usar azul en lugar de violeta */}
       <div className="text-center mb-8">
         <div className="mx-auto mb-6 w-20 h-20 bg-blue-100 dark:bg-blue-900/20 rounded-full flex items-center justify-center">
           <CheckCircle className="h-12 w-12 text-blue-600 dark:text-blue-400" />
@@ -58,7 +57,6 @@ export function SuccessState({
         </p>
       </div>
 
-      {/* Información del cambio */}
       <div className="grid md:grid-cols-2 gap-6">
         {/* Póliza Original */}
         <Card className="border-orange-200 bg-orange-50 dark:bg-orange-900/10 dark:border-orange-800">
@@ -81,7 +79,6 @@ export function SuccessState({
                 </div>
                 <div>
                   <span className="font-medium">Estado:</span>{' '}
-                  {/* 🔥 CAMBIO: Usar azul en lugar de violeta */}
                   <span className="inline-flex items-center gap-1 px-2 py-1 bg-blue-200 dark:bg-blue-800 text-blue-800 dark:text-blue-200 rounded-full text-xs">
                     <Edit className="h-3 w-3" />
                     Modificada Exitosamente
@@ -98,7 +95,6 @@ export function SuccessState({
           </CardContent>
         </Card>
 
-        {/* Cambio Aplicado - 🔥 CAMBIO: Usar azul en lugar de violeta */}
         <Card className="border-blue-200 bg-blue-50 dark:bg-blue-900/10 dark:border-blue-800">
           <CardContent className="pt-6">
             <div className="text-center space-y-3">
@@ -136,7 +132,6 @@ export function SuccessState({
         </Card>
       </div>
 
-      {/* Información del contexto */}
       <Card>
         <CardContent className="pt-6">
           <div className="grid md:grid-cols-3 gap-4 text-center">
@@ -153,7 +148,6 @@ export function SuccessState({
             </div>
             
             <div>
-              {/* 🔥 CAMBIO: Usar verde en lugar de violeta */}
               <div className="flex items-center justify-center gap-2 mb-2">
                 <div className="w-8 h-8 bg-green-100 dark:bg-green-900/20 rounded-lg flex items-center justify-center">
                   <Building2 className="h-4 w-4 text-green-600 dark:text-green-400" />
@@ -180,7 +174,6 @@ export function SuccessState({
         </CardContent>
       </Card>
 
-      {/* Mensaje del sistema - 🔥 CAMBIO: Usar azul en lugar de violeta */}
       {processResult.message && (
         <Card className="bg-blue-50 dark:bg-blue-900/10 border-blue-200 dark:border-blue-800">
           <CardContent className="pt-4">
@@ -212,7 +205,6 @@ export function SuccessState({
         </Card>
       )}
 
-      {/* Botones de acción */}
       <Card className="bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900">
         <CardContent className="pt-8 pb-6">
           <div className="text-center space-y-6">
@@ -221,7 +213,6 @@ export function SuccessState({
             </h3>
             
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center max-w-md mx-auto">
-              {/* Botón Dashboard Principal */}
               <Button
                 onClick={onGoToDashboard}
                 size="lg"
@@ -231,7 +222,6 @@ export function SuccessState({
                 Ir al Dashboard
               </Button>
 
-              {/* Botón Nuevo Cambio - 🔥 CAMBIO: Usar verde en lugar de violeta */}
               <Button
                 onClick={onStartNewCambio}
                 size="lg"
@@ -246,23 +236,6 @@ export function SuccessState({
           </div>
         </CardContent>
       </Card>
-
-      {/* Debug info en desarrollo */}
-      {process.env.NODE_ENV === 'development' && (
-        <details className="mt-4">
-          <summary className="cursor-pointer text-sm text-gray-500">Debug Info</summary>
-          <pre className="mt-2 p-3 bg-gray-100 dark:bg-gray-800 rounded text-xs overflow-auto">
-            {JSON.stringify({
-              velneoPolizaId: processResult.velneoPolizaId,
-              polizaNumber: processResult.polizaNumber,
-              polizaOriginalId: context.polizaOriginal?.id,
-              success: processResult.success,
-              message: processResult.message,
-              cambiosAplicados: processResult.cambiosAplicados
-            }, null, 2)}
-          </pre>
-        </details>
-      )}
     </div>
   );
 }

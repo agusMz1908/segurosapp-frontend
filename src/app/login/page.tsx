@@ -49,16 +49,12 @@ export default function LoginPage() {
   setErrors(prev => ({ ...prev, general: "" }))
   
   try {
-    // ✅ Usar cliente API centralizado
     const data = await apiClient.post<LoginResponse>('/api/auth/login', {
       username: formData.username,
       password: formData.password
     })
     
-    console.log('Login response:', data)
-
     if (data.success) {
-      // Guardar token
       if (data.token) {
         document.cookie = `seguros_token=${data.token}; path=/; max-age=${30 * 24 * 60 * 60}; secure; samesite=strict`
         localStorage.setItem('auth_token', data.token)
@@ -68,7 +64,6 @@ export default function LoginPage() {
         localStorage.setItem('user_data', JSON.stringify(data.user))
       }
       
-      console.log('Token guardado, redirigiendo...')
       window.location.href = '/dashboard'
       
     } else {
@@ -78,7 +73,6 @@ export default function LoginPage() {
       }))
     }
   } catch (error) {
-    console.error('Login error:', error)
     setErrors(prev => ({
       ...prev,
       general: error instanceof Error ? error.message : "Error de conexión con el servidor"
@@ -91,7 +85,6 @@ export default function LoginPage() {
   const handleInputChange = (field: string, value: string | boolean) => {
     setFormData(prev => ({ ...prev, [field]: value }))
     
-    // Limpiar errores cuando el usuario empiece a escribir
     if (field === "username" && errors.username) {
       setErrors(prev => ({ ...prev, username: "" }))
     }
@@ -102,7 +95,6 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
-      {/* Branding Side */}
       <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-blue-600 to-blue-800 text-white p-12">
         <div className="flex flex-col justify-center">
           <div className="flex items-center mb-8">
@@ -127,7 +119,6 @@ export default function LoginPage() {
         </div>
       </div>
 
-      {/* Login Form */}
       <div className="w-full lg:w-1/2 flex items-center justify-center p-8">
         <div className="w-full max-w-md">
           <Card className="shadow-xl">

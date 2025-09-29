@@ -112,29 +112,18 @@ export function useNuevaPoliza() {
   const abortControllerRef = useRef<AbortController | null>(null);
 
   const updateState = useCallback((updates: Partial<NuevaPolizaState> | ((prev: NuevaPolizaState) => Partial<NuevaPolizaState>)) => {
-    console.log('🔧 updateState recibido:', updates);
-    
     setState(prev => {
-      console.log('🔧 setState - prevState:', prev);
-      
       const newUpdates = typeof updates === 'function' ? updates(prev) : updates;
       const newState = { ...prev, ...newUpdates };
-      
-      console.log('🔧 setState - newState:', newState);
+
       return newState;
     });
   }, []);
 
-const isContextValid = useCallback(() => {
-  const valid = !!(state.context.clienteId && state.context.companiaId && state.context.seccionId);
-  console.log('🔍 DEBUG - isContextValid check:', {
-    clienteId: state.context.clienteId,
-    companiaId: state.context.companiaId, 
-    seccionId: state.context.seccionId,
-    result: valid
-  });
-  return valid;
-}, [state.context]);
+  const isContextValid = useCallback(() => {
+    const valid = !!(state.context.clienteId && state.context.companiaId && state.context.seccionId);
+    return valid;
+  }, [state.context]);
 
   const canProceedToStep2 = useCallback(() => {
     return state.scan.status === 'completed';
@@ -155,13 +144,8 @@ const isContextValid = useCallback(() => {
     return hasRequiredContext && hasExtractedData && hasRequiredPolicyData;
   }, [state]);
 
-  // Función de mapeo universal (sin referencias específicas a compañías)
   const mapBackendDataToFrontend = (backendData: any, rawData?: any) => {
-    console.log('🔍 MAPEO UNIVERSAL - backendData:', backendData);
-    console.log('🔍 MAPEO UNIVERSAL - rawData:', rawData);
-
     if (!rawData || Object.keys(rawData).length === 0) {
-      console.log('❌ rawData vacío o undefined');
       return {};
     }
 
@@ -174,36 +158,27 @@ const extractNumber = (str: string) => {
   if (!str) return "";
   
   const cleanStr = cleanText(str);
-  console.log('🔍 Extrayendo número de:', cleanStr);
-  
+
   const match = cleanStr.match(/\$?\s*([\d.,]+)/);
   if (!match) return "";
   
   let cleanNumber = match[1];
 
-  // FORMATO SURA/INTERNACIONAL: "2,475.25" (coma = miles, punto = decimal)
   if (cleanNumber.includes(',') && cleanNumber.includes('.')) {
-    // Si el punto viene después de la coma, es formato SURA
     const comaIndex = cleanNumber.lastIndexOf(',');
     const puntoIndex = cleanNumber.lastIndexOf('.');
     
     if (puntoIndex > comaIndex) {
-      // Formato SURA: "2,475.25" -> remover comas de miles
       cleanNumber = cleanNumber.replace(/,/g, '');
     } else {
-      // Formato uruguayo: "2.475,25" -> convertir
       cleanNumber = cleanNumber.replace(/\./g, '').replace(',', '.');
     }
   } 
-  // FORMATO SIMPLE CON COMA: podría ser decimal uruguayo
   else if (cleanNumber.includes(',') && !cleanNumber.includes('.')) {
-    // Si tiene más de 3 dígitos antes de la coma, probablemente es separador de miles
     const parts = cleanNumber.split(',');
     if (parts[0].length > 3 || parts[1].length !== 2) {
-      // No es formato decimal estándar, mantener la coma como separador de miles
       cleanNumber = cleanNumber.replace(',', '');
     } else {
-      // Formato decimal uruguayo: "123,45"
       cleanNumber = cleanNumber.replace(',', '.');
     }
   }
@@ -219,26 +194,21 @@ const extractNumber = (str: string) => {
 
 const extractPrimeraCuota = (data: any) => {
   if (!data) return "";
-  
-  console.log('🔍 Buscando primera cuota en:', data);
-  
-  // Buscar diferentes formatos según la compañía
+
   const cuotaFields = [
-    "pago.cuota_monto[1]",      // MAPFRE - primera cuota ← ¡Este faltaba!
-    "pago.cuotas[0].prima",     // BSE - primera cuota
-    "pago.prima_cuota[1]",      // SURA - primera cuota
-    "pago.primera_cuota",       // Generic
+    "pago.cuota_monto[1]",      
+    "pago.cuotas[0].prima",   
+    "pago.prima_cuota[1]",      
+    "pago.primera_cuota",   
   ];
 
   for (const field of cuotaFields) {
     if (data[field]) {
       const valor = extractNumber(data[field]);
-      console.log(`✅ Primera cuota encontrada en ${field}:`, valor);
       return valor;
     }
   }
   
-  console.log('❌ No se encontró valor de primera cuota');
   return "";
 };
 
@@ -246,37 +216,28 @@ const extractDate = (dateStr: string) => {
   if (!dateStr) return "";
   
   const cleanDateStr = cleanText(dateStr);
-  console.log('🔍 Extrayendo fecha de:', cleanDateStr);
-
-  // Buscar múltiples formatos de fecha
   const patterns = [
-    /(\d{1,2})\/(\d{1,2})\/(\d{4})/,     // DD/MM/YYYY (SURA, BSE)
-    /(\d{1,2})-(\d{1,2})-(\d{4})/,      // DD-MM-YYYY (otros)
-    /(\d{4})-(\d{1,2})-(\d{1,2})/,      // YYYY-MM-DD (ISO)
-    /(\d{1,2})\.(\d{1,2})\.(\d{4})/     // DD.MM.YYYY (alternativo)
+    /(\d{1,2})\/(\d{1,2})\/(\d{4})/,    
+    /(\d{1,2})-(\d{1,2})-(\d{4})/,    
+    /(\d{4})-(\d{1,2})-(\d{1,2})/,     
+    /(\d{1,2})\.(\d{1,2})\.(\d{4})/    
   ];
 
   for (const pattern of patterns) {
     const match = cleanDateStr.match(pattern);
     if (match) {
       let [, first, second, third] = match;
-      
-      // Para formato YYYY-MM-DD (ISO)
       if (pattern.toString().includes('\\d{4}')) {
         const formattedDate = `${first}-${second.padStart(2, '0')}-${third.padStart(2, '0')}`;
-        console.log('✅ Fecha extraída (ISO):', formattedDate);
         return formattedDate;
       } 
-      // Para formatos DD/MM/YYYY, DD-MM-YYYY, DD.MM.YYYY
       else {
         const formattedDate = `${third}-${second.padStart(2, '0')}-${first.padStart(2, '0')}`;
-        console.log('✅ Fecha extraída (convertida):', formattedDate);
         return formattedDate;
       }
     }
   }
-  
-  console.log('❌ No se pudo extraer fecha de:', cleanDateStr);
+
   return "";
 };
 
@@ -285,25 +246,17 @@ const cleanVehicleField = (str: string) => {
   
   let cleaned = str.replace(/\n/g, ' ').replace(/\r/g, ' ').trim();
   
-  // Lista de prefijos en orden de prioridad (más específicos primero)
   const prefixes = [
-    // BSE - Formato con salto de línea
     'MARCA\n', 'MODELO\n', 'MOTOR\n', 'CHASIS\n', 'AÑO\n',
-    
-    // BSE - Formato sin salto de línea
     'MARCA ', 'MODELO ', 'MOTOR ', 'CHASIS ', 'AÑO ',
-    
-    // MAPFRE/SURA - Con saltos de línea
     'Marca\n', 'Modelo\n', 'Motor\n', 'Chasis\n', 'Año\n',
     'Marca ', 'Modelo ', 'Motor ', 'Chasis ', 'Año ',
     
-    // Otros casos
     'Color\n', 'Color ', 'Tipo\n', 'Tipo ',
     'Riesgo nro.\n', 'Riesgo nro. ',
     'Tipo de uso\n', 'Tipo de uso '
   ];
   
-  // Probar cada prefijo
   for (const prefix of prefixes) {
     if (cleaned.startsWith(prefix)) {
       cleaned = cleaned.substring(prefix.length).trim();
@@ -311,9 +264,7 @@ const cleanVehicleField = (str: string) => {
     }
   }
   
-  // Limpieza adicional
   cleaned = cleaned.replace(/^:\s*/, '').trim();
-  
   return cleaned;
 };
 
@@ -321,8 +272,7 @@ const cleanPatenteField = (str: string) => {
   if (!str) return "";
   
   let cleaned = str.replace(/\n/g, ' ').replace(/\r/g, ' ').trim();
-  
-  // Prefijos específicos para patente/matrícula
+
   const patentesPrefixes = [
     'MATRÍCULA: ', 'MATRÍCULA. ', 'MATRÍCULA ',
     'PATENTE: ', 'PATENTE. ', 'PATENTE ',
@@ -344,12 +294,11 @@ const cleanPatenteField = (str: string) => {
       if (!str) return "";
       const cleanStr = cleanText(str);
       
-      // Buscar patrones comunes de número de póliza
       const patterns = [
-        /0040\d+(?:-\d+)?/,           // MAPFRE format
-        /\d{7,12}(?:-\d+)?/,         // BSE format  
-        /AP\d{7,}/,                  // SURA format
-        /\d{4,}-\d{1,}/              // General format
+        /0040\d+(?:-\d+)?/,      
+        /\d{7,12}(?:-\d+)?/,    
+        /AP\d{7,}/,              
+        /\d{4,}-\d{1,}/        
       ];
       
       for (const pattern of patterns) {
@@ -364,21 +313,17 @@ const cleanPatenteField = (str: string) => {
 
     const countCuotas = (data: any) => {
       if (!data) return "";
-      
-      // Buscar diferentes formatos de cuotas según la compañía
       const cuotasCount = Object.keys(data)
         .filter(key => 
-          key.startsWith("pago.vencimiento_cuota[") ||      // MAPFRE
-          key.startsWith("pago.cuotas[") ||                 // BSE
-          key.startsWith("pago.numero_cuota[")              // SURA
+          key.startsWith("pago.vencimiento_cuota[") ||    
+          key.startsWith("pago.cuotas[") ||               
+          key.startsWith("pago.numero_cuota[")            
         )
         .length;
-      
-      console.log('🔍 Cuotas encontradas:', cuotasCount);
+
       return cuotasCount > 0 ? cuotasCount.toString() : "";
     };
 
-    // Función para buscar un campo en múltiples ubicaciones posibles
     const findFieldValue = (possibleFields: string[]) => {
       for (const field of possibleFields) {
         if (rawData[field]) {
@@ -389,91 +334,82 @@ const cleanPatenteField = (str: string) => {
     };
 
     return {
-      // Número de póliza - buscar en diferentes formatos
       polizaNumber: extractPolizaNumber(
         findFieldValue([
-          "poliza.numero",           // BSE
-          "poliza.numero_poliza",    // BSE alt
-          "poliza_numero"            // Generic
+          "poliza.numero",          
+          "poliza.numero_poliza",   
+          "poliza_numero"          
         ]) || ""
       ) || backendData.numeroPoliza || "",
       
  vigenciaDesde: (() => {
-    // Si backend tiene fecha válida (no es fecha de hoy), usarla
     if (backendData.fechaDesde && backendData.fechaDesde !== "2025-09-17") {
       return backendData.fechaDesde;
     }
-    // Sino, extraer de los datos raw
+
     return extractDate(findFieldValue([
-      "poliza.vigencia.desde",     // BSE
-      "poliza.fecha-desde",        // SURA
-      "poliza.fecha_desde",        // MAPFRE
+      "poliza.vigencia.desde",  
+      "poliza.fecha-desde",        
+      "poliza.fecha_desde",      
     ]) || "") || "";
   })(),
   
   vigenciaHasta: (() => {
-    // Si backend tiene fecha válida (no es fecha de hoy), usarla
     if (backendData.fechaHasta && backendData.fechaHasta !== "2025-09-17") {
       return backendData.fechaHasta;
     }
-    // Sino, extraer de los datos raw
+
     return extractDate(findFieldValue([
-      "poliza.vigencia.hasta",     // BSE
-      "poliza.fecha-hasta",        // SURA
-      "poliza.fecha_hasta",        // MAPFRE
+      "poliza.vigencia.hasta",    
+      "poliza.fecha-hasta",       
+      "poliza.fecha_hasta",      
     ]) || "") || "";
   })(),
 
       fechaEmision: extractDate(findFieldValue([
-        "poliza.fecha_emision",      // MAPFRE
-        "poliza.fecha_emision",      // BSE
-        "poliza.fecha_emision"       // Generic
+        "poliza.fecha_emision",     
+        "poliza.fecha_emision",    
+        "poliza.fecha_emision"      
       ]) || "") || "",
 
-      // Montos - priorizar backend, fallback a campos específicos
       prima: backendData.premio?.toString() || 
              extractNumber(findFieldValue([
-               "poliza.prima_comercial",    // BSE
-               "costo.costo",               // MAPFRE cost
-               "premio.premio"              // SURA
+               "poliza.prima_comercial",    
+               "costo.costo",              
+               "premio.premio"          
              ]) || "") || "",
       
       premioTotal: backendData.premioTotal?.toString() || 
                    extractNumber(findFieldValue([
-                     "financiero.premio_total",   // BSE
-                     "costo.premio_total",        // MAPFRE
-                     "premio.total"               // SURA
+                     "financiero.premio_total",  
+                     "costo.premio_total",       
+                     "premio.total"          
                    ]) || "") || "",
 
       iva: extractNumber(findFieldValue([
-        "costo.iva",                 // MAPFRE
-        "poliza.iva",                // BSE
-        "premio.iva"                 // SURA
+        "costo.iva",               
+        "poliza.iva",   
+        "premio.iva"        
       ]) || "") || "",
 
-      // Cuotas - usar lógica inteligente
       cantidadCuotas: backendData.cantidadCuotas?.toString() || 
                       countCuotas(rawData) || "",
       
   valorPorCuota: (() => {
-    // Primero intentar extraer de datos específicos por compañía
     const valorEspecifico = extractPrimeraCuota(rawData);
     if (valorEspecifico) return valorEspecifico;
 
-    // Si backend tiene un valor válido, usarlo
     if (backendData.valorCuota) return backendData.valorCuota.toString();
 
-    // Si es pago único, usar el total
     const cuotas = parseInt(rawData.cantidadCuotas || backendData.cantidadCuotas?.toString() || "1");
     if (cuotas === 1) {
       const total = extractNumber(findFieldValue([
-        "financiero.premio_total",   // BSE/MAPFRE
-        "premio.total"               // SURA
+        "financiero.premio_total",   
+        "premio.total"             
       ]) || "");
       if (total) return total;
     }
 
-    // Fallback: calcular desde el total
     if (backendData.montoTotal && backendData.cantidadCuotas && backendData.cantidadCuotas > 0) {
       const valorCalculado = backendData.montoTotal / backendData.cantidadCuotas;
       return new Intl.NumberFormat('es-UY', {
@@ -487,144 +423,125 @@ const cleanPatenteField = (str: string) => {
 
       formaPago: backendData.formaPago || 
                  cleanText(findFieldValue([
-                   "pago.forma_pago",           // SURA
-                   "modo_de_pago",              // MAPFRE
-                   "pago.medio"                 // BSE
+                   "pago.forma_pago",      
+                   "modo_de_pago",            
+                   "pago.medio"             
                  ]) || "") || "",
 
-vehiculoMarca: (() => {
-  // PRIMERO: Intentar limpiar desde datos raw
-  const conSalto = findFieldValue(["vehiculo.marca"]) || "";
-  if (conSalto) {
-    const cleaned = cleanVehicleField(conSalto);
-    if (cleaned) return cleaned;
-  }
-  
-  const sinSalto = findFieldValue(["vehiculoMarca", "vehiculo_marca"]) || "";
-  if (sinSalto) {
-    const cleaned = cleanVehicleField(sinSalto);
-    if (cleaned) return cleaned;
-  }
-  
-  // ÚLTIMO RECURSO: Backend (pero también limpiarlo)
-  if (backendData.vehiculoMarca) {
-    return cleanVehicleField(backendData.vehiculoMarca);
-  }
-  
-  return "";
-})(),
+      vehiculoMarca: (() => {
+        const conSalto = findFieldValue(["vehiculo.marca"]) || "";
+        if (conSalto) {
+          const cleaned = cleanVehicleField(conSalto);
+          if (cleaned) return cleaned;
+        }
+        
+        const sinSalto = findFieldValue(["vehiculoMarca", "vehiculo_marca"]) || "";
+        if (sinSalto) {
+          const cleaned = cleanVehicleField(sinSalto);
+          if (cleaned) return cleaned;
+        }
 
-vehiculoModelo: (() => {
-  // PRIMERO: Intentar limpiar desde datos raw
-  const conSalto = findFieldValue(["vehiculo.modelo"]) || "";
-  if (conSalto) {
-    const cleaned = cleanVehicleField(conSalto);
-    if (cleaned) return cleaned;
-  }
-  
-  const sinSalto = findFieldValue(["vehiculoModelo", "vehiculo_modelo"]) || "";
-  if (sinSalto) {
-    const cleaned = cleanVehicleField(sinSalto);
-    if (cleaned) return cleaned;
-  }
-  
-  // ÚLTIMO RECURSO: Backend (pero también limpiarlo)
-  if (backendData.vehiculoModelo) {
-    return cleanVehicleField(backendData.vehiculoModelo);
-  }
-  
-  return "";
-})(),
+        if (backendData.vehiculoMarca) {
+          return cleanVehicleField(backendData.vehiculoMarca);
+        }
+        
+        return "";
+      })(),
 
-vehiculoAno: (() => {
-  if (backendData.vehiculoAño?.toString()) return backendData.vehiculoAño.toString();
-  
-  // Probar primero la versión con salto de línea (más limpia)
-  const conSalto = findFieldValue(["vehiculo.anio"]) || "";
-  if (conSalto) return cleanVehicleField(conSalto);
-  
-  // Fallback a la versión sin salto
-  const sinSalto = findFieldValue(["vehiculoAno", "vehiculo_anio"]) || "";
-  return cleanVehicleField(sinSalto);
-})(),
+      vehiculoModelo: (() => {
+        const conSalto = findFieldValue(["vehiculo.modelo"]) || "";
+        if (conSalto) {
+          const cleaned = cleanVehicleField(conSalto);
+          if (cleaned) return cleaned;
+        }
+        
+        const sinSalto = findFieldValue(["vehiculoModelo", "vehiculo_modelo"]) || "";
+        if (sinSalto) {
+          const cleaned = cleanVehicleField(sinSalto);
+          if (cleaned) return cleaned;
+        }
 
-vehiculoChasis: (() => {
-  if (backendData.vehiculoChasis) return backendData.vehiculoChasis;
-  
-  // Probar primero la versión con salto de línea (más limpia)
-  const conSalto = findFieldValue(["vehiculo.chasis"]) || "";
-  if (conSalto) return cleanVehicleField(conSalto);
-  
-  // Fallback a la versión sin salto
-  const sinSalto = findFieldValue(["vehiculoChasis", "vehiculo_chasis"]) || "";
-  return cleanVehicleField(sinSalto);
-})(),
+        if (backendData.vehiculoModelo) {
+          return cleanVehicleField(backendData.vehiculoModelo);
+        }
+        
+        return "";
+      })(),
 
-vehiculoMotor: (() => {
-  if (backendData.vehiculoMotor) return backendData.vehiculoMotor;
-  
-  // Probar primero la versión con salto de línea (más limpia)
-  const conSalto = findFieldValue(["vehiculo.motor"]) || "";
-  if (conSalto) return cleanVehicleField(conSalto);
-  
-  // Fallback a la versión sin salto
-  const sinSalto = findFieldValue(["vehiculoMotor", "vehiculo_motor"]) || "";
-  return cleanVehicleField(sinSalto);
-})(),
+      vehiculoAno: (() => {
+        if (backendData.vehiculoAño?.toString()) return backendData.vehiculoAño.toString();
+        const conSalto = findFieldValue(["vehiculo.anio"]) || "";
+        if (conSalto) return cleanVehicleField(conSalto);
 
-vehiculoPatente: (() => {
-  if (backendData.vehiculoPatente) return backendData.vehiculoPatente;
-  
-  // Probar primero la versión con salto de línea (más limpia)
-  const conSalto = findFieldValue(["vehiculo.matricula"]) || "";
-  if (conSalto) return cleanPatenteField(conSalto);
-  
-  // Fallback a versiones sin salto
-  const sinSalto = findFieldValue(["vehiculoPatente", "vehiculo_matricula", "matricula", "patente"]) || "";
-  return cleanPatenteField(sinSalto);
-})(),
+        const sinSalto = findFieldValue(["vehiculoAno", "vehiculo_anio"]) || "";
+        return cleanVehicleField(sinSalto);
+      })(),
 
-      // Asegurado
+      vehiculoChasis: (() => {
+        if (backendData.vehiculoChasis) return backendData.vehiculoChasis;
+        const conSalto = findFieldValue(["vehiculo.chasis"]) || "";
+        if (conSalto) return cleanVehicleField(conSalto);
+        const sinSalto = findFieldValue(["vehiculoChasis", "vehiculo_chasis"]) || "";
+        return cleanVehicleField(sinSalto);
+      })(),
+
+      vehiculoMotor: (() => {
+        if (backendData.vehiculoMotor) return backendData.vehiculoMotor;
+        const conSalto = findFieldValue(["vehiculo.motor"]) || "";
+        if (conSalto) return cleanVehicleField(conSalto);
+        const sinSalto = findFieldValue(["vehiculoMotor", "vehiculo_motor"]) || "";
+        return cleanVehicleField(sinSalto);
+      })(),
+
+      vehiculoPatente: (() => {
+        if (backendData.vehiculoPatente) return backendData.vehiculoPatente;
+
+        const conSalto = findFieldValue(["vehiculo.matricula"]) || "";
+        if (conSalto) return cleanPatenteField(conSalto);
+
+        const sinSalto = findFieldValue(["vehiculoPatente", "vehiculo_matricula", "matricula", "patente"]) || "";
+        return cleanPatenteField(sinSalto);
+      })(),
+
       aseguradoNombre: backendData.aseguradoNombre || 
                        cleanText(findFieldValue([
-                         "asegurado.nombre"       // Universal
+                         "asegurado.nombre"      
                        ]) || "") || "",
       
       aseguradoDocumento: backendData.aseguradoDocumento || 
                           cleanText(findFieldValue([
-                            "conductor.cedula",     // MAPFRE
-                            "asegurado.documento",  // BSE
-                            "asegurado.ci"          // Generic
+                            "conductor.cedula",     
+                            "asegurado.documento",  
+                            "asegurado.ci"         
                           ]) || "") || "",
       
       aseguradoTelefono: cleanText(findFieldValue([
-        "asegurado.telefono"          // Universal
+        "asegurado.telefono"         
       ]) || "") || "",
       
       aseguradoDireccion: cleanText(findFieldValue([
-        "asegurado.direccion"         // Universal
+        "asegurado.direccion"        
       ]) || "") || "",
       
       aseguradoDepartamento: cleanText(findFieldValue([
-        "asegurado.departamento"      // Universal
+        "asegurado.departamento"      
       ]) || "") || "",
 
-      // Campos adicionales
       modalidad: cleanText(findFieldValue([
-        "poliza.modalidad"            // Universal
+        "poliza.modalidad"        
       ]) || "") || "",
       
       tipoMovimiento: cleanText(findFieldValue([
-        "poliza.tipo_de_movimiento",  // MAPFRE
-        "poliza.tipo_movimiento"      // BSE
+        "poliza.tipo_de_movimiento",
+        "poliza.tipo_movimiento"      
       ]) || "") || "",
       
       moneda: cleanText(findFieldValue([
-        "poliza.moneda"               // Universal
+        "poliza.moneda"          
       ]) || "") || "",
 
       tipoUso: cleanText(findFieldValue([
-        "vehiculo.tipo_de_uso"        // Universal
+        "vehiculo.tipo_de_uso" 
       ]) || "") || "",
     };
   };
@@ -634,7 +551,6 @@ vehiculoPatente: (() => {
       return polizaMapping.metrics.completionPercentage;
     }
     
-    // Fallback: calcular basado en campos completados
     const mappedData = polizaMapping.mappedData || {};
     const requiredFields = ['NumeroPoliza', 'FechaDesde', 'FechaHasta', 'Premio'];
     const completedFields = requiredFields.filter(field => 
@@ -644,7 +560,6 @@ vehiculoPatente: (() => {
     return Math.round((completedFields.length / requiredFields.length) * 100);
   };
 
-  // Función auxiliar para mapear issues del backend
   const mapFieldIssues = (backendIssues: any[]) => {
     return backendIssues.map(issue => ({
       fieldName: mapBackendFieldToFrontend(issue.fieldName),
@@ -762,68 +677,22 @@ const uploadWithContext = useCallback(async (file: File): Promise<boolean> => {
         throw new Error(errorMessage);
       }
 
-      const result = await response.json();
-      
-      console.log('🔍 === DEBUG UNIVERSAL - RESULTADO COMPLETO ===');
-      console.log('🔍 result completo:', result);
-      
+      const result = await response.json();  
       const scanResult = result.scanResult || {};
       const polizaMapping = result.polizaMapping || {};
-      
-      // ✅ NUEVO: Obtener datos normalizados y originales
+
       const originalExtractedData = scanResult.extractedData || {};
-      const normalizedData = polizaMapping.normalizedData || {}; // ✅ NUEVO: Datos limpiados del backend
-
-      console.log('🔍 originalExtractedData (Azure crudo):', originalExtractedData);
-      console.log('🔍 normalizedData (limpiado por backend):', normalizedData); // ✅ NUEVO
-
-      // ✅ NUEVO: Usar normalizedData si está disponible, fallback a original
+      const normalizedData = polizaMapping.normalizedData || {}; 
       const dataForDisplay = Object.keys(normalizedData).length > 0 ? normalizedData : originalExtractedData;
-
-      console.log('🔍 dataForDisplay elegido:', Object.keys(normalizedData).length > 0 ? 'normalizedData' : 'originalExtractedData');
-
-      // ✅ NUEVO: Log específico para verificar limpieza de campos del vehículo
-      if (Object.keys(normalizedData).length > 0) {
-        console.log('🔄 === COMPARACIÓN ANTES/DESPUÉS DE LIMPIEZA ===');
-        
-        const vehicleFields = ['vehiculo.marca', 'vehiculo.modelo', 'vehiculo.matricula', 'vehiculo.motor', 'vehiculo.chasis', 'vehiculo.anio'];
-        
-        vehicleFields.forEach(field => {
-          const original = originalExtractedData[field];
-          const normalized = normalizedData[field];
-          
-          if (original && normalized && original !== normalized) {
-            console.log(`✅ ${field}:`);
-            console.log(`   Antes (Azure): "${original}"`);
-            console.log(`   Después (Backend): "${normalized}"`);
-          } else if (original === normalized && original) {
-            console.log(`➡️ ${field}: Sin cambios - "${original}"`);
-          } else if (!original && normalized) {
-            console.log(`🆕 ${field}: Solo en normalizado - "${normalized}"`);
-          } else if (original && !normalized) {
-            console.log(`⚠️ ${field}: Solo en original - "${original}"`);
-          }
-        });
-      }
-      
+     
       const displayData = mapBackendDataToFrontend(
         polizaMapping.mappedData || {}, 
-        dataForDisplay // ✅ CAMBIO CRÍTICO: Usar datos normalizados en lugar de originales
+        dataForDisplay
       );
       
-      console.log('🔧 displayData resultado (lo que ve el usuario):', displayData);
-
-      // ✅ NUEVO: Verificación final de datos del vehículo en displayData
-      if (dataForDisplay['vehiculo.matricula']) {
-        console.log('🚗 vehiculo.matricula final para UI:', dataForDisplay['vehiculo.matricula']);
-      }
-      if (dataForDisplay['vehiculo.marca']) {
-        console.log('🚗 vehiculo.marca final para UI:', dataForDisplay['vehiculo.marca']);
-      }
-
       const combinedExtractedData = {
-        ...dataForDisplay,     // ✅ CAMBIO: Usar datos normalizados primero
-        ...displayData         // Los datos procesados por mapBackendDataToFrontend
+        ...dataForDisplay,   
+        ...displayData    
       };
       
       updateState({
@@ -835,7 +704,7 @@ const uploadWithContext = useCallback(async (file: File): Promise<boolean> => {
         },
         scan: {
           status: 'completed' as const,
-          extractedData: combinedExtractedData, // ✅ CAMBIO: Incluye datos normalizados
+          extractedData: combinedExtractedData,
           mappedData: polizaMapping.mappedData || {},
           completionPercentage: calculateCompletionPercentage(polizaMapping),
           requiresAttention: mapFieldIssues(polizaMapping.mappingIssues || []),
@@ -844,14 +713,10 @@ const uploadWithContext = useCallback(async (file: File): Promise<boolean> => {
         isLoading: false,
       });
 
-      console.log('✅ Estado actualizado con datos normalizados');
       toast.success(`Documento procesado exitosamente (${calculateCompletionPercentage(polizaMapping)}% de confianza)`);
       return true;
 
     } catch (error: any) {
-      console.log('❌ === ERROR EN uploadWithContext ===');
-      console.log('❌ Error:', error);
-      
       if (error.name === 'AbortError') {
         return false;
       }
@@ -879,29 +744,27 @@ const uploadWithContext = useCallback(async (file: File): Promise<boolean> => {
     }
   }, [state.context, isContextValid, updateState, mapBackendDataToFrontend, calculateCompletionPercentage, mapFieldIssues]);
 
-const removeSelectedFile = useCallback(() => {
-  // Solo resetear el estado local, NO eliminar del backend
-  updateState({
-    file: {
-      selected: null,
-      uploaded: false,
-      scanId: null,
-      uploadProgress: 0,
-    },
-    scan: {
-      status: 'idle',
-      extractedData: {},
-      mappedData: {},
-      completionPercentage: 0,
-      requiresAttention: [],
-      errorMessage: undefined,
-    }
-  });
+  const removeSelectedFile = useCallback(() => {
+    updateState({
+      file: {
+        selected: null,
+        uploaded: false,
+        scanId: null,
+        uploadProgress: 0,
+      },
+      scan: {
+        status: 'idle',
+        extractedData: {},
+        mappedData: {},
+        completionPercentage: 0,
+        requiresAttention: [],
+        errorMessage: undefined,
+      }
+    });
 
-  toast.success('Archivo removido. Puedes cargar otro documento.');
-}, [updateState]);
+    toast.success('Archivo removido. Puedes cargar otro documento.');
+  }, [updateState]);
 
-  // Resto de las funciones sin cambios...
   const sendToVelneo = useCallback(async (): Promise<boolean> => {
     if (!canProceedToStep3()) {
       toast.error('Faltan datos requeridos para crear la póliza');
@@ -995,8 +858,6 @@ const removeSelectedFile = useCallback(() => {
       }
 
     } catch (error: any) {
-      console.error('Error sending to Velneo:', error);
-      
       updateState({
         step3: {
           ...state.step3,
@@ -1058,8 +919,6 @@ const removeSelectedFile = useCallback(() => {
       return true;
 
     } catch (error: any) {
-      console.error('Error rescanning document:', error);
-      
       updateState({
         scan: {
           ...state.scan,
@@ -1090,7 +949,6 @@ const removeSelectedFile = useCallback(() => {
     }));
   };
 
-  // Navegación entre pasos
   const nextStep = useCallback(() => {
     if (state.currentStep === 1) {
       updateState({ currentStep: 2 });
@@ -1112,7 +970,6 @@ const removeSelectedFile = useCallback(() => {
     return false;
   }, [state.currentStep, updateState]);
 
-  // Selección de contexto
   const updateContext = useCallback((contextUpdates: Partial<ContextData>) => {
     const newContext = { ...state.context, ...contextUpdates };
     
@@ -1145,7 +1002,6 @@ const removeSelectedFile = useCallback(() => {
     }
   }, [state.context, state.file.uploaded, updateState]);
 
-  // Reset completo
   const reset = useCallback(() => {
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
@@ -1154,7 +1010,6 @@ const removeSelectedFile = useCallback(() => {
     toast.success('Proceso reiniciado');
   }, []);
 
-  // Cancelar operación
   const cancelOperation = useCallback(() => {
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
@@ -1163,19 +1018,19 @@ const removeSelectedFile = useCallback(() => {
     toast('Operación cancelada', { icon: '⏹️' });
   }, [updateState]);
 
-return {
-    state,
-    isContextValid,
-    canProceedToStep2,
-    canProceedToStep3,
-    removeSelectedFile,
-    nextStep,
-    prevStep,
-    reset,
-    cancelOperation,
-    updateStep3Status,
-    updateContext,        
-    uploadWithContext,
-    updateState         
-  };
-}
+  return {
+      state,
+      isContextValid,
+      canProceedToStep2,
+      canProceedToStep3,
+      removeSelectedFile,
+      nextStep,
+      prevStep,
+      reset,
+      cancelOperation,
+      updateStep3Status,
+      updateContext,        
+      uploadWithContext,
+      updateState         
+    };
+  }

@@ -1,4 +1,3 @@
-// step-3-confirmation/success-state.tsx
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -55,7 +54,6 @@ export function SuccessState({ polizaNumber, velneoUrl }: SuccessStateProps) {
           La póliza ha sido enviada y creada correctamente en tu sistema Velneo.
         </p>
 
-        {/* Card con información de la póliza */}
         <Card className="max-w-md mx-auto mb-8">
           <CardContent className="pt-6">
             <div className="space-y-4">
@@ -96,7 +94,6 @@ export function SuccessState({ polizaNumber, velneoUrl }: SuccessStateProps) {
           </CardContent>
         </Card>
 
-        {/* Botones de acción */}
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
           {velneoUrl && (
             <Button 
@@ -128,7 +125,6 @@ export function SuccessState({ polizaNumber, velneoUrl }: SuccessStateProps) {
           </Button>
         </div>
 
-        {/* Información adicional */}
         <div className="mt-8 p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800 max-w-md mx-auto">
           <p className="text-sm text-green-700 dark:text-green-300">
             La póliza ya está disponible en tu sistema Velneo y puede ser consultada desde allí.

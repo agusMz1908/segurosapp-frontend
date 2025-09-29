@@ -1,4 +1,3 @@
-// step-3-confirmation/error-state.tsx
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -45,7 +44,6 @@ export function ErrorState({ hookInstance, errorMessage }: ErrorStateProps) {
           Hubo un problema al enviar la información a Velneo. Por favor, intenta nuevamente.
         </p>
 
-        {/* Card con detalles del error */}
         {errorMessage && (
           <Card className="max-w-md mx-auto mb-8">
             <CardContent className="pt-6">
@@ -60,7 +58,6 @@ export function ErrorState({ hookInstance, errorMessage }: ErrorStateProps) {
           </Card>
         )}
 
-        {/* Botones de acción */}
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
           <Button 
             onClick={handleRetry}
@@ -90,7 +87,6 @@ export function ErrorState({ hookInstance, errorMessage }: ErrorStateProps) {
           </Button>
         </div>
 
-        {/* Información de ayuda */}
         <div className="mt-8 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800 max-w-md mx-auto">
           <div className="flex items-center gap-2 text-blue-700 dark:text-blue-300 mb-2">
             <MessageCircle className="h-4 w-4" />

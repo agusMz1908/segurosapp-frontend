@@ -52,12 +52,10 @@ export function DocumentUploader({
   const [error, setError] = useState<string | null>(null);
 
   const validateFile = (file: File): string | null => {
-    // Validar tamaño
     if (file.size > maxSize * 1024 * 1024) {
       return `El archivo no puede ser mayor a ${maxSize}MB`;
     }
 
-    // Validar tipo
     const allowedTypes = accept.split(',').map((type: string) => type.trim());
     const fileExtension = '.' + file.name.split('.').pop()?.toLowerCase();
     
@@ -85,19 +83,15 @@ export function DocumentUploader({
 
     try {
       setError(null);
-      console.log('📄 Iniciando upload para renovación:', selectedFile.name);
       
       const success = await onUpload(selectedFile);
       
       if (success) {
-        console.log('✅ Upload exitoso para renovación');
         setSelectedFile(null);
       } else {
-        console.log('❌ Upload falló para renovación');
         setError('Error al procesar el documento. Intenta nuevamente.');
       }
     } catch (error: any) {
-      console.error('❌ Error uploading file for renovacion:', error);
       setError(error.message || 'Error al subir el archivo. Intenta nuevamente.');
     }
   };
@@ -141,7 +135,6 @@ export function DocumentUploader({
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
-  // 🔥 NUEVO: Estado de éxito - Igual que Nueva Póliza
   if (uploadStatus === 'completed' && scanResult && acceptedFile) {
     const confidence = scanResult.completionPercentage;
     
@@ -207,7 +200,6 @@ export function DocumentUploader({
     );
   }
 
-  // 🔥 NUEVO: Estado de error - Igual que Nueva Póliza
   if (uploadStatus === 'error' || error) {
     return (
       <Card className="border-red-300 dark:border-red-600 bg-red-50 dark:bg-red-900/20">
@@ -258,7 +250,6 @@ export function DocumentUploader({
     );
   }
 
-  // Estado de carga - Mejorado
   if (isUploading || uploadStatus === 'uploading' || uploadStatus === 'scanning') {
     return (
       <Card className="border-blue-300 dark:border-blue-600 bg-blue-50 dark:bg-blue-900/20">
@@ -300,7 +291,6 @@ export function DocumentUploader({
     );
   }
 
-  // Estado inicial - Sin cambios importantes
   return (
     <Card>
       <CardHeader>
@@ -311,7 +301,6 @@ export function DocumentUploader({
       </CardHeader>
       <CardContent className="space-y-4">
         
-        {/* Área de drop */}
         <div
           className={`
             border-2 border-dashed rounded-lg p-8 text-center transition-all duration-300
@@ -356,7 +345,6 @@ export function DocumentUploader({
           </div>
         </div>
 
-        {/* Error de validación */}
         {error && (
           <Alert variant="destructive">
             <AlertTriangle className="h-4 w-4" />
@@ -364,7 +352,6 @@ export function DocumentUploader({
           </Alert>
         )}
 
-        {/* Archivo seleccionado */}
         {selectedFile && !isUploading && (
           <Card className="border-blue-200 dark:border-blue-800">
             <CardContent className="pt-4">

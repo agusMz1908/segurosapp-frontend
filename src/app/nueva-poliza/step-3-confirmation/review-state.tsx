@@ -1,17 +1,10 @@
-// step-3-confirmation/review-state.tsx
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 import { 
   User,
   FileText,
-  Car,
   Send,
-  AlertTriangle,
-  Sparkles,
-  CheckCircle
 } from 'lucide-react';
 
 interface ReviewStateProps {
@@ -21,11 +14,8 @@ interface ReviewStateProps {
 export function ReviewState({ hookInstance }: ReviewStateProps) {
   const { state, sendToVelneo } = hookInstance;
 
-  const handleSendToVelneo = () => {
-    console.log('BUTTON CLICKED - Sending to Velneo');
-    console.log('Current step3.status:', state.step3.status); // ✅ CORREGIDO: step3 en lugar de velneo
-    
-    sendToVelneo(); // ✅ CORREGIDO: Remover parámetro innecesario
+  const handleSendToVelneo = () => {  
+    sendToVelneo();
   };
 
   const polizaData = state.scan.extractedData || {
@@ -140,10 +130,10 @@ export function ReviewState({ hookInstance }: ReviewStateProps) {
                 onClick={handleSendToVelneo}
                 size="lg"
                 className="bg-green-600 hover:bg-green-700"
-                disabled={state.step3.status === 'creating' || state.isLoading} // ✅ CORREGIDO: step3.status en lugar de velneo.status
+                disabled={state.step3.status === 'creating' || state.isLoading} 
               >
                 <Send className="mr-2 h-5 w-5" />
-                {state.step3.status === 'creating' ? 'Enviando...' : 'Enviar a Velneo'} {/* ✅ CORREGIDO: step3.status en lugar de velneo.status */}
+                {state.step3.status === 'creating' ? 'Enviando...' : 'Enviar a Velneo'} 
               </Button>
             </div>
           </div>

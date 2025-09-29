@@ -72,7 +72,6 @@ export function CambiosContainer() {
               return (
                 <React.Fragment key={step.number}>
                   <div className="flex flex-col items-center min-w-0 flex-1">
-                    {/* 🔥 CAMBIO: Usar azul en lugar de violeta para consistencia */}
                     <div className={`
                       w-12 h-12 rounded-full flex items-center justify-center border-2 transition-all duration-300 mb-3
                       ${isCompleted 
@@ -253,7 +252,6 @@ export function CambiosContainer() {
 
   return (
     <div className="px-4 lg:px-6 xl:px-8 py-6 space-y-6 w-full">
-      {/* Header - Solo mostrar si no es paso 3 para no duplicar */}
       {state.currentStep !== 3 && (
         <div className="text-center mb-8 max-w-4xl mx-auto">
           <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-2">
@@ -265,52 +263,25 @@ export function CambiosContainer() {
         </div>
       )}
 
-      {/* Step Indicator - Mostrar siempre excepto que tengamos error */}
       {state.scan.status !== 'error' && (
         <div className="max-w-4xl mx-auto">
           {renderStepIndicator()}
         </div>
       )}
-      
-      {/* Error State - Solo mostrar si no es paso 3 */}
+
       {state.currentStep !== 3 && (
         <div className="max-w-4xl mx-auto">
           {renderErrorState()}
         </div>
       )}
-      
-      {/* Content Area - Usar ancho completo solo en paso 3 */}
+
       <div className={state.currentStep === 3 ? "min-h-[600px] w-full" : "max-w-4xl mx-auto min-h-[600px]"}>
         {renderCurrentStep()}
       </div>
 
-      {/* Navigation - Mostrar siempre excepto cuando el cambio esté completado */}
       {!(state.currentStep === 4 && state.processCompleted) && (
         <div className="max-w-4xl mx-auto">
           {renderNavigation()}
-        </div>
-      )}
-
-      {/* Debug Info - Solo en desarrollo */}
-      {process.env.NODE_ENV === 'development' && (
-        <div className="mt-8 p-4 bg-gray-100 dark:bg-gray-800 rounded-lg text-xs max-w-4xl mx-auto">
-          <details>
-            <summary className="cursor-pointer font-medium mb-2">Debug State Cambios</summary>
-            <pre className="whitespace-pre-wrap">
-              {JSON.stringify({
-                currentStep: state.currentStep,
-                contexto: state.context,
-                scanStatus: state.scan.status,
-                scanFileName: state.scan.fileName,
-                hasExtractedData: !!(state.scan.extractedData && Object.keys(state.scan.extractedData).length > 0),
-                hasMasterData: !!(state.masterData && Object.keys(state.masterData).length > 0),
-                canProceedToStep2: canProceedToStep2(),
-                canProceedToStep3: canProceedToStep3(),
-                canProceedToStep4: canProceedToStep4(),
-                processCompleted: state.processCompleted
-              }, null, 2)}
-            </pre>
-          </details>
         </div>
       )}
     </div>

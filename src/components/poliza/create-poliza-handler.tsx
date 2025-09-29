@@ -1,11 +1,10 @@
-// src/components/poliza/create-poliza-handler.tsx
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { PolizaDuplicateDialog } from '@/components/ui/poliza-duplicate-dialog';
 import { Loader2 } from 'lucide-react';
 
 interface CreatePolizaHandlerProps {
-  hookInstance?: any; // La instancia del hook useNuevaPoliza
+  hookInstance?: any; 
   scanId?: number;
   onSuccess?: (result: any) => void;
   onError?: (error: string) => void;
@@ -21,15 +20,10 @@ export function CreatePolizaHandler({
   className,
   disabled
 }: CreatePolizaHandlerProps) {
-  
-  // Estado local para el dialog de duplicados
+
   const [showDuplicateDialog, setShowDuplicateDialog] = useState(false);
   const [duplicateError, setDuplicateError] = useState<any>(null);
-  
-  // Usar la instancia del hook que se pasa como prop, o crear una nueva si no se proporciona
   const { state, updateState } = hookInstance || { state: null, updateState: null };
-  
-  // Validar que tenemos acceso al hook
   if (!state || !updateState) {
     console.error('CreatePolizaHandler: No se proporcionó hookInstance válido');
     return (
@@ -39,7 +33,6 @@ export function CreatePolizaHandler({
     );
   }
 
-  // Implementar la función createPoliza manualmente ya que no está en el hook actual
   const createPoliza = async (overrides?: any) => {
     if (!state.context.clienteId || !state.context.companiaId || !state.context.seccionId) {
       onError?.('Contexto incompleto. Selecciona cliente, compañía y sección.');
@@ -52,7 +45,6 @@ export function CreatePolizaHandler({
       return { success: false };
     }
 
-    // Actualizar estado a "creating"
     updateState({
       isLoading: true,
       step3: {
@@ -96,7 +88,6 @@ export function CreatePolizaHandler({
         ...overrides
       };
 
-      // Importar las utilidades de auth
       const { getAuthToken, getAuthHeaders, handle401Error } = await import('@/utils/auth-utils');
       
       const token = getAuthToken();
@@ -105,7 +96,6 @@ export function CreatePolizaHandler({
       }
 
       const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://localhost:7202';
-      
       const response = await fetch(`${API_URL}/api/Document/${currentScanId}/create-in-velneo`, {
         method: 'POST',
         headers: getAuthHeaders(),
@@ -114,14 +104,12 @@ export function CreatePolizaHandler({
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        
-        // Manejar error 401
+
         if (response.status === 401) {
           handle401Error();
           return { success: false };
         }
-        
-        // Verificar si es error de duplicado
+
         if (response.status === 409 || (errorData.isDuplicate || errorData.validationError?.isDuplicate)) {
           const duplicateInfo = errorData.validationError || errorData;
           
@@ -190,7 +178,6 @@ export function CreatePolizaHandler({
       }
 
     } catch (error: any) {
-      console.error('Error creating poliza:', error);
       
       updateState({
         step3: {
@@ -208,7 +195,6 @@ export function CreatePolizaHandler({
 
   const handleCreatePoliza = async (overrides?: any) => {
     const result = await createPoliza(overrides);
-    // El manejo de éxito/error ya se hace dentro de createPoliza
   };
 
   const handleDuplicateAction = async (action: string) => {
@@ -216,7 +202,6 @@ export function CreatePolizaHandler({
     
     switch (action) {
       case 'restart':
-        // Reiniciar el proceso completo y volver al paso 1
         window.location.href = `/nueva-poliza`;
         break;
         
@@ -226,7 +211,6 @@ export function CreatePolizaHandler({
         
       case 'cancel':
       default:
-        // Redirigir al dashboard principal
         window.location.href = '/dashboard';
         break;
     }
@@ -235,7 +219,6 @@ export function CreatePolizaHandler({
   const handleDuplicateCancel = () => {
     setShowDuplicateDialog(false);
     setDuplicateError(null);
-    // Redirigir al dashboard principal
     window.location.href = '/dashboard';
   };
 
@@ -259,7 +242,6 @@ export function CreatePolizaHandler({
         )}
       </Button>
 
-      {/* Dialog para manejar duplicados */}
       <PolizaDuplicateDialog
         open={showDuplicateDialog}
         onOpenChange={setShowDuplicateDialog}

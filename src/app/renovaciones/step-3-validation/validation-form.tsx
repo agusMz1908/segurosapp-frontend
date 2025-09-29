@@ -2,8 +2,6 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Progress } from '@/components/ui/progress';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
 import { 
   FileText, 
@@ -31,7 +29,6 @@ export function ValidationForm({ hookInstance }: ValidationFormProps) {
   const { state, updateState, updateExtractedData, updateMasterData } = hookInstance;
   const { isViewerOpen, openViewer, closeViewer } = usePDFViewer();
 
-  // Datos para mostrar
   const displayData = state.scan.normalizedData && Object.keys(state.scan.normalizedData).length > 0 
     ? state.scan.normalizedData 
     : state.scan.extractedData || {};
@@ -49,26 +46,13 @@ export function ValidationForm({ hookInstance }: ValidationFormProps) {
     });
   };
 
-  const getConfidenceColor = (percentage: number) => {
-    if (percentage >= 90) return 'text-green-600 bg-green-50 border-green-200';
-    if (percentage >= 80) return 'text-blue-600 bg-blue-50 border-blue-200';
-    if (percentage >= 70) return 'text-yellow-600 bg-yellow-50 border-yellow-200';
-    return 'text-red-600 bg-red-50 border-red-200';
-  };
-
-  // Si hay datos extraídos, mostrar el formulario completo de validación
   if (scanStatus === 'completed' && displayData && Object.keys(displayData).length > 0) {
     return (
       <div className="w-full">
-        {/* 🔥 CAMBIO CRÍTICO: Layout principal usando flexbox horizontal igual que Nueva Póliza */}
         <div className={`flex gap-6 ${isViewerOpen ? '' : 'justify-center'}`}>
-          
-          {/* 🔥 CAMBIO CRÍTICO: Columna del formulario con la misma estructura que Nueva Póliza */}
           <div className={`space-y-6 transition-all duration-300 ${
-            isViewerOpen ? 'w-1/2 flex-shrink-0' : 'w-full max-w-4xl'
-          }`}>
+            isViewerOpen ? 'w-1/2 flex-shrink-0' : 'w-full max-w-4xl'}`}>
             
-            {/* Header del paso - Solo cuando PDF está cerrado */}
             {!isViewerOpen && (
               <div className="text-center mb-6">
                 <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">
@@ -80,7 +64,6 @@ export function ValidationForm({ hookInstance }: ValidationFormProps) {
               </div>
             )}
 
-            {/* Contexto de renovación - Compacto igual que Nueva Póliza */}
             <div className="grid grid-cols-3 gap-2 p-3 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 rounded-lg border border-green-200 dark:border-green-700">
               <div className="flex items-center gap-1">
                 <User className="h-3 w-3 text-green-600 dark:text-green-400" />
@@ -113,8 +96,6 @@ export function ValidationForm({ hookInstance }: ValidationFormProps) {
 
             <Card className="shadow-lg">
               <CardContent className={`space-y-6 ${isViewerOpen ? 'p-4' : 'p-8'}`}>
-                
-                {/* 1. Datos del Documento */}
                 <div className="space-y-4">
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-2">
@@ -131,7 +112,6 @@ export function ValidationForm({ hookInstance }: ValidationFormProps) {
                       </div>
                     </div>
                     
-                    {/* Botón Ver PDF - Estructura igual que Nueva Póliza */}
                     {(state.file?.selected || state.scan?.file) ? (
                       <Button
                         variant={isViewerOpen ? "secondary" : "default"}
@@ -162,7 +142,6 @@ export function ValidationForm({ hookInstance }: ValidationFormProps) {
 
                 <Separator className="my-4" />
 
-                {/* 2. Datos Maestros */}
                 <div className="space-y-4">
                   <div className="flex items-center gap-2 mb-3">
                     <div className={`p-1.5 bg-purple-100 dark:bg-purple-800 rounded-lg ${isViewerOpen ? 'p-1' : 'p-2'}`}>
@@ -185,7 +164,6 @@ export function ValidationForm({ hookInstance }: ValidationFormProps) {
 
                 <Separator className="my-4" />
 
-                {/* 3. Observaciones */}
                 <div className="space-y-3">
                   <div className="flex items-center gap-2 mb-3">
                     <div className={`p-1.5 bg-amber-100 dark:bg-amber-800 rounded-lg ${isViewerOpen ? 'p-1' : 'p-2'}`}>
@@ -220,7 +198,6 @@ export function ValidationForm({ hookInstance }: ValidationFormProps) {
             </Card>
           </div>
 
-          {/* 🔥 CAMBIO CRÍTICO: Columna del visor PDF idéntica a Nueva Póliza */}
           {isViewerOpen && (
             <div className="w-1/2 flex-1 min-h-0">
               <PDFViewer
@@ -228,16 +205,6 @@ export function ValidationForm({ hookInstance }: ValidationFormProps) {
                 isOpen={isViewerOpen}
                 onClose={closeViewer}
               />
-              
-              {/* Debug info para ayudar con el troubleshooting */}
-              {process.env.NODE_ENV === 'development' && (
-                <div className="mt-2 text-xs text-gray-500">
-                  <p>Debug PDF:</p>
-                  <p>state.file?.selected: {state.file?.selected ? 'Sí' : 'No'}</p>
-                  <p>state.scan?.file: {state.scan?.file ? 'Sí' : 'No'}</p>
-                  <p>fileName: {state.scan?.fileName || 'N/A'}</p>
-                </div>
-              )}
             </div>
           )}
         </div>
@@ -245,7 +212,6 @@ export function ValidationForm({ hookInstance }: ValidationFormProps) {
     );
   }
 
-  // Estado de carga o error
   return (
     <div className="space-y-6 p-6">
       <div className="text-center mb-6">
