@@ -107,33 +107,54 @@ export function ExtractedDataForm({ hookInstance }: ExtractedDataFormProps) {
     return result;
   };
 
-  // 🔧 FUNCIONES AUXILIARES PARA BUSCAR CAMPOS (iguales que Renovaciones)
-  const findPolizaNumber = () => {
-    const possibleFields = [
-      'polizaNumber',
-      'polizaNumero', 
-      'numeroPoliza',
-      'NumeroPoliza',
-      'poliza_numero'
-    ];
-    
-    for (const field of possibleFields) {
-      if (editedData[field] && editedData[field].toString().trim()) {
-        let polizaNumber = editedData[field].toString().trim();
-        
-        // Quitar prefijos y caracteres no deseados
-        polizaNumber = polizaNumber
-          .replace(/^(nro\.\s*|nro\s*|número\s*|numero\s*)/i, '')
-          .replace(/^:\s*/, '')
-          .replace(/^\s*:\s*/, '')
-          .trim();
-        
-        return polizaNumber;
-      }
+  const findDateField = (fieldType: string) => {
+  let possibleFields: string[] = [];
+  
+  switch(fieldType) {
+    case 'vigenciaDesde':
+      possibleFields = ['vigenciaDesde', 'fechaDesde', 'FechaDesde', 'polizaVigenciaDesde', 'poliza.vigencia_desde', 'fecha_desde'];
+      break;
+    case 'vigenciaHasta':
+      possibleFields = ['vigenciaHasta', 'fechaHasta', 'FechaHasta', 'polizaVigenciaHasta', 'poliza.vigencia_hasta', 'fecha_hasta'];
+      break;
+  }
+  
+  for (const field of possibleFields) {
+    if (editedData[field] && editedData[field].toString().trim()) {
+      console.log(`🎯 CAMBIOS DATE - ${fieldType} encontrado en campo '${field}':`, editedData[field]);
+      return editedData[field].toString();
     }
-    
-    return '';
-  };
+  }
+  
+  return '';
+};
+
+const findPolizaNumber = () => {
+  const possibleFields = [
+    'polizaNumber',
+    'polizaNumero', 
+    'numeroPoliza',
+    'NumeroPoliza',
+    'poliza_numero'
+  ];
+  
+  for (const field of possibleFields) {
+    if (editedData[field] && editedData[field].toString().trim()) {
+      let polizaNumber = editedData[field].toString().trim();
+      
+      // Quitar prefijos y caracteres no deseados
+      polizaNumber = polizaNumber
+        .replace(/^(nro\.\s*|nro\s*|número\s*|numero\s*|póliza\s*nro\.\s*)/i, '')
+        .replace(/^:\s*/, '')
+        .replace(/^\s*:\s*/, '')
+        .trim();
+      
+      return polizaNumber;
+    }
+  }
+  
+  return '';
+};
 
   const findVehicleField = (fieldName: string) => {
     // Mapeo específico para padrón
@@ -190,6 +211,35 @@ export function ExtractedDataForm({ hookInstance }: ExtractedDataFormProps) {
     );
   }
 
+const findFinancialField = (fieldType: string) => {
+  let possibleFields: string[] = [];
+  
+  switch(fieldType) {
+    case 'prima':
+      possibleFields = ['prima', 'premio', 'Premio', 'polizaPremio', 'financiero.premio_total', 'costo.premio_total', 'poliza.premio'];
+      break;
+    case 'premioTotal':
+      possibleFields = ['premioTotal', 'montoTotal', 'premio', 'Premio', 'polizaPremio', 'financiero.premio_total', 'poliza.premio'];
+      break;
+    case 'valorPorCuota':
+      possibleFields = ['valorPorCuota', 'valorCuota', 'pago.cuota_monto[1]', 'pago.primera_cuota', 'valor_cuota'];
+      break;
+    case 'cantidadCuotas':
+      possibleFields = ['cantidadCuotas', 'CantidadCuotas', 'cantidad_cuotas', 'pago.cantidad_cuotas'];
+      break;
+  }
+  
+  for (const field of possibleFields) {
+    if (editedData[field] && editedData[field].toString().trim() && editedData[field] !== '0') {
+      console.log(`🎯 CAMBIOS FINANCIAL - ${fieldType} encontrado en campo '${field}':`, editedData[field]);
+      return editedData[field].toString();
+    }
+  }
+  
+  console.log(`❌ CAMBIOS FINANCIAL - No se encontró ${fieldType} en ningún campo`);
+  return '';
+};
+
   return (
     <div className="space-y-6">
       <div className="space-y-4">
@@ -220,7 +270,7 @@ export function ExtractedDataForm({ hookInstance }: ExtractedDataFormProps) {
             <Input
               type="number"
               step="0.01"
-              value={cleanNumberForInput(editedData.prima || editedData.premio || editedData.Premio || '')}
+              value={cleanNumberForInput(findFinancialField('prima'))}
               onChange={(e) => handleFieldChange('prima', e.target.value)}
               placeholder="0.00"
             />
@@ -246,7 +296,7 @@ export function ExtractedDataForm({ hookInstance }: ExtractedDataFormProps) {
             </Label>
             <Input
               type="date"
-              value={editedData.vigenciaDesde || editedData.fechaDesde || editedData.FechaDesde || ''}
+              value={findDateField('vigenciaDesde')}
               onChange={(e) => handleFieldChange('vigenciaDesde', e.target.value)}
             />
           </div>
@@ -258,7 +308,7 @@ export function ExtractedDataForm({ hookInstance }: ExtractedDataFormProps) {
             </Label>
             <Input
               type="date"
-              value={editedData.vigenciaHasta || editedData.fechaHasta || editedData.FechaHasta || ''}
+              value={findDateField('vigenciaHasta')}
               onChange={(e) => handleFieldChange('vigenciaHasta', e.target.value)}
             />
           </div>
@@ -278,7 +328,7 @@ export function ExtractedDataForm({ hookInstance }: ExtractedDataFormProps) {
             </Label>
             <Input
               type="number"
-              value={editedData.cantidadCuotas || editedData.CantidadCuotas || ''}
+              value={findFinancialField('cantidadCuotas')}
               onChange={(e) => handleFieldChange('cantidadCuotas', e.target.value)}
               placeholder="1"
               min="1"
@@ -294,7 +344,7 @@ export function ExtractedDataForm({ hookInstance }: ExtractedDataFormProps) {
             <Input
               type="number"
               step="0.01"
-              value={cleanNumberForInput(editedData.valorPorCuota || editedData.valorCuota || '')}
+              value={cleanNumberForInput(findFinancialField('valorPorCuota'))}
               onChange={(e) => handleFieldChange('valorPorCuota', e.target.value)}
               placeholder="0.00"
             />
@@ -313,7 +363,7 @@ export function ExtractedDataForm({ hookInstance }: ExtractedDataFormProps) {
             <Input
               type="number"
               step="0.01"
-              value={cleanNumberForInput(editedData.premioTotal || editedData.montoTotal || editedData.premio || editedData.Premio || '')}
+              value={cleanNumberForInput(findFinancialField('premioTotal'))}
               onChange={(e) => handleFieldChange('premioTotal', e.target.value)}
               placeholder="0.00"
             />
