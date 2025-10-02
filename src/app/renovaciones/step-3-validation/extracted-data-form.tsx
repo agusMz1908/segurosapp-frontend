@@ -152,31 +152,6 @@ export function ExtractedDataForm({ hookInstance }: ExtractedDataFormProps) {
   };
 
   const findVehicleField = (fieldName: string) => {
-    // Mapeo específico para padrón
-    if (fieldName === 'vehiculoPadron') {
-      const padronFields = [
-        'vehiculoPadron',
-        'vehiculo.padron',
-        'padron',
-        'PADRON',
-        'Padron'
-      ];
-      
-      for (const field of padronFields) {
-        if (editedData[field] && editedData[field].toString().trim()) {
-          let padronValue = editedData[field].toString().trim();
-          // Limpiar prefijos específicos del padrón
-          padronValue = padronValue.replace(/^(PADRÓN\.\s*|PADRON\.\s*|PADRÓN\s*|PADRON\s*)/i, '').trim();
-          console.log(`🎯 RENOVACIONES FIX - Padrón encontrado en campo '${field}':`, editedData[field], '→ limpiado:', padronValue);
-          return padronValue;
-        }
-      }
-      
-      console.log('❌ RENOVACIONES FIX - No se encontró padrón en ningún campo');
-      return '';
-    }
-    
-    // Lógica original para otros campos de vehículo
     const possibleFields = [
       fieldName,                           // Nombre directo
       `vehiculo${fieldName.charAt(0).toUpperCase()}${fieldName.slice(1)}`,  // vehiculoPatente

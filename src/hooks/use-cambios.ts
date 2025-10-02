@@ -708,7 +708,7 @@ const uploadDocumentForChange = useCallback(async (file: File): Promise<boolean>
 }, [state.context, state.scan, updateState]);
 
   const setClienteData = useCallback((cliente: any) => {
-    setState(prev => ({
+    updateState((prev: { context: any; }) => ({
       ...prev,
       context: {
         ...prev.context,
@@ -727,40 +727,41 @@ const uploadDocumentForChange = useCallback(async (file: File): Promise<boolean>
         }
       }
     }));
-  }, []);
+  }, [updateState]);
 
+  // 🔧 FIX CRÍTICO: Usar updateState en lugar de setState directamente
   const updateExtractedData = useCallback((updates: any) => {
-    setState(prev => ({
-      ...prev,
+    updateState((prevState: { scan: { extractedData: any; }; }) => ({
+      ...prevState,
       scan: {
-        ...prev.scan,
-        extractedData: { ...prev.scan.extractedData, ...updates }
+        ...prevState.scan,
+        extractedData: { ...prevState.scan.extractedData, ...updates }
       }
     }));
-  }, []);
+  }, [updateState]);
 
   const updateMasterData = useCallback((updates: any) => {
-    setState(prev => ({
+    updateState((prev: { masterData: any; }) => ({
       ...prev,
       masterData: { ...prev.masterData, ...updates }
     }));
-  }, []);
+  }, [updateState]);
 
   const markProcessCompleted = useCallback((result: any) => {
-    setState(prev => ({
+    updateState((prev: any) => ({
       ...prev,
       processCompleted: true,
       processResult: result
     }));
-  }, []);
+  }, [updateState]);
 
   const nextStep = useCallback(() => {
-    setState(prev => ({ ...prev, currentStep: Math.min(prev.currentStep + 1, 4) }));
-  }, []);
+    updateState((prev: { currentStep: number; }) => ({ ...prev, currentStep: Math.min(prev.currentStep + 1, 4) }));
+  }, [updateState]);
 
   const prevStep = useCallback(() => {
-    setState(prev => ({ ...prev, currentStep: Math.max(prev.currentStep - 1, 1) }));
-  }, []);
+    updateState((prev: { currentStep: number; }) => ({ ...prev, currentStep: Math.max(prev.currentStep - 1, 1) }));
+  }, [updateState]);
 
   const reset = useCallback(() => {
     setState(initialState);
