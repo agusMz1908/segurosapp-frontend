@@ -12,13 +12,15 @@ export function ExtractedDataForm({ hookInstance }: ExtractedDataFormProps) {
   const [editedData, setEditedData] = useState<any>({});
   const [isInitialized, setIsInitialized] = useState(false);
 
-  // Inicializar datos cuando lleguen del escaneo
+  // Usar extractedData directamente
+  const dataSource = state.scan.extractedData || {};
+
   useEffect(() => {
-    if (state.scan.extractedData && Object.keys(state.scan.extractedData).length > 0) {
-      setEditedData(state.scan.extractedData);
+    if (dataSource && Object.keys(dataSource).length > 0) {
+      setEditedData(dataSource);
       setIsInitialized(true);
     }
-  }, [state.scan.extractedData]);
+  }, [dataSource]);
 
   const handleFieldChange = (fieldName: string, value: string) => {
     setEditedData((prev: any) => ({
@@ -44,23 +46,135 @@ export function ExtractedDataForm({ hookInstance }: ExtractedDataFormProps) {
     return hasAttention ? 'warning' : 'success';
   };
 
+  // Funciones mejoradas de manejo de números
   const formatCurrency = (value: string | number) => {
     if (!value) return '';
-    const numValue = typeof value === 'string' ? parseFloat(value.replace(/[^\d.-]/g, '')) : value;
+    
+    let stringValue = typeof value === 'string' ? value : value.toString();
+    
+    // Manejar formato uruguayo (BSE, SURA, etc.)
+    if (stringValue.includes('.') && stringValue.includes(',')) {
+      stringValue = stringValue.replace(/\./g, '').replace(',', '.');
+    } else if (stringValue.includes(',') && !stringValue.includes('.')) {
+      const parts = stringValue.split(',');
+      if (parts.length === 2 && parts[1].length <= 2) {
+        stringValue = stringValue.replace(',', '.');
+      }
+    }
+    
+    const numValue = parseFloat(stringValue.replace(/[^\d.-]/g, ''));
+    if (isNaN(numValue)) return '';
+    
     return new Intl.NumberFormat('es-UY', {
       style: 'currency',
       currency: 'UYU',
-      minimumFractionDigits: 2
-    }).format(numValue);
-  };
-
-  const formatNumberWithDecimals = (value: string | number) => {
-    if (!value) return '';
-    const numValue = typeof value === 'string' ? parseFloat(value.replace(/[^\d.-]/g, '')) : value;
-    return new Intl.NumberFormat('es-UY', {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2
     }).format(numValue);
+  };
+
+  const cleanNumberForInput = (value: string | number) => {
+    if (!value) return '';
+    
+    let stringValue = typeof value === 'string' ? value : value.toString();
+    
+    console.log('NUEVA POLIZA BSE/SURA - Procesando número:', stringValue);
+    
+    // Si tiene tanto puntos como comas (formato uruguayo: 10.683,00)
+    if (stringValue.includes('.') && stringValue.includes(',')) {
+      stringValue = stringValue.replace(/\./g, '').replace(',', '.');
+      console.log('NUEVA POLIZA BSE/SURA - Formato uruguayo detectado, convertido a:', stringValue);
+    }
+    // Si solo tiene coma (podría ser decimal europeo: 10683,00)
+    else if (stringValue.includes(',') && !stringValue.includes('.')) {
+      const parts = stringValue.split(',');
+      if (parts.length === 2 && parts[1].length <= 2) {
+        stringValue = stringValue.replace(',', '.');
+        console.log('NUEVA POLIZA BSE/SURA - Coma decimal detectada, convertida a:', stringValue);
+      }
+    }
+    
+    const numValue = parseFloat(stringValue.replace(/[^\d.-]/g, ''));
+    
+    if (isNaN(numValue)) {
+      console.log('NUEVA POLIZA BSE/SURA - No se pudo convertir a número:', stringValue);
+      return '';
+    }
+    
+    const result = numValue.toString();
+    console.log('NUEVA POLIZA BSE/SURA - Número final:', result);
+    return result;
+  };
+
+  // Funciones auxiliares para buscar campos
+  const findPolizaNumber = () => {
+    const possibleFields = [
+      'polizaNumber',
+      'polizaNumero', 
+      'numeroPoliza',
+      'NumeroPoliza',
+      'poliza_numero'
+    ];
+    
+    for (const field of possibleFields) {
+      if (editedData[field] && editedData[field].toString().trim()) {
+        let polizaNumber = editedData[field].toString().trim();
+        
+        // Quitar prefijos y caracteres no deseados
+        polizaNumber = polizaNumber
+          .replace(/^(nro\.\s*|nro\s*|número\s*|numero\s*)/i, '')
+          .replace(/^:\s*/, '')
+          .replace(/^\s*:\s*/, '')
+          .trim();
+        
+        return polizaNumber;
+      }
+    }
+    
+    return '';
+  };
+
+  const findVehicleField = (fieldName: string) => {
+    // Mapeo específico para padrón
+    if (fieldName === 'vehiculoPadron') {
+      const padronFields = [
+        'vehiculoPadron',
+        'vehiculo.padron',
+        'padron',
+        'PADRON',
+        'Padron'
+      ];
+      
+      for (const field of padronFields) {
+        if (editedData[field] && editedData[field].toString().trim()) {
+          let padronValue = editedData[field].toString().trim();
+          // Limpiar prefijos específicos del padrón
+          padronValue = padronValue.replace(/^(PADRÓN\.\s*|PADRON\.\s*|PADRÓN\s*|PADRON\s*)/i, '').trim();
+          console.log(`NUEVA POLIZA - Padrón encontrado en campo '${field}':`, editedData[field], '→ limpiado:', padronValue);
+          return padronValue;
+        }
+      }
+      
+      console.log('NUEVA POLIZA - No se encontró padrón en ningún campo');
+      return '';
+    }
+    
+    // Lógica original para otros campos de vehículo
+    const possibleFields = [
+      fieldName,
+      `vehiculo${fieldName.charAt(0).toUpperCase()}${fieldName.slice(1)}`,
+      `Vehiculo${fieldName.charAt(0).toUpperCase()}${fieldName.slice(1)}`,
+      fieldName.replace('vehiculo', ''),
+      fieldName.charAt(0).toUpperCase() + fieldName.slice(1)
+    ];
+
+    for (const field of possibleFields) {
+      if (editedData[field] && editedData[field].toString().trim()) {
+        return editedData[field].toString();
+      }
+    }
+    
+    return '';
   };
 
   if (!isInitialized) {
@@ -86,7 +200,7 @@ export function ExtractedDataForm({ hookInstance }: ExtractedDataFormProps) {
             {getFieldStatus('polizaNumber') === 'warning' && <AlertTriangle className="h-4 w-4 text-amber-500" />}
           </Label>
           <Input
-            value={editedData.polizaNumber || ''}
+            value={findPolizaNumber()}
             onChange={(e) => handleFieldChange('polizaNumber', e.target.value)}
             placeholder="Ingresa número de póliza"
             maxLength={50}
@@ -123,7 +237,9 @@ export function ExtractedDataForm({ hookInstance }: ExtractedDataFormProps) {
             {getFieldStatus('prima') === 'success' && <CheckCircle className="h-4 w-4 text-green-500" />}
           </Label>
           <Input
-            value={editedData.prima || ''}
+            type="number"
+            step="0.01"
+            value={cleanNumberForInput(editedData.prima || '')}
             onChange={(e) => handleFieldChange('prima', e.target.value)}
             placeholder="0"
           />
@@ -158,10 +274,17 @@ export function ExtractedDataForm({ hookInstance }: ExtractedDataFormProps) {
             {getFieldStatus('valorPorCuota') === 'success' && <CheckCircle className="h-4 w-4 text-green-500" />}
           </Label>
           <Input
-            value={editedData.valorPorCuota || ''}
+            type="number"
+            step="0.01"
+            value={cleanNumberForInput(editedData.valorPorCuota || '')}
             onChange={(e) => handleFieldChange('valorPorCuota', e.target.value)}
             placeholder="0"
           />
+          {editedData.valorPorCuota && (
+            <p className="text-xs text-muted-foreground">
+              {formatCurrency(editedData.valorPorCuota)}
+            </p>
+          )}
         </div>
 
         <div className="space-y-2">
@@ -170,10 +293,17 @@ export function ExtractedDataForm({ hookInstance }: ExtractedDataFormProps) {
             {getFieldStatus('premioTotal') === 'success' && <CheckCircle className="h-4 w-4 text-green-500" />}
           </Label>
           <Input
-            value={editedData.premioTotal || ''}
+            type="number"
+            step="0.01"
+            value={cleanNumberForInput(editedData.premioTotal || '')}
             onChange={(e) => handleFieldChange('premioTotal', e.target.value)}
             placeholder="0"
           />
+          {editedData.premioTotal && (
+            <p className="text-xs text-muted-foreground">
+              {formatCurrency(editedData.premioTotal)}
+            </p>
+          )}
         </div>
       </div>
 
@@ -185,7 +315,7 @@ export function ExtractedDataForm({ hookInstance }: ExtractedDataFormProps) {
             {getFieldStatus('vehiculoMarca') === 'success' && <CheckCircle className="h-4 w-4 text-green-500" />}
           </Label>
           <Input
-            value={editedData.vehiculoMarca || ''}
+            value={findVehicleField('vehiculoMarca')}
             onChange={(e) => handleFieldChange('vehiculoMarca', e.target.value)}
             placeholder="Ingresa marca del vehículo"
           />
@@ -197,7 +327,7 @@ export function ExtractedDataForm({ hookInstance }: ExtractedDataFormProps) {
             {getFieldStatus('vehiculoModelo') === 'success' && <CheckCircle className="h-4 w-4 text-green-500" />}
           </Label>
           <Input
-            value={editedData.vehiculoModelo || ''}
+            value={findVehicleField('vehiculoModelo')}
             onChange={(e) => handleFieldChange('vehiculoModelo', e.target.value)}
             placeholder="Ingresa modelo del vehículo"
           />
@@ -210,7 +340,7 @@ export function ExtractedDataForm({ hookInstance }: ExtractedDataFormProps) {
           </Label>
           <Input
             type="number"
-            value={editedData.vehiculoAno || ''}
+            value={findVehicleField('vehiculoAno')}
             onChange={(e) => handleFieldChange('vehiculoAno', e.target.value)}
             placeholder="2024"
             min="1900"
@@ -220,11 +350,38 @@ export function ExtractedDataForm({ hookInstance }: ExtractedDataFormProps) {
 
         <div className="space-y-2">
           <Label className="flex items-center gap-2">
+            Patente
+            {getFieldStatus('vehiculoPatente') === 'success' && <CheckCircle className="h-4 w-4 text-green-500" />}
+          </Label>
+          <Input
+            value={findVehicleField('vehiculoPatente')}
+            onChange={(e) => handleFieldChange('vehiculoPatente', e.target.value.toUpperCase())}
+            placeholder="Ingresa patente"
+            className="font-mono uppercase"
+          />
+        </div>
+
+        {/* ✅ NUEVO CAMPO: PADRÓN */}
+        <div className="space-y-2">
+          <Label className="flex items-center gap-2">
+            Padrón
+            {getFieldStatus('vehiculoPadron') === 'success' && <CheckCircle className="h-4 w-4 text-green-500" />}
+          </Label>
+          <Input
+            value={findVehicleField('vehiculoPadron')}
+            onChange={(e) => handleFieldChange('vehiculoPadron', e.target.value)}
+            placeholder="Número de padrón"
+            className="font-mono"
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label className="flex items-center gap-2">
             Número de Chasis
             {getFieldStatus('vehiculoChasis') === 'success' && <CheckCircle className="h-4 w-4 text-green-500" />}
           </Label>
           <Input
-            value={editedData.vehiculoChasis || ''}
+            value={findVehicleField('vehiculoChasis')}
             onChange={(e) => handleFieldChange('vehiculoChasis', e.target.value)}
             placeholder="Ingresa número de chasis"
           />
@@ -236,21 +393,9 @@ export function ExtractedDataForm({ hookInstance }: ExtractedDataFormProps) {
             {getFieldStatus('vehiculoMotor') === 'success' && <CheckCircle className="h-4 w-4 text-green-500" />}
           </Label>
           <Input
-            value={editedData.vehiculoMotor || ''}
+            value={findVehicleField('vehiculoMotor')}
             onChange={(e) => handleFieldChange('vehiculoMotor', e.target.value)}
             placeholder="Ingresa número de motor"
-          />
-        </div>
-
-        <div className="space-y-2">
-          <Label className="flex items-center gap-2">
-            Patente
-            {getFieldStatus('vehiculoPatente') === 'success' && <CheckCircle className="h-4 w-4 text-green-500" />}
-          </Label>
-          <Input
-            value={editedData.vehiculoPatente || ''}
-            onChange={(e) => handleFieldChange('vehiculoPatente', e.target.value)}
-            placeholder="Ingresa patente"
           />
         </div>
       </div>

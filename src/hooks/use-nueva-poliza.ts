@@ -290,6 +290,35 @@ const cleanPatenteField = (str: string) => {
   return cleaned;
 };
 
+const cleanPadronField = (str: string) => {
+  if (!str) return "";
+  
+  let cleaned = str.replace(/\n/g, ' ').replace(/\r/g, ' ').trim();
+  
+  // Remover prefijos comunes del padrón
+  const padronPrefixes = [
+    'PADRÓN: ', 'PADRÓN. : ', 'PADRÓN ',
+    'PADRON: ', 'PADRON. : ', 'PADRON ',
+    'Padrón: ', 'Padrón. : ', 'Padrón ',
+    'Padron: ', 'Padron. : ', 'Padron '
+  ];
+  
+  for (const prefix of padronPrefixes) {
+    if (cleaned.startsWith(prefix)) {
+      cleaned = cleaned.substring(prefix.length).trim();
+      break;
+    }
+  }
+  
+  // Remover dos puntos iniciales
+  cleaned = cleaned.replace(/^:\s*/, '').trim();
+  
+  // Solo mantener números
+  cleaned = cleaned.replace(/[^\d]/g, '');
+  
+  return cleaned;
+};
+
     const extractPolizaNumber = (str: string) => {
       if (!str) return "";
       const cleanStr = cleanText(str);
@@ -502,6 +531,16 @@ const cleanPatenteField = (str: string) => {
         const sinSalto = findFieldValue(["vehiculoPatente", "vehiculo_matricula", "matricula", "patente"]) || "";
         return cleanPatenteField(sinSalto);
       })(),
+
+      vehiculoPadron: (() => {
+  if (backendData.vehiculoPadron) return backendData.vehiculoPadron;
+
+  const conSalto = findFieldValue(["vehiculo.padron"]) || "";
+  if (conSalto) return cleanPadronField(conSalto);
+
+  const sinSalto = findFieldValue(["vehiculoPadron", "vehiculo_padron", "padron"]) || "";
+  return cleanPadronField(sinSalto);
+})(),
 
       aseguradoNombre: backendData.aseguradoNombre || 
                        cleanText(findFieldValue([
@@ -765,112 +804,118 @@ const uploadWithContext = useCallback(async (file: File): Promise<boolean> => {
     toast.success('Archivo removido. Puedes cargar otro documento.');
   }, [updateState]);
 
-  const sendToVelneo = useCallback(async (): Promise<boolean> => {
-    if (!canProceedToStep3()) {
-      toast.error('Faltan datos requeridos para crear la póliza');
-      return false;
-    }
+const sendToVelneo = useCallback(async (): Promise<boolean> => {
+  if (!canProceedToStep3()) {
+    toast.error('Faltan datos requeridos para crear la póliza');
+    return false;
+  }
 
-    if (!state.file.scanId) {
-      toast.error('No hay documento escaneado para procesar');
-      return false;
-    }
+  if (!state.file.scanId) {
+    toast.error('No hay documento escaneado para procesar');
+    return false;
+  }
 
-    updateState({
-      isLoading: true,
-      step3: {
-        ...state.step3,
-        status: 'creating'
-      }
+  updateState({
+    isLoading: true,
+    step3: {
+      ...state.step3,
+      status: 'creating'
+    }
+  });
+
+  try {
+    const createRequest = {
+      scanId: state.file.scanId,
+      clienteId: state.context.clienteId,
+      companiaId: state.context.companiaId,
+      seccionId: state.context.seccionId,
+      
+      fuelCodeOverride: state.masterData.combustibleId || "",
+      tariffIdOverride: parseInt(state.masterData.tarifaId) || 0,
+      departmentIdOverride: parseInt(state.masterData.departamentoId) || 0,
+      destinationIdOverride: parseInt(state.masterData.destinoId) || 0,
+      categoryIdOverride: parseInt(state.masterData.categoriaId) || 0,
+      qualityIdOverride: parseInt(state.masterData.calidadId) || 0,
+      brokerIdOverride: parseInt(state.masterData.corredorId) || 0,
+      
+      policyNumber: state.scan.extractedData?.polizaNumber || "",
+      startDate: state.scan.extractedData?.vigenciaDesde || "",
+      endDate: state.scan.extractedData?.vigenciaHasta || "",
+      premium: parseFloat(state.scan.extractedData?.prima || "0"),
+      
+      vehicleBrand: state.scan.extractedData?.vehiculoMarca || "",
+      vehicleModel: state.scan.extractedData?.vehiculoModelo || "",
+      vehicleYear: parseInt(state.scan.extractedData?.vehiculoAno || "0"),
+      motorNumber: state.scan.extractedData?.vehiculoMotor || "",
+      chassisNumber: state.scan.extractedData?.vehiculoChasis || "",
+      vehiclePadron: state.scan.extractedData?.vehiculoPadron || "",
+      
+      paymentMethod: state.masterData.medioPagoId || "",
+      installmentCount: state.masterData.cantidadCuotas || 1,
+      
+      notes: state.masterData.observaciones || "",
+      correctedFields: []
+    };
+
+    console.log('🚗 NUEVA POLIZA - Enviando padrón a Velneo:', {
+      vehiclePadron: createRequest.vehiclePadron,
+      extractedPadron: state.scan.extractedData?.vehiculoPadron
     });
 
-    try {
-      const createRequest = {
-        scanId: state.file.scanId,
-        clienteId: state.context.clienteId,
-        companiaId: state.context.companiaId,
-        seccionId: state.context.seccionId,
-        
-        fuelCodeOverride: state.masterData.combustibleId || "",
-        tariffIdOverride: parseInt(state.masterData.tarifaId) || 0,
-        departmentIdOverride: parseInt(state.masterData.departamentoId) || 0,
-        destinationIdOverride: parseInt(state.masterData.destinoId) || 0,
-        categoryIdOverride: parseInt(state.masterData.categoriaId) || 0,
-        qualityIdOverride: parseInt(state.masterData.calidadId) || 0,
-        brokerIdOverride: parseInt(state.masterData.corredorId) || 0,
-        
-        policyNumber: state.scan.extractedData?.polizaNumber || "",
-        startDate: state.scan.extractedData?.vigenciaDesde || "",
-        endDate: state.scan.extractedData?.vigenciaHasta || "",
-        premium: parseFloat(state.scan.extractedData?.prima || "0"),
-        
-        vehicleBrand: state.scan.extractedData?.vehiculoMarca || "",
-        vehicleModel: state.scan.extractedData?.vehiculoModelo || "",
-        vehicleYear: parseInt(state.scan.extractedData?.vehiculoAno || "0"),
-        motorNumber: state.scan.extractedData?.vehiculoMotor || "",
-        chassisNumber: state.scan.extractedData?.vehiculoChasis || "",
-        
-        paymentMethod: state.masterData.medioPagoId || "",
-        installmentCount: state.masterData.cantidadCuotas || 1,
-        
-        notes: state.masterData.observaciones || "",
-        correctedFields: []
-      };
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://localhost:7202';
+    const response = await fetch(`${API_URL}/api/Document/${state.file.scanId}/create-in-velneo`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(createRequest),
+    });
 
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://localhost:7202';
-      const response = await fetch(`${API_URL}/api/Document/${state.file.scanId}/create-in-velneo`, {
-        method: 'POST',
-        headers: getAuthHeaders(),
-        body: JSON.stringify(createRequest),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        
-        if (response.status === 401) {
-          handle401Error();
-          return false;
-        }
-        
-        throw new Error(errorData.message || `Error ${response.status}: ${response.statusText}`);
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      
+      if (response.status === 401) {
+        handle401Error();
+        return false;
       }
+      
+      throw new Error(errorData.message || `Error ${response.status}: ${response.statusText}`);
+    }
 
-      const result = await response.json();
+    const result = await response.json();
 
-      if (result.success) {
-        updateState({
-          step3: {
-            status: 'completed',
-            velneoPolizaId: result.velneoPolizaId,
-            polizaNumber: result.polizaNumber,
-            createdAt: result.createdAt,
-            velneoUrl: result.velneoUrl,
-            warnings: result.warnings || [],
-            validation: result.validation || { isValid: true, errors: [], warnings: [] }
-          },
-          isLoading: false,
-        });
-
-        toast.success(`Póliza creada exitosamente: ${result.polizaNumber}`);
-        return true;
-      } else {
-        throw new Error(result.message || 'Error creando póliza en Velneo');
-      }
-
-    } catch (error: any) {
+    if (result.success) {
       updateState({
         step3: {
-          ...state.step3,
-          status: 'error',
-          errorMessage: error.message || 'Error creando póliza'
+          status: 'completed',
+          velneoPolizaId: result.velneoPolizaId,
+          polizaNumber: result.polizaNumber,
+          createdAt: result.createdAt,
+          velneoUrl: result.velneoUrl,
+          warnings: result.warnings || [],
+          validation: result.validation || { isValid: true, errors: [], warnings: [] }
         },
         isLoading: false,
       });
 
-      toast.error('Error creando póliza: ' + (error.message || 'Error desconocido'));
-      return false;
+      toast.success(`Póliza creada exitosamente: ${result.polizaNumber}`);
+      return true;
+    } else {
+      throw new Error(result.message || 'Error creando póliza en Velneo');
     }
-  }, [state, canProceedToStep3, updateState]);
+
+  } catch (error: any) {
+    updateState({
+      step3: {
+        ...state.step3,
+        status: 'error',
+        errorMessage: error.message || 'Error creando póliza'
+      },
+      isLoading: false,
+    });
+
+    toast.error('Error creando póliza: ' + (error.message || 'Error desconocido'));
+    return false;
+  }
+}, [state, canProceedToStep3, updateState]);
 
   const rescanDocument = useCallback(async () => {
     if (!state.file.scanId) {

@@ -106,9 +106,6 @@ export function ValidationForm({ hookInstance }: ValidationFormProps) {
                         <h3 className={`font-semibold text-gray-900 dark:text-gray-100 ${isViewerOpen ? 'text-base' : 'text-lg'}`}>
                           Datos de la Nueva Póliza
                         </h3>
-                        <p className={`text-gray-600 dark:text-gray-400 ${isViewerOpen ? 'text-xs' : 'text-sm'}`}>
-                          Extraídos del PDF • {completionPercentage}% confianza
-                        </p>
                       </div>
                     </div>
                     

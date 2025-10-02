@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { toast } from 'react-hot-toast';
 import { getAuthHeaders, getAuthHeadersForFormData, getAuthToken, handle401Error } from '../utils/auth-utils';
+import { dataExtractionService } from '../utils/data-extraction';
 
 interface CambiosState {
   currentStep: number;
@@ -93,55 +94,185 @@ const initialState: CambiosState = {
   processCompleted: false
 };
 
-const cleanText = (str: string) => {
-  if (!str) return "";
-  return str.replace(/\n/g, ' ').replace(/\r/g, ' ').trim();
-};
+export function useCambios() {
+  const [state, setState] = useState<CambiosState>(initialState);
 
-const cleanVehicleField = (str: string) => {
+  const updateState = useCallback((updates: any) => {
+    if (typeof updates === 'function') {
+      setState(updates);
+    } else {
+      setState(prev => ({
+        ...prev,
+        ...updates
+      }));
+    }
+  }, []);
+
+  const loadPolizasByCliente = useCallback(async (clienteId: number) => {
+    try {
+      const token = getAuthToken();
+      if (!token) {
+        throw new Error('No se encontró token de autenticación');
+      }
+
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://localhost:7202';
+      
+      const [polizasResponse, companiasResponse] = await Promise.all([
+        fetch(`${API_URL}/api/MasterData/clientes/${clienteId}/polizas?soloActivos=true`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        }),
+        fetch(`${API_URL}/api/MasterData/companias`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        })
+      ]);
+
+      if (!polizasResponse.ok || !companiasResponse.ok) {
+        if (polizasResponse.status === 401 || companiasResponse.status === 401) {
+          handle401Error();
+          throw new Error('Error de autenticación');
+        }
+        throw new Error('Error al cargar datos');
+      }
+
+      const polizasData = await polizasResponse.json();
+      const companiasData = await companiasResponse.json();
+
+      let companiasList: any[] = [];
+
+      if (Array.isArray(companiasData)) {
+        companiasList = companiasData;
+      } else if (companiasData && companiasData.data && Array.isArray(companiasData.data)) {
+        companiasList = companiasData.data;
+      } else if (companiasData && companiasData.companias && Array.isArray(companiasData.companias)) {
+        companiasList = companiasData.companias;
+      } else {
+        console.warn('⚠️ Formato de compañías inesperado, usando array vacío');
+        companiasList = [];
+      }
+
+      const mapeoCompanias: Record<number, string> = {};
+      companiasList.forEach((compania: any) => {
+        mapeoCompanias[compania.id] = compania.comnom || compania.displayName || `Compañía ${compania.id}`;
+      });
+      
+      let polizasList: any[] = [];
+      
+      if (Array.isArray(polizasData)) {
+        polizasList = polizasData;
+      } else if (polizasData && polizasData.data && Array.isArray(polizasData.data)) {
+        polizasList = polizasData.data;
+      } else if (polizasData && polizasData.polizas && Array.isArray(polizasData.polizas)) {
+        polizasList = polizasData.polizas;
+      }
+
+      console.log('📋 Lista de pólizas a filtrar:', polizasList.length, polizasList);
+
+      const now = new Date();
+      const polizasVigentes = polizasList.filter((poliza: any) => {
+        console.log(`\n🔍 Evaluando póliza ${poliza.conpol}:`, {
+          seccod: poliza.seccod,
+          vencimiento: poliza.confchhas,
+          compania: poliza.comcod
+        });
+
+        if (poliza.seccod !== 4) {
+          console.log(`❌ Rechazada - No es automotor (sección ${poliza.seccod})`);
+          return false;
+        }
+        
+        let diasHastaVencimiento = 0;
+        try {
+          const fechaVencimiento = new Date(poliza.confchhas);
+          diasHastaVencimiento = Math.ceil((fechaVencimiento.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+          console.log(`📅 Días hasta vencimiento: ${diasHastaVencimiento}`);
+        } catch (error) {
+          console.log('❌ Error parseando fecha');
+          return false;
+        }
+        
+        const esVigenteParaCambios = diasHastaVencimiento >= -30;
+        console.log(`${esVigenteParaCambios ? '✅' : '❌'} Vigente para cambios:`, esVigenteParaCambios);
+        
+        if (esVigenteParaCambios) {
+          if (!poliza.comnom || poliza.comnom.trim() === '') {
+            poliza.comnom = mapeoCompanias[poliza.comcod] || `Compañía ${poliza.comcod}`;
+            console.log(`🏢 Nombre mapeado: ${poliza.comnom}`);
+          }
+        }
+        
+        return esVigenteParaCambios;
+      });
+
+      console.log('✅ Pólizas vigentes filtradas:', polizasVigentes.length, polizasVigentes);
+
+      updateState((prevState: { cliente: any; }) => ({
+        ...prevState,
+        cliente: {
+          ...prevState.cliente,
+          selectedId: clienteId,
+          polizas: polizasVigentes
+        }
+      }));
+
+      if (polizasVigentes.length === 0) {
+        toast('Este cliente no tiene pólizas de automotor vigentes para cambios', {
+          icon: 'ℹ️',
+          duration: 4000,
+        });
+      } else {
+        toast.success(`Se encontraron ${polizasVigentes.length} pólizas vigentes`);
+      }
+
+      return polizasVigentes;
+    } catch (error: any) {
+      console.error('❌ Error:', error);
+      toast.error('Error cargando pólizas: ' + (error.message || 'Error desconocido'));
+      updateState((prevState: { cliente: any; }) => ({
+        ...prevState,
+        cliente: {
+          ...prevState.cliente,
+          selectedId: clienteId,
+          polizas: []
+        }
+      }));
+      
+      return [];
+    }
+  }, [updateState]);
+
+  const cleanPadronField = (str: string) => {
   if (!str) return "";
   
   let cleaned = str.replace(/\n/g, ' ').replace(/\r/g, ' ').trim();
   
-  const prefixes = [
-    'MARCA\n', 'MODELO\n', 'MOTOR\n', 'CHASIS\n', 'AÑO\n',
-    'MARCA ', 'MODELO ', 'MOTOR ', 'CHASIS ', 'AÑO ',
-    'Marca\n', 'Modelo\n', 'Motor\n', 'Chasis\n', 'Año\n',
-    'Marca ', 'Modelo ', 'Motor ', 'Chasis ', 'Año ',
-    'Color\n', 'Color ', 'Tipo\n', 'Tipo ',
-    'Riesgo nro.\n', 'Riesgo nro. ',
-    'Tipo de uso\n', 'Tipo de uso '
+  // Remover prefijos comunes del padrón
+  const padronPrefixes = [
+    'PADRÓN: ', 'PADRÓN. : ', 'PADRÓN ',
+    'PADRON: ', 'PADRON. : ', 'PADRON ',
+    'Padrón: ', 'Padrón. : ', 'Padrón ',
+    'Padron: ', 'Padron. : ', 'Padron '
   ];
   
-  for (const prefix of prefixes) {
+  for (const prefix of padronPrefixes) {
     if (cleaned.startsWith(prefix)) {
       cleaned = cleaned.substring(prefix.length).trim();
       break;
     }
   }
   
+  // Remover dos puntos iniciales
   cleaned = cleaned.replace(/^:\s*/, '').trim();
-  return cleaned;
-};
-
-const cleanPatenteField = (str: string) => {
-  if (!str) return "";
   
-  let cleaned = str.replace(/\n/g, ' ').replace(/\r/g, ' ').trim();
-  
-  const patentesPrefixes = [
-    'MATRÍCULA: ', 'MATRÍCULA. ', 'MATRÍCULA ',
-    'PATENTE: ', 'PATENTE. ', 'PATENTE ',
-    'Matrícula: ', 'Matrícula. ', 'Matrícula ',
-    'Patente: ', 'Patente. ', 'Patente '
-  ];
-  
-  for (const prefix of patentesPrefixes) {
-    if (cleaned.startsWith(prefix)) {
-      cleaned = cleaned.substring(prefix.length).trim();
-      break;
-    }
-  }
+  // Solo mantener números
+  cleaned = cleaned.replace(/[^\d]/g, '');
   
   return cleaned;
 };
@@ -154,6 +285,59 @@ const mapBackendDataToFrontend = (backendData: any, extractedData: any) => {
       }
     }
     return null;
+  };
+
+  // Función para limpiar campos de vehículo
+  const cleanVehicleField = (str: string) => {
+    if (!str) return "";
+    
+    let cleaned = str.replace(/\n/g, ' ').replace(/\r/g, ' ').trim();
+    
+    const prefixes = [
+      'MARCA\n', 'MARCA ', 'MARCA:', 'Marca\n', 'Marca ', 'Marca:',
+      'MODELO\n', 'MODELO ', 'MODELO:', 'Modelo\n', 'Modelo ', 'Modelo:',
+      'MOTOR\n', 'MOTOR ', 'MOTOR:', 'Motor\n', 'Motor ', 'Motor:',
+      'CHASIS\n', 'CHASIS ', 'CHASIS:', 'Chasis\n', 'Chasis ', 'Chasis:',
+      'AÑO\n', 'AÑO ', 'AÑO:', 'Año\n', 'Año ', 'Año:',
+      'Tipo de uso\n', 'Tipo de uso '
+    ];
+    
+    for (const prefix of prefixes) {
+      if (cleaned.startsWith(prefix)) {
+        cleaned = cleaned.substring(prefix.length).trim();
+        break;
+      }
+    }
+    
+    cleaned = cleaned.replace(/^:\s*/, '').trim();
+    return cleaned;
+  };
+
+  const cleanPatenteField = (str: string) => {
+    if (!str) return "";
+    
+    let cleaned = str.replace(/\n/g, ' ').replace(/\r/g, ' ').trim();
+    
+    const patentesPrefixes = [
+      'MATRÍCULA: ', 'MATRÍCULA. ', 'MATRÍCULA ',
+      'PATENTE: ', 'PATENTE. ', 'PATENTE ',
+      'Matrícula: ', 'Matrícula. ', 'Matrícula ',
+      'Patente: ', 'Patente. ', 'Patente '
+    ];
+    
+    for (const prefix of patentesPrefixes) {
+      if (cleaned.startsWith(prefix)) {
+        cleaned = cleaned.substring(prefix.length).trim();
+        break;
+      }
+    }
+    
+    return cleaned;
+  };
+
+  const cleanText = (str: string) => {
+    if (!str) return "";
+    return str.replace(/\n/g, ' ').replace(/\r/g, ' ').trim();
   };
 
   const result = {
@@ -237,6 +421,17 @@ const mapBackendDataToFrontend = (backendData: any, extractedData: any) => {
       return cleanPatenteField(sinSalto.toString());
     })(),
 
+    // ⭐ NUEVO: Mapeo del padrón
+    vehiculoPadron: (() => {
+      if (backendData.vehiculoPadron) return backendData.vehiculoPadron;
+      
+      const conSalto = findFieldValue(["vehiculo.padron"]) || "";
+      if (conSalto) return cleanPadronField(conSalto.toString());
+      
+      const sinSalto = findFieldValue(["vehiculoPadron", "vehiculo_padron", "padron"]) || "";
+      return cleanPadronField(sinSalto.toString());
+    })(),
+
     aseguradoNombre: backendData.aseguradoNombre || 
                      cleanText(findFieldValue(["asegurado.nombre"]) || "") || "",
     
@@ -269,158 +464,6 @@ const mapBackendDataToFrontend = (backendData: any, extractedData: any) => {
   return result;
 };
 
-export function useCambios() {
-  const [state, setState] = useState<CambiosState>(initialState);
-
-  const updateState = useCallback((updates: any) => {
-    if (typeof updates === 'function') {
-      setState(updates);
-    } else {
-      setState(prev => ({
-        ...prev,
-        ...updates
-      }));
-    }
-  }, []);
-
-const loadPolizasByCliente = useCallback(async (clienteId: number) => {
-  try {
-    const token = getAuthToken();
-    if (!token) {
-      throw new Error('No se encontró token de autenticación');
-    }
-
-    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://localhost:7202';
-    
-    const [polizasResponse, companiasResponse] = await Promise.all([
-      fetch(`${API_URL}/api/MasterData/clientes/${clienteId}/polizas?soloActivos=true`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      }),
-      fetch(`${API_URL}/api/MasterData/companias`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      })
-    ]);
-
-    if (!polizasResponse.ok || !companiasResponse.ok) {
-      if (polizasResponse.status === 401 || companiasResponse.status === 401) {
-        handle401Error();
-        throw new Error('Error de autenticación');
-      }
-      throw new Error('Error al cargar datos');
-    }
-
-    const polizasData = await polizasResponse.json();
-    const companiasData = await companiasResponse.json();
-
-    let companiasList: any[] = [];
-
-    if (Array.isArray(companiasData)) {
-      companiasList = companiasData;
-    } else if (companiasData && companiasData.data && Array.isArray(companiasData.data)) {
-      companiasList = companiasData.data;
-    } else if (companiasData && companiasData.companias && Array.isArray(companiasData.companias)) {
-      companiasList = companiasData.companias;
-    } else {
-      console.warn('⚠️ Formato de compañías inesperado, usando array vacío');
-      companiasList = [];
-    }
-
-    const mapeoCompanias: Record<number, string> = {};
-    companiasList.forEach((compania: any) => {
-      mapeoCompanias[compania.id] = compania.comnom || compania.displayName || `Compañía ${compania.id}`;
-    });
-    let polizasList: any[] = [];
-    
-    if (Array.isArray(polizasData)) {
-      polizasList = polizasData;
-    } else if (polizasData && polizasData.data && Array.isArray(polizasData.data)) {
-      polizasList = polizasData.data;
-    } else if (polizasData && polizasData.polizas && Array.isArray(polizasData.polizas)) {
-      polizasList = polizasData.polizas;
-    }
-
-    console.log('📋 Lista de pólizas a filtrar:', polizasList.length, polizasList);
-
-    const now = new Date();
-    const polizasVigentes = polizasList.filter((poliza: any) => {
-      console.log(`\n🔍 Evaluando póliza ${poliza.conpol}:`, {
-        seccod: poliza.seccod,
-        vencimiento: poliza.confchhas,
-        compania: poliza.comcod
-      });
-
-      if (poliza.seccod !== 4) {
-        console.log(`❌ Rechazada - No es automotor (sección ${poliza.seccod})`);
-        return false;
-      }
-      
-      let diasHastaVencimiento = 0;
-      try {
-        const fechaVencimiento = new Date(poliza.confchhas);
-        diasHastaVencimiento = Math.ceil((fechaVencimiento.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-        console.log(`📅 Días hasta vencimiento: ${diasHastaVencimiento}`);
-      } catch (error) {
-        console.log('❌ Error parseando fecha');
-        return false;
-      }
-      
-      const esVigenteParaCambios = diasHastaVencimiento >= -30;
-      console.log(`${esVigenteParaCambios ? '✅' : '❌'} Vigente para cambios:`, esVigenteParaCambios);
-      
-      if (esVigenteParaCambios) {
-        if (!poliza.comnom || poliza.comnom.trim() === '') {
-          poliza.comnom = mapeoCompanias[poliza.comcod] || `Compañía ${poliza.comcod}`;
-          console.log(`🏢 Nombre mapeado: ${poliza.comnom}`);
-        }
-      }
-      
-      return esVigenteParaCambios;
-    });
-
-    console.log('✅ Pólizas vigentes filtradas:', polizasVigentes.length, polizasVigentes);
-
-    updateState((prevState: { cliente: any; }) => ({
-      ...prevState,
-      cliente: {
-        ...prevState.cliente,
-        selectedId: clienteId,
-        polizas: polizasVigentes
-      }
-    }));
-
-    if (polizasVigentes.length === 0) {
-      toast('Este cliente no tiene pólizas de automotor vigentes para cambios', {
-        icon: 'ℹ️',
-        duration: 4000,
-      });
-    } else {
-      toast.success(`Se encontraron ${polizasVigentes.length} pólizas vigentes`);
-    }
-
-    return polizasVigentes;
-  } catch (error: any) {
-    console.error('❌ Error:', error);
-    toast.error('Error cargando pólizas: ' + (error.message || 'Error desconocido'));
-    updateState((prevState: { cliente: any; }) => ({
-      ...prevState,
-      cliente: {
-        ...prevState.cliente,
-        selectedId: clienteId,
-        polizas: []
-      }
-    }));
-    
-    return [];
-  }
-}, [updateState]);
 
   const selectPolizaForChange = useCallback((poliza: any) => {
     setState(prevState => {
@@ -465,182 +508,204 @@ const loadPolizasByCliente = useCallback(async (clienteId: number) => {
     toast.success(`Póliza ${poliza.conpol} seleccionada para cambio`);
   }, []);
 
-  const uploadDocumentForChange = useCallback(async (file: File): Promise<boolean> => {
-    if (!state.context.clienteId || !state.context.seccionId || !state.context.companiaId) {
-      toast.error('Contexto incompleto. Selecciona cliente y póliza correctamente.');
-      return false;
+const uploadDocumentForChange = useCallback(async (file: File): Promise<boolean> => {
+  if (!state.context.clienteId || !state.context.seccionId || !state.context.companiaId) {
+    toast.error('Contexto incompleto. Selecciona cliente y póliza correctamente.');
+    return false;
+  }
+
+  try {
+    const token = getAuthToken();
+    if (!token) {
+      throw new Error('No hay token de autenticación');
     }
 
-    try {
-      const token = getAuthToken();
-      if (!token) {
-        throw new Error('No hay token de autenticación');
+    updateState({
+      isLoading: true,
+      file: { 
+        selected: file, 
+        uploaded: false, 
+        scanId: null, 
+        uploadProgress: 0 
+      },
+      scan: { 
+        ...state.scan, 
+        status: 'uploading', 
+        fileName: file.name, 
+        errorMessage: undefined 
       }
+    });
 
-      updateState({
-        isLoading: true,
-        file: { 
-          selected: file, 
-          uploaded: false, 
-          scanId: null, 
-          uploadProgress: 0 
-        },
-        scan: { 
-          ...state.scan, 
-          status: 'uploading', 
-          fileName: file.name, 
-          errorMessage: undefined 
-        }
-      });
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('clienteId', state.context.clienteId.toString());
+    formData.append('companiaId', state.context.companiaId.toString());
+    formData.append('seccionId', state.context.seccionId.toString());
+    formData.append('notes', 'Cambio de póliza');
 
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('clienteId', state.context.clienteId.toString());
-      formData.append('companiaId', state.context.companiaId.toString());
-      formData.append('seccionId', state.context.seccionId.toString());
-      formData.append('notes', 'Cambio de póliza');
-
-      updateState({
-        file: {
-          selected: file,
-          uploaded: false,
-          scanId: null,
-          uploadProgress: 50,
-        },
-        scan: {
-          ...state.scan,
-          status: 'scanning',
-        }
-      });
-
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://localhost:7202';
-      const response = await fetch(`${API_URL}/api/Document/upload-with-context`, {
-        method: 'POST',
-        headers: getAuthHeadersForFormData(),
-        body: formData,
-      });
-
-      if (!response.ok) {
-        let errorMessage = `Error ${response.status}: ${response.statusText}`;
-        
-        try {
-          const errorData = await response.json();
-          errorMessage = errorData.message || errorData.Message || errorMessage;
-        } catch {
-          const errorText = await response.text();
-          if (errorText) errorMessage = errorText;
-        }
-        
-        if (response.status === 401) {
-          handle401Error();
-          return false;
-        }
-        
-        throw new Error(errorMessage);
+    updateState({
+      file: {
+        selected: file,
+        uploaded: false,
+        scanId: null,
+        uploadProgress: 50,
+      },
+      scan: {
+        ...state.scan,
+        status: 'scanning',
       }
+    });
 
-      const result = await response.json();
-      const scanResult = result.scanResult || {};
-      const polizaMapping = result.polizaMapping || {};
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://localhost:7202';
+    const response = await fetch(`${API_URL}/api/Document/upload-with-context`, {
+      method: 'POST',
+      headers: getAuthHeadersForFormData(),
+      body: formData,
+    });
+
+    if (!response.ok) {
+      let errorMessage = `Error ${response.status}: ${response.statusText}`;
       
-      const originalExtractedData = scanResult.extractedData || {};
-      const normalizedData = polizaMapping.normalizedData || {};
-      const mappedData = polizaMapping.mappedData || {};
-
-      const dataForDisplay = Object.keys(normalizedData).length > 0
-        ? normalizedData 
-        : originalExtractedData;
-
-      const displayData = mapBackendDataToFrontend(
-        mappedData, 
-        dataForDisplay || {}
-      );
-
-      if (displayData.vehiculoMarca) {
-        console.log('🚗 CAMBIOS - Marca limpiada:', {
-          antes: dataForDisplay['vehiculo.marca'],
-          después: displayData.vehiculoMarca
-        });
+      try {
+        const errorData = await response.json();
+        errorMessage = errorData.message || errorData.Message || errorMessage;
+      } catch {
+        const errorText = await response.text();
+        if (errorText) errorMessage = errorText;
       }
-
-      if (displayData.vehiculoModelo) {
-        console.log('🚗 CAMBIOS - Modelo limpiado:', {
-          antes: dataForDisplay['vehiculo.modelo'], 
-          después: displayData.vehiculoModelo
-        });
+      
+      if (response.status === 401) {
+        handle401Error();
+        return false;
       }
-
-      const combinedExtractedData = {
-        ...dataForDisplay,
-        ...displayData
-      };
-
-      let companiaDetectada = state.context.companiaInfo;
-      let companiaIdDetectada = state.context.companiaId;
-
-      if (result.preSelection?.compania && result.preSelection.compania.id) {
-        companiaIdDetectada = result.preSelection.compania.id;
-        companiaDetectada = {
-          id: result.preSelection.compania.id,
-          nombre: result.preSelection.compania.displayName || result.preSelection.compania.comnom || 'Detectada',
-          codigo: result.preSelection.compania.shortCode || result.preSelection.compania.comalias || 'DET'
-        };
-      }
-
-      updateState({
-        context: {
-          ...state.context,
-          companiaId: companiaIdDetectada,
-          companiaInfo: companiaDetectada,
-        },
-        file: {
-          selected: file,
-          uploaded: true,
-          scanId: scanResult.scanId,
-          uploadProgress: 100,
-        },
-        scan: {
-          status: 'completed' as const,
-          extractedData: combinedExtractedData, 
-          normalizedData: normalizedData,
-          mappedData: mappedData,
-          completionPercentage: polizaMapping.metrics?.completionPercentage || 85,
-          confidence: polizaMapping.metrics?.confidence || 85,
-          requiresAttention: polizaMapping.issues?.map((issue: any) => ({
-            fieldName: issue.fieldName || 'unknown',
-            reason: issue.description || issue.issueType || 'Requiere verificación',
-            severity: issue.severity?.toLowerCase() || 'warning'
-          })) || [],
-          fileName: file.name,
-          scanId: scanResult.scanId,
-          errorMessage: undefined,
-        },
-        isLoading: false,
-      });
-
-      toast.success(`Documento procesado exitosamente (${polizaMapping.metrics?.completionPercentage || 85}% confianza)`);
-      return true;
-
-    } catch (error: any) { 
-      updateState({
-        file: {
-          selected: file,
-          uploaded: false,
-          scanId: null,
-          uploadProgress: 0,
-        },
-        scan: {
-          ...state.scan,
-          status: 'error',
-          errorMessage: error.message || 'Error procesando documento'
-        },
-        isLoading: false,
-      });
-
-      toast.error('Error procesando documento: ' + (error.message || 'Error desconocido'));
-      return false;
+      
+      throw new Error(errorMessage);
     }
-  }, [state.context, state.scan, updateState]);
+
+    const result = await response.json();
+    const scanResult = result.scanResult || {};
+    const polizaMapping = result.polizaMapping || {};
+    
+    const originalExtractedData = scanResult.extractedData || {};
+    const normalizedData = polizaMapping.normalizedData || {};
+    const mappedData = polizaMapping.mappedData || {};
+
+    // Usar datos normalizados si están disponibles, sino usar los originales
+    const dataForDisplay = Object.keys(normalizedData).length > 0
+      ? normalizedData 
+      : originalExtractedData;
+
+    console.log('🔄 CAMBIOS - Procesando datos extraídos');
+    
+    // Mapear datos usando la función de mapeo que incluye padrón
+    const displayData = mapBackendDataToFrontend(
+      mappedData, 
+      dataForDisplay || {}
+    );
+
+    // Log específico para debugging del padrón
+    if (displayData.vehiculoPadron) {
+      console.log('🏷️ CAMBIOS - Padrón extraído exitosamente:', {
+        valorOriginal: dataForDisplay['vehiculo.padron'],
+        valorLimpio: displayData.vehiculoPadron
+      });
+    } else {
+      // Buscar padrón en diferentes ubicaciones para debugging
+      const padronKeys = Object.keys(dataForDisplay).filter(key => 
+        key.toLowerCase().includes('padron') || 
+        key.toLowerCase().includes('padrón')
+      );
+      
+      if (padronKeys.length > 0) {
+        console.log('🔍 CAMBIOS - Campos de padrón encontrados:', padronKeys.map(key => ({
+          campo: key,
+          valor: dataForDisplay[key]
+        })));
+      } else {
+        console.log('❌ CAMBIOS - No se encontró padrón en ningún campo');
+      }
+    }
+
+    // Combinar todos los datos
+    const combinedExtractedData = {
+      ...dataForDisplay,
+      ...displayData
+    };
+
+    console.log('✅ CAMBIOS - Datos extraídos unificados:', {
+      polizaNumber: combinedExtractedData.polizaNumber,
+      vehiculoPatente: combinedExtractedData.vehiculoPatente,
+      vehiculoPadron: combinedExtractedData.vehiculoPadron, // Incluir padrón en el log
+      vehiculoAno: combinedExtractedData.vehiculoAno,
+      vehiculoMarca: combinedExtractedData.vehiculoMarca
+    });
+
+    let companiaDetectada = state.context.companiaInfo;
+    let companiaIdDetectada = state.context.companiaId;
+
+    if (result.preSelection?.compania && result.preSelection.compania.id) {
+      companiaIdDetectada = result.preSelection.compania.id;
+      companiaDetectada = {
+        id: result.preSelection.compania.id,
+        nombre: result.preSelection.compania.displayName || result.preSelection.compania.comnom || 'Detectada',
+        codigo: result.preSelection.compania.shortCode || result.preSelection.compania.comalias || 'DET'
+      };
+    }
+
+    updateState({
+      context: {
+        ...state.context,
+        companiaId: companiaIdDetectada,
+        companiaInfo: companiaDetectada,
+      },
+      file: {
+        selected: file,
+        uploaded: true,
+        scanId: scanResult.scanId,
+        uploadProgress: 100,
+      },
+      scan: {
+        status: 'completed' as const,
+        extractedData: combinedExtractedData, // Datos unificados que incluyen padrón
+        normalizedData: normalizedData,
+        mappedData: mappedData,
+        completionPercentage: polizaMapping.metrics?.completionPercentage || 85,
+        confidence: polizaMapping.metrics?.confidence || 85,
+        requiresAttention: polizaMapping.issues?.map((issue: any) => ({
+          fieldName: issue.fieldName || 'unknown',
+          reason: issue.description || issue.issueType || 'Requiere verificación',
+          severity: issue.severity?.toLowerCase() || 'warning'
+        })) || [],
+        fileName: file.name,
+        scanId: scanResult.scanId,
+        errorMessage: undefined,
+      },
+      isLoading: false,
+    });
+
+    toast.success(`Documento procesado exitosamente (${polizaMapping.metrics?.completionPercentage || 85}% confianza)`);
+    return true;
+
+  } catch (error: any) { 
+    updateState({
+      file: {
+        selected: file,
+        uploaded: false,
+        scanId: null,
+        uploadProgress: 0,
+      },
+      scan: {
+        ...state.scan,
+        status: 'error',
+        errorMessage: error.message || 'Error procesando documento'
+      },
+      isLoading: false,
+    });
+
+    toast.error('Error procesando documento: ' + (error.message || 'Error desconocido'));
+    return false;
+  }
+}, [state.context, state.scan, updateState]);
 
   const setClienteData = useCallback((cliente: any) => {
     setState(prev => ({

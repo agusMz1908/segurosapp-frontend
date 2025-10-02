@@ -130,6 +130,247 @@ const initialState: RenovacionState = {
   processResult: undefined,
 };
 
+// 🔧 FUNCIONES DE MAPEO DE DATOS (iguales que el fix de Cambios)
+const cleanText = (str: string) => {
+  if (!str) return "";
+  return str.replace(/\n/g, ' ').replace(/\r/g, ' ').trim();
+};
+
+const cleanVehicleField = (str: string) => {
+  if (!str) return "";
+  
+  let cleaned = str.replace(/\n/g, ' ').replace(/\r/g, ' ').trim();
+  
+  const prefixes = [
+    'MARCA: ', 'MODELO: ', 'MOTOR: ', 'CHASIS: ', 'AÑO: ',
+    'MARCA ', 'MODELO ', 'MOTOR ', 'CHASIS ', 'AÑO ',
+    'Marca: ', 'Modelo: ', 'Motor: ', 'Chasis: ', 'Año: ',
+    'Marca ', 'Modelo ', 'Motor ', 'Chasis ', 'Año '
+  ];
+  
+  for (const prefix of prefixes) {
+    if (cleaned.toUpperCase().startsWith(prefix.toUpperCase())) {
+      cleaned = cleaned.substring(prefix.length).trim();
+      break;
+    }
+  }
+  
+  cleaned = cleaned.replace(/^:\s*/, '').trim();
+  return cleaned;
+};
+
+const cleanPatenteField = (str: string) => {
+  if (!str) return "";
+  
+  let cleaned = str.replace(/\n/g, ' ').replace(/\r/g, ' ').trim();
+
+  const patentesPrefixes = [
+    'MATRÍCULA: ', 'MATRÍCULA ', 'PATENTE: ', 'PATENTE ',
+    'Matrícula: ', 'Matrícula ', 'Patente: ', 'Patente '
+  ];
+  
+  for (const prefix of patentesPrefixes) {
+    if (cleaned.toUpperCase().startsWith(prefix.toUpperCase())) {
+      cleaned = cleaned.substring(prefix.length).trim();
+      break;
+    }
+  }
+  
+  return cleaned.toUpperCase();
+};
+
+const extractPolizaNumber = (str: string) => {
+  if (!str) return "";
+  
+  const cleanStr = cleanText(str);
+  const cleanedNumber = cleanStr
+    .replace(/^(Póliza|Numero|Number)[\s:]*\s*/i, '')
+    .replace(/^(nro\.\s*|nro\s*|número\s*|numero\s*)/i, '')
+    .replace(/^:\s*/, '')
+    .replace(/^\s*:\s*/, '')
+    .trim();
+  
+  return cleanedNumber || cleanStr;
+};
+
+const extractYear = (str: string) => {
+  if (!str) return "";
+  
+  const cleanStr = cleanText(str);
+  let cleaned = cleanStr.replace(/^(AÑO|Año|YEAR|Year)[\s:]*\s*/i, '').trim();
+  
+  const yearMatch = cleaned.match(/\b(19[5-9]\d|20[0-2]\d)\b/);
+  if (yearMatch) {
+    return yearMatch[0];
+  }
+  
+  if (/^\d{4}$/.test(cleaned)) {
+    const year = parseInt(cleaned);
+    if (year >= 1950 && year <= new Date().getFullYear() + 1) {
+      return cleaned;
+    }
+  }
+  
+  return "";
+};
+
+// 🔧 FUNCIÓN DE MAPEO UNIFICADA (igual que Cambios después del fix)
+const mapBackendDataToFrontend = (backendData: any, extractedData: any) => {
+  console.log('🔄 RENOVACIONES - Usando función de mapeo unificada');
+  
+  const findFieldValue = (keys: string[]) => {
+    for (const key of keys) {
+      if (extractedData[key] && extractedData[key].toString().trim()) {
+        return extractedData[key];
+      }
+    }
+    return null;
+  };
+
+  const result = {
+    // 📋 Información de la póliza  
+    polizaNumber: extractPolizaNumber(
+      findFieldValue([
+        "poliza.numero", "poliza.numero_poliza", "poliza_numero", "numeroPoliza"
+      ]) || ""
+    ) || backendData.numeroPoliza || "",
+
+    vigenciaDesde: (() => {
+      if (backendData.fechaDesde && backendData.fechaDesde !== "2025-09-17") {
+        return backendData.fechaDesde;
+      }
+      return cleanText(findFieldValue([
+        "poliza.vigencia.desde", "poliza.fecha-desde", "poliza.fecha_desde"
+      ]) || "") || "";
+    })(),
+    
+    vigenciaHasta: (() => {
+      if (backendData.fechaHasta && backendData.fechaHasta !== "2025-09-17") {
+        return backendData.fechaHasta;
+      }
+      return cleanText(findFieldValue([
+        "poliza.vigencia.hasta", "poliza.fecha-hasta", "poliza.fecha_hasta"
+      ]) || "") || "";
+    })(),
+
+    // 💰 Información financiera
+    prima: backendData.premio?.toString() || 
+           cleanText(findFieldValue([
+             "poliza.prima_comercial", "costo.costo", "premio.premio", "prima"
+           ]) || "") || "",
+    
+    premioTotal: backendData.premioTotal?.toString() || 
+                 cleanText(findFieldValue([
+                   "financiero.premio_total", "costo.premio_total", "premio.total"
+                 ]) || "") || "",
+
+    cantidadCuotas: backendData.cantidadCuotas?.toString() || 
+                    cleanText(findFieldValue([
+                      "pago.cantidad_cuotas", "cantidad_cuotas"
+                    ]) || "") || "",
+
+    valorPorCuota: backendData.valorCuota?.toString() || 
+                   cleanText(findFieldValue([
+                     "pago.cuota_monto[1]", "pago.primera_cuota", "valor_cuota"
+                   ]) || "") || "",
+
+    // 🚗 Información del vehículo
+    vehiculoMarca: (() => {
+      if (backendData.vehiculoMarca) {
+        return cleanVehicleField(backendData.vehiculoMarca);
+      }
+      
+      const rawValue = findFieldValue([
+        "vehiculo.marca", "vehiculoMarca", "vehiculo_marca"
+      ]);
+      
+      return rawValue ? cleanVehicleField(rawValue) : "";
+    })(),
+
+    vehiculoModelo: (() => {
+      if (backendData.vehiculoModelo) {
+        return cleanVehicleField(backendData.vehiculoModelo);
+      }
+      
+      const rawValue = findFieldValue([
+        "vehiculo.modelo", "vehiculoModelo", "vehiculo_modelo"
+      ]);
+      
+      return rawValue ? cleanVehicleField(rawValue) : "";
+    })(),
+
+    vehiculoAno: (() => {
+      if (backendData.vehiculoAño?.toString()) {
+        return backendData.vehiculoAño.toString();
+      }
+      
+      const rawValue = findFieldValue([
+        "vehiculo.anio", "vehiculo.año", "vehiculoAno", "vehiculo_anio"
+      ]);
+      
+      return rawValue ? extractYear(rawValue) : "";
+    })(),
+
+    vehiculoChasis: (() => {
+      if (backendData.vehiculoChasis) return backendData.vehiculoChasis;
+      
+      const rawValue = findFieldValue([
+        "vehiculo.chasis", "vehiculoChasis", "vehiculo_chasis"
+      ]);
+      
+      return rawValue ? cleanVehicleField(rawValue) : "";
+    })(),
+
+    vehiculoMotor: (() => {
+      if (backendData.vehiculoMotor) return backendData.vehiculoMotor;
+      
+      const rawValue = findFieldValue([
+        "vehiculo.motor", "vehiculoMotor", "vehiculo_motor"
+      ]);
+      
+      return rawValue ? cleanVehicleField(rawValue) : "";
+    })(),
+
+    vehiculoPatente: (() => {
+      if (backendData.vehiculoPatente) return backendData.vehiculoPatente;
+
+      const rawValue = findFieldValue([
+        "vehiculo.matricula", "vehiculoPatente", "vehiculo_matricula", "matricula", "patente"
+      ]);
+
+      return rawValue ? cleanPatenteField(rawValue) : "";
+    })(),
+
+    // 👤 Información del asegurado
+    aseguradoNombre: backendData.aseguradoNombre || 
+                     cleanText(findFieldValue([
+                       "asegurado.nombre"
+                     ]) || "") || "",
+    
+    aseguradoDocumento: backendData.aseguradoDocumento || 
+                        cleanText(findFieldValue([
+                          "conductor.cedula", "asegurado.documento", "asegurado.ci"
+                        ]) || "") || "",
+    
+    modalidad: cleanText(findFieldValue([
+      "poliza.modalidad"
+    ]) || "") || "",
+    
+    tipoMovimiento: cleanText(findFieldValue([
+      "poliza.tipo_de_movimiento", "poliza.tipo_movimiento"
+    ]) || "") || ""
+  };
+
+  console.log('✅ RENOVACIONES - mapBackendDataToFrontend resultado:', {
+    polizaNumber: result.polizaNumber,
+    vehiculoPatente: result.vehiculoPatente,
+    vehiculoAno: result.vehiculoAno,
+    vehiculoMarca: result.vehiculoMarca
+  });
+  
+  return result;
+};
+
 export function useRenovaciones() {
   const [state, setState] = useState<RenovacionState>(initialState);
 
@@ -155,130 +396,130 @@ export function useRenovaciones() {
     });
   }, [updateState]);
 
-const loadPolizasByCliente = useCallback(async (clienteId: number) => {
-  try {
-    const token = getAuthToken();
-    if (!token) {
-      throw new Error('No se encontró token de autenticación');
-    }
-
-    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://localhost:7202';
-    const [polizasResponse, companiasResponse] = await Promise.all([
-      fetch(`${API_URL}/api/MasterData/clientes/${clienteId}/polizas?soloActivos=true`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      }),
-      fetch(`${API_URL}/api/MasterData/companias`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      })
-    ]);
-
-    if (!polizasResponse.ok || !companiasResponse.ok) {
-      if (polizasResponse.status === 401 || companiasResponse.status === 401) {
-        handle401Error();
-        throw new Error('Error de autenticación');
+  const loadPolizasByCliente = useCallback(async (clienteId: number) => {
+    try {
+      const token = getAuthToken();
+      if (!token) {
+        throw new Error('No se encontró token de autenticación');
       }
-      throw new Error('Error al cargar datos');
-    }
 
-    const polizasData = await polizasResponse.json();
-    const companiasData = await companiasResponse.json();
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://localhost:7202';
+      const [polizasResponse, companiasResponse] = await Promise.all([
+        fetch(`${API_URL}/api/MasterData/clientes/${clienteId}/polizas?soloActivos=true`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        }),
+        fetch(`${API_URL}/api/MasterData/companias`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        })
+      ]);
 
-    let companiasList: any[] = [];
-
-    if (Array.isArray(companiasData)) {
-      companiasList = companiasData;
-    } else if (companiasData && companiasData.data && Array.isArray(companiasData.data)) {
-      companiasList = companiasData.data;
-    } else if (companiasData && companiasData.companias && Array.isArray(companiasData.companias)) {
-      companiasList = companiasData.companias;
-    } else {
-      console.warn('⚠️ Formato de compañías inesperado, usando array vacío');
-      companiasList = [];
-    }
-
-    const mapeoCompanias: Record<number, string> = {};
-    companiasList.forEach((compania: any) => {
-      mapeoCompanias[compania.id] = compania.comnom || compania.displayName || `Compañía ${compania.id}`;
-    });
-
-    let polizasList: any[] = [];
-    if (Array.isArray(polizasData)) {
-      polizasList = polizasData;
-    } else if (polizasData && polizasData.data && Array.isArray(polizasData.data)) {
-      polizasList = polizasData.data;
-    } else if (polizasData && polizasData.polizas && Array.isArray(polizasData.polizas)) {
-      polizasList = polizasData.polizas;
-    } else {
-      throw new Error('El API no devolvió un array de pólizas válido');
-    }
-
-    const now = new Date();
-    const polizasRenovables = polizasList.filter((poliza: any) => {
-      if (poliza.seccod !== 4) {
-        console.log(`❌ Rechazada - Sección ${poliza.seccod} (no automotor)`);
-        return false;
-      }
-      
-      let diasHastaVencimiento = 0;
-      try {
-        const fechaVencimiento = new Date(poliza.confchhas);
-        diasHastaVencimiento = Math.ceil((fechaVencimiento.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-      } catch (error) {
-        return false;
-      }
-      
-      const enRangoRenovacion = diasHastaVencimiento >= -30 && diasHastaVencimiento <= 60;
-      
-      if (enRangoRenovacion) {
-        if (!poliza.comnom || poliza.comnom.trim() === '') {
-          poliza.comnom = mapeoCompanias[poliza.comcod] || `Compañía ${poliza.comcod}`;
+      if (!polizasResponse.ok || !companiasResponse.ok) {
+        if (polizasResponse.status === 401 || companiasResponse.status === 401) {
+          handle401Error();
+          throw new Error('Error de autenticación');
         }
+        throw new Error('Error al cargar datos');
       }
-      
-      return enRangoRenovacion;
-    });
 
-    updateState(prevState => ({
-      ...prevState,
-      cliente: {
-        ...prevState.cliente,
-        selectedId: clienteId,
-        polizas: polizasRenovables
+      const polizasData = await polizasResponse.json();
+      const companiasData = await companiasResponse.json();
+
+      let companiasList: any[] = [];
+
+      if (Array.isArray(companiasData)) {
+        companiasList = companiasData;
+      } else if (companiasData && companiasData.data && Array.isArray(companiasData.data)) {
+        companiasList = companiasData.data;
+      } else if (companiasData && companiasData.companias && Array.isArray(companiasData.companias)) {
+        companiasList = companiasData.companias;
+      } else {
+        console.warn('⚠️ Formato de compañías inesperado, usando array vacío');
+        companiasList = [];
       }
-    }));
 
-    if (polizasRenovables.length === 0) {
-      toast('Este cliente no tiene pólizas de automotor renovables en este momento', {
-        icon: 'ℹ️',
-        duration: 4000,
+      const mapeoCompanias: Record<number, string> = {};
+      companiasList.forEach((compania: any) => {
+        mapeoCompanias[compania.id] = compania.comnom || compania.displayName || `Compañía ${compania.id}`;
       });
-    } else {
-      toast.success(`Se encontraron ${polizasRenovables.length} pólizas renovables`);
-    }
 
-    return polizasRenovables;
-  } catch (error: any) {
-    toast.error('Error cargando pólizas del cliente: ' + (error.message || 'Error desconocido'));
-    updateState(prevState => ({
-      ...prevState,
-      cliente: {
-        ...prevState.cliente,
-        selectedId: clienteId,
-        polizas: []
+      let polizasList: any[] = [];
+      if (Array.isArray(polizasData)) {
+        polizasList = polizasData;
+      } else if (polizasData && polizasData.data && Array.isArray(polizasData.data)) {
+        polizasList = polizasData.data;
+      } else if (polizasData && polizasData.polizas && Array.isArray(polizasData.polizas)) {
+        polizasList = polizasData.polizas;
+      } else {
+        throw new Error('El API no devolvió un array de pólizas válido');
       }
-    }));
-    
-    return [];
-  }
-}, [updateState]);
+
+      const now = new Date();
+      const polizasRenovables = polizasList.filter((poliza: any) => {
+        if (poliza.seccod !== 4) {
+          console.log(`❌ Rechazada - Sección ${poliza.seccod} (no automotor)`);
+          return false;
+        }
+        
+        let diasHastaVencimiento = 0;
+        try {
+          const fechaVencimiento = new Date(poliza.confchhas);
+          diasHastaVencimiento = Math.ceil((fechaVencimiento.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+        } catch (error) {
+          return false;
+        }
+        
+        const enRangoRenovacion = diasHastaVencimiento >= -30 && diasHastaVencimiento <= 60;
+        
+        if (enRangoRenovacion) {
+          if (!poliza.comnom || poliza.comnom.trim() === '') {
+            poliza.comnom = mapeoCompanias[poliza.comcod] || `Compañía ${poliza.comcod}`;
+          }
+        }
+        
+        return enRangoRenovacion;
+      });
+
+      updateState(prevState => ({
+        ...prevState,
+        cliente: {
+          ...prevState.cliente,
+          selectedId: clienteId,
+          polizas: polizasRenovables
+        }
+      }));
+
+      if (polizasRenovables.length === 0) {
+        toast('Este cliente no tiene pólizas de automotor renovables en este momento', {
+          icon: 'ℹ️',
+          duration: 4000,
+        });
+      } else {
+        toast.success(`Se encontraron ${polizasRenovables.length} pólizas renovables`);
+      }
+
+      return polizasRenovables;
+    } catch (error: any) {
+      toast.error('Error cargando pólizas del cliente: ' + (error.message || 'Error desconocido'));
+      updateState(prevState => ({
+        ...prevState,
+        cliente: {
+          ...prevState.cliente,
+          selectedId: clienteId,
+          polizas: []
+        }
+      }));
+      
+      return [];
+    }
+  }, [updateState]);
 
   const setClienteData = useCallback((cliente: Cliente) => {
     updateState(prevState => ({
@@ -350,6 +591,7 @@ const loadPolizasByCliente = useCallback(async (clienteId: number) => {
     }
   }, []);
 
+  // 🔧 FUNCIÓN ACTUALIZADA: Usar mapeo unificado (igual que Cambios)
   const uploadDocumentForRenovacion = useCallback(async (file: File): Promise<boolean> => {
     const currentState = state;
     
@@ -436,6 +678,31 @@ const loadPolizasByCliente = useCallback(async (clienteId: number) => {
       const normalizedData = polizaMapping.normalizedData || {};
       const mappedData = polizaMapping.mappedData || {};
 
+      // 🔧 CAMBIO PRINCIPAL: Usar la misma lógica de mapeo que Cambios (después del fix)
+      const dataForDisplay = Object.keys(normalizedData).length > 0
+        ? normalizedData 
+        : originalExtractedData;
+
+      console.log('🔄 RENOVACIONES - Usando función de mapeo unificada');
+      
+      const displayData = mapBackendDataToFrontend(
+        mappedData, 
+        dataForDisplay || {}
+      );
+
+      console.log('✅ RENOVACIONES - Datos mapeados:', {
+        polizaNumber: displayData.polizaNumber,
+        vehiculoPatente: displayData.vehiculoPatente,
+        vehiculoAno: displayData.vehiculoAno,
+        vehiculoMarca: displayData.vehiculoMarca
+      });
+
+      // ✅ USAR EL MISMO MÉTODO QUE CAMBIOS DESPUÉS DEL FIX
+      const combinedExtractedData = {
+        ...dataForDisplay,
+        ...displayData
+      };
+
       let companiaDetectada = currentState.context.companiaInfo;
       let companiaIdDetectada = currentState.context.companiaId;
 
@@ -463,7 +730,7 @@ const loadPolizasByCliente = useCallback(async (clienteId: number) => {
         },
         scan: {
           status: 'completed' as const,
-          extractedData: originalExtractedData,
+          extractedData: combinedExtractedData, // ✅ USAR DATOS UNIFICADOS
           normalizedData: normalizedData,
           mappedData: mappedData,
           completionPercentage: polizaMapping.metrics?.completionPercentage || 85,

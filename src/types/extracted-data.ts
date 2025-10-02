@@ -12,4 +12,5 @@ interface ExtractedData {
   vehiculoChasis?: string;
   vehiculoPatente?: string;
   vehiculoMotor?: string;
+  vehiculoPadron?: string;
 }
