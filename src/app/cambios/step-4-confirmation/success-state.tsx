@@ -25,6 +25,26 @@ export function SuccessState({
   onStartNewCambio, 
   onGoToDashboard 
 }: SuccessStateProps) {
+  // 🆕 Función para formatear fechas de vencimiento
+  const formatVencimientoDate = (dateString: string) => {
+    if (!dateString) return 'N/A';
+    try {
+      const date = new Date(dateString);
+      if (!isNaN(date.getTime())) {
+        // Formatear como dd/MM/yyyy para vencimientos
+        return date.toLocaleDateString('es-UY', {
+          day: '2-digit',
+          month: '2-digit',
+          year: 'numeric'
+        });
+      }
+      return dateString;
+    } catch {
+      return dateString;
+    }
+  };
+
+  // Función para formatear fechas con hora (para procesamiento)
   const formatDate = (dateString: string) => {
     if (!dateString) return 'N/A';
     try {
@@ -87,7 +107,8 @@ export function SuccessState({
                 <div>
                   <span className="font-medium">Vencimiento:</span>{' '}
                   <span className="text-gray-600 dark:text-gray-400">
-                    {context.polizaOriginal?.vencimiento || 'N/A'}
+                    {/* 🆕 Usar formatVencimientoDate para mejor legibilidad */}
+                    {formatVencimientoDate(context.polizaOriginal?.vencimiento)}
                   </span>
                 </div>
               </div>

@@ -12,7 +12,6 @@ export function ExtractedDataForm({ hookInstance }: ExtractedDataFormProps) {
   const [editedData, setEditedData] = useState<any>({});
   const [isInitialized, setIsInitialized] = useState(false);
 
-  // Usar extractedData directamente
   const dataSource = state.scan.extractedData || {};
 
   useEffect(() => {
@@ -28,7 +27,6 @@ export function ExtractedDataForm({ hookInstance }: ExtractedDataFormProps) {
       [fieldName]: value
     }));
     
-    // 🔧 FIX CRÍTICO: Usar updateExtractedData en lugar de updateState
     if (updateExtractedData) {
       updateExtractedData({ [fieldName]: value });
     }
@@ -40,18 +38,14 @@ export function ExtractedDataForm({ hookInstance }: ExtractedDataFormProps) {
     return hasAttention ? 'warning' : 'success';
   };
 
-  // 🔧 FIX BSE/SURA: Funciones mejoradas de manejo de números
   const formatCurrency = (value: string | number) => {
     if (!value) return '';
     
     let stringValue = typeof value === 'string' ? value : value.toString();
-    
-    // 🔧 FIX BSE/SURA: Manejar formato uruguayo
+
     if (stringValue.includes('.') && stringValue.includes(',')) {
-      // Formato uruguayo: 10.683,00 → 10683.00
       stringValue = stringValue.replace(/\./g, '').replace(',', '.');
     } else if (stringValue.includes(',') && !stringValue.includes('.')) {
-      // Solo coma: 10683,00 → 10683.00
       const parts = stringValue.split(',');
       if (parts.length === 2 && parts[1].length <= 2) {
         stringValue = stringValue.replace(',', '.');
@@ -73,91 +67,103 @@ export function ExtractedDataForm({ hookInstance }: ExtractedDataFormProps) {
     if (!value) return '';
     
     let stringValue = typeof value === 'string' ? value : value.toString();
-    
-    // 🔧 FIX BSE/SURA: Manejar formato uruguayo con puntos y comas
-    console.log('🔍 CAMBIOS BSE/SURA - Procesando número:', stringValue);
-    
-    // Si tiene tanto puntos como comas (formato uruguayo: 10.683,00)
     if (stringValue.includes('.') && stringValue.includes(',')) {
-      // Remover puntos (separadores de miles) y cambiar coma por punto decimal
       stringValue = stringValue.replace(/\./g, '').replace(',', '.');
-      console.log('🔧 CAMBIOS BSE/SURA - Formato uruguayo detectado, convertido a:', stringValue);
     }
-    // Si solo tiene coma (podría ser decimal europeo: 10683,00)
     else if (stringValue.includes(',') && !stringValue.includes('.')) {
-      // Verificar si es separador decimal (máximo 2 dígitos después de la coma)
       const parts = stringValue.split(',');
       if (parts.length === 2 && parts[1].length <= 2) {
         stringValue = stringValue.replace(',', '.');
-        console.log('🔧 CAMBIOS BSE/SURA - Coma decimal detectada, convertida a:', stringValue);
       }
     }
-    
-    // Limpiar caracteres no numéricos excepto punto decimal
+
     const numValue = parseFloat(stringValue.replace(/[^\d.-]/g, ''));
     
     if (isNaN(numValue)) {
-      console.log('❌ CAMBIOS BSE/SURA - No se pudo convertir a número:', stringValue);
       return '';
     }
-    
-    // Mantener precisión decimal completa (no redondear a centavos)
+
     const result = numValue.toString();
-    console.log('✅ CAMBIOS BSE/SURA - Número final:', result);
     return result;
   };
 
+  // 🆕 Función mejorada para encontrar y formatear fechas
   const findDateField = (fieldType: string) => {
-  let possibleFields: string[] = [];
-  
-  switch(fieldType) {
-    case 'vigenciaDesde':
-      possibleFields = ['vigenciaDesde', 'fechaDesde', 'FechaDesde', 'polizaVigenciaDesde', 'poliza.vigencia_desde', 'fecha_desde'];
-      break;
-    case 'vigenciaHasta':
-      possibleFields = ['vigenciaHasta', 'fechaHasta', 'FechaHasta', 'polizaVigenciaHasta', 'poliza.vigencia_hasta', 'fecha_hasta'];
-      break;
-  }
-  
-  for (const field of possibleFields) {
-    if (editedData[field] && editedData[field].toString().trim()) {
-      console.log(`🎯 CAMBIOS DATE - ${fieldType} encontrado en campo '${field}':`, editedData[field]);
-      return editedData[field].toString();
+    let possibleFields: string[] = [];
+    
+    switch(fieldType) {
+      case 'vigenciaDesde':
+        possibleFields = [
+          'vigenciaDesde', 'fechaDesde', 'FechaDesde', 
+          'polizaVigenciaDesde', 'poliza.vigencia_desde', 'fecha_desde',
+          'poliza_vigencia_desde', 'vigencia_desde'
+        ];
+        break;
+      case 'vigenciaHasta':
+        possibleFields = [
+          'vigenciaHasta', 'fechaHasta', 'FechaHasta', 
+          'polizaVigenciaHasta', 'poliza.vigencia_hasta', 'fecha_hasta',
+          'poliza_vigencia_hasta', 'vigencia_hasta'
+        ];
+        break;
     }
-  }
-  
-  return '';
-};
+    
+    for (const field of possibleFields) {
+      const value = editedData[field];
+      if (value && value.toString().trim()) {
+        const dateValue = value.toString().trim();
+        
+        // Si ya está en formato YYYY-MM-DD, devolverlo tal como está
+        if (/^\d{4}-\d{2}-\d{2}$/.test(dateValue)) {
+          return dateValue;
+        }
+        
+        // Intentar parsear y formatear la fecha
+        try {
+          const date = new Date(dateValue);
+          if (!isNaN(date.getTime())) {
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+          }
+        } catch (error) {
+          console.warn(`Error parseando fecha ${field}:`, error);
+        }
+      }
+    }
+    
+    return '';
+  };
 
-const findPolizaNumber = () => {
-  const possibleFields = [
-    'polizaNumber',
-    'polizaNumero', 
-    'numeroPoliza',
-    'NumeroPoliza',
-    'poliza_numero'
-  ];
-  
-  for (const field of possibleFields) {
-    if (editedData[field] && editedData[field].toString().trim()) {
-      let polizaNumber = editedData[field].toString().trim();
-      
-      // Quitar prefijos y caracteres no deseados
-      polizaNumber = polizaNumber
-        .replace(/^(nro\.\s*|nro\s*|número\s*|numero\s*|póliza\s*nro\.\s*)/i, '')
-        .replace(/^:\s*/, '')
-        .replace(/^\s*:\s*/, '')
-        .trim();
-      
-      return polizaNumber;
+  const findPolizaNumber = () => {
+    const possibleFields = [
+      'polizaNumber',
+      'polizaNumero', 
+      'numeroPoliza',
+      'NumeroPoliza',
+      'poliza_numero',
+      'poliza.numero'
+    ];
+    
+    for (const field of possibleFields) {
+      if (editedData[field] && editedData[field].toString().trim()) {
+        let polizaNumber = editedData[field].toString().trim();
+
+        polizaNumber = polizaNumber
+          .replace(/^(nro\.\s*|nro\s*|número\s*|numero\s*|póliza\s*nro\.\s*)/i, '')
+          .replace(/^:\s*/, '')
+          .replace(/^\s*:\s*/, '')
+          .trim();
+        
+        return polizaNumber;
+      }
     }
-  }
-  
-  return '';
-};
+    
+    return '';
+  };
 
   const findVehicleField = (fieldName: string) => {
-    // Mapeo específico para padrón
     if (fieldName === 'vehiculoPadron') {
       const padronFields = [
         'vehiculoPadron',
@@ -170,18 +176,14 @@ const findPolizaNumber = () => {
       for (const field of padronFields) {
         if (editedData[field] && editedData[field].toString().trim()) {
           let padronValue = editedData[field].toString().trim();
-          // Limpiar prefijos específicos del padrón
           padronValue = padronValue.replace(/^(PADRÓN\.\s*|PADRON\.\s*|PADRÓN\s*|PADRON\s*)/i, '').trim();
-          console.log(`🎯 CAMBIOS FIX - Padrón encontrado en campo '${field}':`, editedData[field], '→ limpiado:', padronValue);
           return padronValue;
         }
       }
-      
-      console.log('❌ CAMBIOS FIX - No se encontró padrón en ningún campo');
+
       return '';
     }
     
-    // Lógica original para otros campos de vehículo
     const possibleFields = [
       fieldName,
       `vehiculo${fieldName.charAt(0).toUpperCase()}${fieldName.slice(1)}`,
@@ -192,7 +194,6 @@ const findPolizaNumber = () => {
 
     for (const field of possibleFields) {
       if (editedData[field] && editedData[field].toString().trim()) {
-        console.log(`🎯 CAMBIOS FIX - ${fieldName} encontrado en campo '${field}':`, editedData[field]);
         return editedData[field].toString();
       }
     }
@@ -211,34 +212,32 @@ const findPolizaNumber = () => {
     );
   }
 
-const findFinancialField = (fieldType: string) => {
-  let possibleFields: string[] = [];
-  
-  switch(fieldType) {
-    case 'prima':
-      possibleFields = ['prima', 'premio', 'Premio', 'polizaPremio', 'financiero.premio_total', 'costo.premio_total', 'poliza.premio'];
-      break;
-    case 'premioTotal':
-      possibleFields = ['premioTotal', 'montoTotal', 'premio', 'Premio', 'polizaPremio', 'financiero.premio_total', 'poliza.premio'];
-      break;
-    case 'valorPorCuota':
-      possibleFields = ['valorPorCuota', 'valorCuota', 'pago.cuota_monto[1]', 'pago.primera_cuota', 'valor_cuota'];
-      break;
-    case 'cantidadCuotas':
-      possibleFields = ['cantidadCuotas', 'CantidadCuotas', 'cantidad_cuotas', 'pago.cantidad_cuotas'];
-      break;
-  }
-  
-  for (const field of possibleFields) {
-    if (editedData[field] && editedData[field].toString().trim() && editedData[field] !== '0') {
-      console.log(`🎯 CAMBIOS FINANCIAL - ${fieldType} encontrado en campo '${field}':`, editedData[field]);
-      return editedData[field].toString();
+  const findFinancialField = (fieldType: string) => {
+    let possibleFields: string[] = [];
+    
+    switch(fieldType) {
+      case 'prima':
+        possibleFields = ['prima', 'premio', 'Premio', 'polizaPremio', 'financiero.premio_total', 'costo.premio_total', 'poliza.premio'];
+        break;
+      case 'premioTotal':
+        possibleFields = ['premioTotal', 'montoTotal', 'premio', 'Premio', 'polizaPremio', 'financiero.premio_total', 'poliza.premio'];
+        break;
+      case 'valorPorCuota':
+        possibleFields = ['valorPorCuota', 'valorCuota', 'pago.cuota_monto[1]', 'pago.primera_cuota', 'valor_cuota'];
+        break;
+      case 'cantidadCuotas':
+        possibleFields = ['cantidadCuotas', 'CantidadCuotas', 'cantidad_cuotas', 'pago.cantidad_cuotas'];
+        break;
     }
-  }
-  
-  console.log(`❌ CAMBIOS FINANCIAL - No se encontró ${fieldType} en ningún campo`);
-  return '';
-};
+    
+    for (const field of possibleFields) {
+      if (editedData[field] && editedData[field].toString().trim() && editedData[field] !== '0') {
+        return editedData[field].toString();
+      }
+    }
+
+    return '';
+  };
 
   return (
     <div className="space-y-6">
@@ -473,25 +472,6 @@ const findFinancialField = (fieldType: string) => {
             />
           </div>
         </div>
-      </div>
-
-      {/* 🔧 PANEL DE DEBUG (remover después) */}
-      <div className="p-4 bg-gray-100 dark:bg-gray-800 rounded text-xs">
-        <strong>Debug Info Cambios:</strong>
-        <pre>{JSON.stringify({
-          extractedDataKeys: Object.keys(editedData).slice(0, 10),
-          polizaNumbers: {
-            polizaNumber: editedData.polizaNumber,
-            polizaNumero: editedData.polizaNumero,
-            numeroPoliza: editedData.numeroPoliza,
-            NumeroPoliza: editedData.NumeroPoliza
-          },
-          vehiclePadron: {
-            vehiculoPadron: editedData.vehiculoPadron,
-            'vehiculo.padron': editedData['vehiculo.padron'],
-            padron: editedData.padron
-          }
-        }, null, 2)}</pre>
       </div>
     </div>
   );

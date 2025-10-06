@@ -30,6 +30,7 @@ import {
   Sun,
   ChevronLeft,
   ChevronRight,
+  DollarSign
 } from "lucide-react"
 import { useTheme } from "next-themes"
 
@@ -40,8 +41,7 @@ const navigation = [
   { name: "Cambios", href: "/cambios", icon: Edit },
   { name: "Pólizas", href: "/polizas", icon: FileText },
   { name: "Clientes", href: "/clientes", icon: Users },
-  { name: "Métricas", href: "/metricas", icon: BarChart3 },
-  { name: "Configuración", href: "/config", icon: Settings },
+  { name: "Facturacion", href: "/facturacion", icon: DollarSign}
 ]
 
 export function Sidebar() {
@@ -144,14 +144,6 @@ export function Sidebar() {
             {!isCollapsed && <span>Cambiar tema</span>}
           </Button>
 
-          {/* Información del usuario */}
-          {!isCollapsed && (
-            <div className="px-3 py-2 text-xs text-sidebar-foreground/70">
-              <div className="font-medium">{user?.username || 'Usuario'}</div>
-              <div className="text-sidebar-foreground/50">{user?.email || 'usuario@segurosapp.com'}</div>
-            </div>
-          )}
-
           {/* Menú de usuario */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -183,19 +175,12 @@ export function Sidebar() {
                   <p className="text-sm font-medium leading-none">
                     {user?.username || 'Usuario'}
                   </p>
-                  <p className="text-xs leading-none text-muted-foreground">
-                    {user?.email || 'usuario@segurosapp.com'}
-                  </p>
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuItem>
                 <User className="mr-2 h-4 w-4" />
                 <span>Perfil</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <Settings className="mr-2 h-4 w-4" />
-                <span>Configuración</span>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem 

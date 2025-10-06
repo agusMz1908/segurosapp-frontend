@@ -158,18 +158,23 @@ export function ClientePolizasCambiosForm({ hookInstance }: ClientePolizasCambio
             <CardTitle className="flex items-center gap-2">
               <Car className="h-5 w-5" />
               Pólizas de Automotor Vigentes
-              {state.isLoading && <Loader2 className="h-4 w-4 animate-spin text-blue-600" />}
+              {/* 🆕 Usar el estado específico de carga de pólizas */}
+              {state.isLoadingPolizas && <Loader2 className="h-4 w-4 animate-spin text-blue-600" />}
             </CardTitle>
             <CardDescription>
               Solo se muestran pólizas de automotor vigentes disponibles para cambios
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {state.isLoading ? (
+            {/* 🆕 Usar el estado específico de carga de pólizas */}
+            {state.isLoadingPolizas ? (
               <div className="flex items-center justify-center py-12">
                 <div className="flex flex-col items-center gap-3">
                   <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
                   <span className="text-gray-600 dark:text-gray-400">Cargando pólizas vigentes...</span>
+                  <div className="text-xs text-gray-500 dark:text-gray-500">
+                    Filtrando pólizas de automotor disponibles para cambios
+                  </div>
                 </div>
               </div>
             ) : state.cliente.polizas.length === 0 ? (

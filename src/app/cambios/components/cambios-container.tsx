@@ -159,7 +159,7 @@ export function CambiosContainer() {
               <Button 
                 variant="outline" 
                 onClick={prevStep}
-                disabled={state.currentStep === 1 || state.isLoading}
+                disabled={state.currentStep === 1 || state.isLoading || state.isProcessingCambio}
               >
                 <ArrowLeft className="mr-2 h-4 w-4" />
                 Anterior
@@ -167,12 +167,13 @@ export function CambiosContainer() {
             </div>
 
             <div className="flex items-center gap-4">
-              {state.isLoading && (
+              {(state.isLoading || state.isProcessingCambio) && (
                 <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400">
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
                   <span className="text-sm">
                     {state.scan.status === 'scanning' && 'Escaneando...'}
                     {state.scan.status === 'uploading' && 'Subiendo archivo...'}
+                    {state.isProcessingCambio && 'Enviando cambio a Velneo...'}
                   </span>
                 </div>
               )}
@@ -181,6 +182,7 @@ export function CambiosContainer() {
                 onClick={nextStep}
                 disabled={
                   state.isLoading ||
+                  state.isProcessingCambio || // 🆕 Deshabilitar durante procesamiento
                   (state.currentStep === 1 && !canProceedToStep2) ||
                   (state.currentStep === 2 && !canProceedToStep3) ||
                   (state.currentStep === 3 && !canProceedToStep4)
@@ -216,6 +218,16 @@ export function CambiosContainer() {
               <AlertTriangle className="h-4 w-4" />
               <AlertDescription>
                 Completa la información requerida para proceder con el cambio.
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {/* 🆕 Mensaje cuando se está procesando el cambio */}
+          {state.isProcessingCambio && (
+            <Alert className="mt-4 border-blue-300 bg-blue-50 dark:bg-blue-900/10">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertDescription>
+                Procesando cambio en Velneo. Este proceso puede tomar unos momentos...
               </AlertDescription>
             </Alert>
           )}

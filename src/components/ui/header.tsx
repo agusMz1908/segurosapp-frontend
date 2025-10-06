@@ -38,8 +38,7 @@ const breadcrumbMap: Record<string, string[]> = {
   "/cambios": ["Cambios"], 
   "/polizas": ["Pólizas"],
   "/clientes": ["Clientes"],
-  "/metricas": ["Métricas"],
-  "/config": ["Configuración"],
+  "/facturacion": ["Facturación"]
 }
 
 export function Header() {

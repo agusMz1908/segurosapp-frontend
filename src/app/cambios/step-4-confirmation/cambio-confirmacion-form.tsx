@@ -36,8 +36,7 @@ interface ModifyPolizaResponse {
 }
 
 export function CambioConfirmationForm({ hookInstance }: CambioConfirmationFormProps) {
-  const { state, reset, markProcessCompleted } = hookInstance;
-  const [isProcessing, setIsProcessing] = useState(false);
+  const { state, reset, markProcessCompleted, startProcessingCambio, stopProcessingCambio } = hookInstance;
   const [processCompleted, setProcessCompleted] = useState(false);
   const [processResult, setProcessResult] = useState<ModifyPolizaResponse | null>(null);
 
@@ -62,7 +61,12 @@ export function CambioConfirmationForm({ hookInstance }: CambioConfirmationFormP
       if (typeof dateStr === 'string') {
         const date = new Date(dateStr);
         if (!isNaN(date.getTime())) {
-          return date.toLocaleDateString('es-UY');
+          // Formatear solo como fecha (dd/MM/yyyy) sin hora para vencimientos
+          return date.toLocaleDateString('es-UY', {
+            day: '2-digit',
+            month: '2-digit', 
+            year: 'numeric'
+          });
         }
       }
       return dateStr.toString();
@@ -82,7 +86,8 @@ export function CambioConfirmationForm({ hookInstance }: CambioConfirmationFormP
       return;
     }
 
-    setIsProcessing(true);
+    // 🆕 Usar la función del hook para iniciar procesamiento
+    startProcessingCambio();
 
     try {
       const token = getAuthToken();
@@ -146,7 +151,7 @@ export function CambioConfirmationForm({ hookInstance }: CambioConfirmationFormP
         setProcessResult(result);
         setProcessCompleted(true);
 
-        hookInstance.markProcessCompleted(result);
+        markProcessCompleted(result);
         
         toast.success(`Cambio completado exitosamente. Póliza modificada: ${result.polizaNumber || result.velneoPolizaId}`);
       } else {
@@ -156,8 +161,8 @@ export function CambioConfirmationForm({ hookInstance }: CambioConfirmationFormP
     } catch (error: any) {   
       const errorMessage = error.message || 'Error desconocido al procesar el cambio';
       toast.error(errorMessage);
-    } finally {
-      setIsProcessing(false);
+      // 🆕 Finalizar procesamiento en caso de error
+      stopProcessingCambio();
     }
   };
 
@@ -170,7 +175,8 @@ export function CambioConfirmationForm({ hookInstance }: CambioConfirmationFormP
     window.location.href = '/dashboard';
   };
 
-  if (isProcessing) {
+  // 🆕 Usar el estado del hook en lugar del estado local
+  if (state.isProcessingCambio) {
     return (
       <div className="space-y-6 p-6">
         <div className="text-center mb-6">
@@ -320,7 +326,7 @@ export function CambioConfirmationForm({ hookInstance }: CambioConfirmationFormP
               onClick={handleProcessCambio}
               size="lg"
               className="bg-green-600 hover:bg-green-700 shadow-lg hover:shadow-xl transition-all duration-200"
-              disabled={!state.scan?.scanId || !context.polizaOriginal?.id}
+              disabled={!state.scan?.scanId || !context.polizaOriginal?.id || state.isProcessingCambio}
             >
               <Send className="mr-2 h-5 w-5" />
               Procesar Cambio en Velneo

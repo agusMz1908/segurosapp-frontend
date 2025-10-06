@@ -190,8 +190,6 @@ export function ExtractedDataForm({ hookInstance }: ExtractedDataFormProps) {
 
   return (
     <div className="space-y-4">
-      
-      {/* Información de la Póliza */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label className="flex items-center gap-2">
@@ -243,11 +241,6 @@ export function ExtractedDataForm({ hookInstance }: ExtractedDataFormProps) {
             onChange={(e) => handleFieldChange('prima', e.target.value)}
             placeholder="0"
           />
-          {editedData.prima && (
-            <p className="text-xs text-muted-foreground">
-              {formatCurrency(editedData.prima)}
-            </p>
-          )}
         </div>
       </div>
 
@@ -280,11 +273,6 @@ export function ExtractedDataForm({ hookInstance }: ExtractedDataFormProps) {
             onChange={(e) => handleFieldChange('valorPorCuota', e.target.value)}
             placeholder="0"
           />
-          {editedData.valorPorCuota && (
-            <p className="text-xs text-muted-foreground">
-              {formatCurrency(editedData.valorPorCuota)}
-            </p>
-          )}
         </div>
 
         <div className="space-y-2">
@@ -299,15 +287,9 @@ export function ExtractedDataForm({ hookInstance }: ExtractedDataFormProps) {
             onChange={(e) => handleFieldChange('premioTotal', e.target.value)}
             placeholder="0"
           />
-          {editedData.premioTotal && (
-            <p className="text-xs text-muted-foreground">
-              {formatCurrency(editedData.premioTotal)}
-            </p>
-          )}
         </div>
       </div>
 
-      {/* Datos del Vehículo */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label className="flex items-center gap-2">
@@ -361,7 +343,6 @@ export function ExtractedDataForm({ hookInstance }: ExtractedDataFormProps) {
           />
         </div>
 
-        {/* ✅ NUEVO CAMPO: PADRÓN */}
         <div className="space-y-2">
           <Label className="flex items-center gap-2">
             Padrón

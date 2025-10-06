@@ -144,6 +144,24 @@ export function useNuevaPoliza() {
     return hasRequiredContext && hasExtractedData && hasRequiredPolicyData;
   }, [state]);
 
+  // Función para mapear forma de pago a código
+  const mapPaymentMethodToId = (formaPago: string): string => {
+    if (!formaPago) return "";
+    
+    const normalized = formaPago.toUpperCase();
+    
+    if (normalized.includes("TARJETA") || normalized.includes("CREDITO")) return "2";
+    if (normalized.includes("CONTADO") || normalized.includes("EFECTIVO")) return "1";
+    if (normalized.includes("DEBITO") || normalized.includes("BANCARIO")) return "3";
+    if (normalized.includes("COBRADOR")) return "4";
+    if (normalized.includes("CONFORME")) return "5";
+    if (normalized.includes("CHEQUE")) return "6";
+    if (normalized.includes("TRANSFERENCIA")) return "7";
+    if (normalized.includes("PASS") || normalized.includes("CARD")) return "8";
+    
+    return "1"; // Default a efectivo
+  };
+
   const mapBackendDataToFrontend = (backendData: any, rawData?: any) => {
     if (!rawData || Object.keys(rawData).length === 0) {
       return {};
@@ -352,6 +370,7 @@ const cleanPadronField = (str: string) => {
 
       return cuotasCount > 0 ? cuotasCount.toString() : "";
     };
+    
 
     const findFieldValue = (possibleFields: string[]) => {
       for (const field of possibleFields) {
@@ -454,8 +473,24 @@ const cleanPadronField = (str: string) => {
                  cleanText(findFieldValue([
                    "pago.forma_pago",      
                    "modo_de_pago",            
-                   "pago.medio"             
+                   "pago.medio",
+                   "formaPago"
                  ]) || "") || "",
+
+      medioPagoId: (() => {
+        // Primero intentar obtener de backendData
+        if (backendData.medioPagoId) return backendData.medioPagoId;
+        
+        // Luego mapear desde formaPago extraído
+        const formaPagoValue = findFieldValue([
+          "pago.forma_pago",      
+          "modo_de_pago",            
+          "pago.medio",
+          "formaPago"
+        ]) || "";
+        
+        return mapPaymentMethodToId(cleanText(formaPagoValue));
+      })(),
 
       vehiculoMarca: (() => {
         const conSalto = findFieldValue(["vehiculo.marca"]) || "";
@@ -731,7 +766,9 @@ const uploadWithContext = useCallback(async (file: File): Promise<boolean> => {
       
       const combinedExtractedData = {
         ...dataForDisplay,   
-        ...displayData    
+        ...displayData,
+        // Asegurar que medioPagoId esté disponible para el formulario
+        medioPagoId: displayData.medioPagoId || mapPaymentMethodToId(dataForDisplay.formaPago || "")
       };
       
       updateState({
@@ -748,6 +785,12 @@ const uploadWithContext = useCallback(async (file: File): Promise<boolean> => {
           completionPercentage: calculateCompletionPercentage(polizaMapping),
           requiresAttention: mapFieldIssues(polizaMapping.mappingIssues || []),
           errorMessage: undefined,
+        },
+        // Actualizar masterData automáticamente con medioPagoId
+        masterData: {
+          ...state.masterData,
+          medioPagoId: combinedExtractedData.medioPagoId || "",
+          cantidadCuotas: parseInt(combinedExtractedData.cantidadCuotas || "1") || 1
         },
         isLoading: false,
       });
@@ -781,7 +824,7 @@ const uploadWithContext = useCallback(async (file: File): Promise<boolean> => {
       toast.error('Error procesando documento: ' + (error.message || 'Error desconocido'));
       return false;
     }
-  }, [state.context, isContextValid, updateState, mapBackendDataToFrontend, calculateCompletionPercentage, mapFieldIssues]);
+  }, [state.context, isContextValid, updateState, mapBackendDataToFrontend, calculateCompletionPercentage, mapFieldIssues, mapPaymentMethodToId]);
 
   const removeSelectedFile = useCallback(() => {
     updateState({
@@ -857,7 +900,7 @@ const sendToVelneo = useCallback(async (): Promise<boolean> => {
       correctedFields: []
     };
 
-    console.log('🚗 NUEVA POLIZA - Enviando padrón a Velneo:', {
+    console.log('Enviando padrón a Velneo:', {
       vehiclePadron: createRequest.vehiclePadron,
       extractedPadron: state.scan.extractedData?.vehiculoPadron
     });

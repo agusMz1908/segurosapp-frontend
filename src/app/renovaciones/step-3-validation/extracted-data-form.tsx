@@ -11,9 +11,6 @@ export function ExtractedDataForm({ hookInstance }: ExtractedDataFormProps) {
   const { state, updateExtractedData } = hookInstance;
   const [editedData, setEditedData] = useState<any>({});
   const [isInitialized, setIsInitialized] = useState(false);
-
-  // 🔧 FIX RENOVACIONES: Usar EXACTAMENTE la misma lógica que Cambios (después del fix)
-  // Solo usar extractedData como fuente única (no cascada compleja)
   const dataSource = state.scan.extractedData || {};
   
   console.log('🔍 RENOVACIONES FIXED - ExtractedData disponible:', {
@@ -28,7 +25,6 @@ export function ExtractedDataForm({ hookInstance }: ExtractedDataFormProps) {
 
   useEffect(() => {
     if (dataSource && Object.keys(dataSource).length > 0) {
-      console.log('✅ RENOVACIONES FIXED - Inicializando con extractedData unificado:', dataSource);
       setEditedData(dataSource);
       setIsInitialized(true);
     }
@@ -51,18 +47,13 @@ export function ExtractedDataForm({ hookInstance }: ExtractedDataFormProps) {
     return hasAttention ? 'warning' : 'success';
   };
 
-  // 🔧 FIX: Mismas funciones que en Cambios para manejar SURA y MAPFRE
   const formatCurrency = (value: string | number) => {
     if (!value) return '';
     
     let stringValue = typeof value === 'string' ? value : value.toString();
-    
-    // 🔧 FIX SURA: Manejar formato uruguayo
     if (stringValue.includes('.') && stringValue.includes(',')) {
-      // Formato uruguayo: 3.670,09 → 3670.09
       stringValue = stringValue.replace(/\./g, '').replace(',', '.');
     } else if (stringValue.includes(',') && !stringValue.includes('.')) {
-      // Solo coma: 3670,09 → 3670.09
       const parts = stringValue.split(',');
       if (parts.length === 2 && parts[1].length <= 2) {
         stringValue = stringValue.replace(',', '.');
@@ -84,85 +75,63 @@ export function ExtractedDataForm({ hookInstance }: ExtractedDataFormProps) {
     if (!value) return '';
     
     let stringValue = typeof value === 'string' ? value : value.toString();
-    
-    // 🔧 FIX SURA: Manejar formato uruguayo con puntos y comas
-    // Ejemplos: "3.670,09" → "3670.09", "36.691,09" → "36691.09"
-    
-    console.log('🔍 RENOVACIONES SURA - Procesando número:', stringValue);
-    
-    // Si tiene tanto puntos como comas (formato uruguayo: 1.234,56)
+  
     if (stringValue.includes('.') && stringValue.includes(',')) {
-      // Remover puntos (separadores de miles) y cambiar coma por punto decimal
       stringValue = stringValue.replace(/\./g, '').replace(',', '.');
-      console.log('🔧 RENOVACIONES SURA - Formato uruguayo detectado, convertido a:', stringValue);
     }
-    // Si solo tiene coma (podría ser decimal europeo: 1234,56)
     else if (stringValue.includes(',') && !stringValue.includes('.')) {
-      // Verificar si es separador decimal (máximo 2 dígitos después de la coma)
       const parts = stringValue.split(',');
       if (parts.length === 2 && parts[1].length <= 2) {
         stringValue = stringValue.replace(',', '.');
-        console.log('🔧 RENOVACIONES SURA - Coma decimal detectada, convertida a:', stringValue);
       }
     }
     
-    // Limpiar caracteres no numéricos excepto punto decimal
     const numValue = parseFloat(stringValue.replace(/[^\d.-]/g, ''));
     
     if (isNaN(numValue)) {
-      console.log('❌ RENOVACIONES SURA - No se pudo convertir a número:', stringValue);
       return '';
     }
     
-    // Mantener precisión decimal completa (no redondear a centavos)
     const result = numValue.toString();
-    console.log('✅ RENOVACIONES SURA - Número final:', result);
     return result;
   };
 
-  // 🔧 FUNCIONES AUXILIARES PARA BUSCAR CAMPOS (iguales que Cambios)
   const findPolizaNumber = () => {
-    // Buscar en múltiples posibles nombres de campo
     const possibleFields = [
-      'polizaNumber',      // Como Nueva Póliza
-      'polizaNumero',      // Del mapeo de cambios  
-      'numeroPoliza',      // Alternativo
-      'NumeroPoliza',      // Backend
-      'poliza_numero'      // Snake case
+      'polizaNumber',    
+      'polizaNumero',       
+      'numeroPoliza',    
+      'NumeroPoliza',   
+      'poliza_numero'    
     ];
     
     for (const field of possibleFields) {
       if (editedData[field] && editedData[field].toString().trim()) {
         let polizaNumber = editedData[field].toString().trim();
         
-        // 🔧 FIX: Quitar prefijos y caracteres no deseados
         polizaNumber = polizaNumber
-          .replace(/^(nro\.\s*|nro\s*|número\s*|numero\s*)/i, '')  // Prefijos
-          .replace(/^:\s*/, '')                                     // Dos puntos al inicio (SURA)
-          .replace(/^\s*:\s*/, '')                                  // Dos puntos con espacios
+          .replace(/^(nro\.\s*|nro\s*|número\s*|numero\s*)/i, '')  
+          .replace(/^:\s*/, '')                                   
+          .replace(/^\s*:\s*/, '')                                
           .trim();
-        
-        console.log(`🎯 RENOVACIONES FIX - Número de póliza encontrado en campo '${field}':`, editedData[field], '→ limpiado:', polizaNumber);
         return polizaNumber;
       }
     }
     
-    console.log('❌ RENOVACIONES FIX - No se encontró número de póliza en ningún campo');
     return '';
   };
 
   const findVehicleField = (fieldName: string) => {
     const possibleFields = [
-      fieldName,                           // Nombre directo
-      `vehiculo${fieldName.charAt(0).toUpperCase()}${fieldName.slice(1)}`,  // vehiculoPatente
-      `Vehiculo${fieldName.charAt(0).toUpperCase()}${fieldName.slice(1)}`,  // VehiculoPatente
-      fieldName.replace('vehiculo', ''),   // patente (sin prefijo)
-      fieldName.charAt(0).toUpperCase() + fieldName.slice(1) // Patente
+      fieldName,                          
+      `vehiculo${fieldName.charAt(0).toUpperCase()}${fieldName.slice(1)}`,  
+      `Vehiculo${fieldName.charAt(0).toUpperCase()}${fieldName.slice(1)}`, 
+      fieldName.replace('vehiculo', ''),  
+      fieldName.charAt(0).toUpperCase() + fieldName.slice(1)
     ];
 
     for (const field of possibleFields) {
       if (editedData[field] && editedData[field].toString().trim()) {
-        console.log(`🎯 RENOVACIONES FIX - ${fieldName} encontrado en campo '${field}':`, editedData[field]);
         return editedData[field].toString();
       }
     }
@@ -172,9 +141,6 @@ export function ExtractedDataForm({ hookInstance }: ExtractedDataFormProps) {
 
   const extractValorPorCuota = (data: any) => {
     if (!data) return "";
-    
-    console.log('🔍 RENOVACIONES - Buscando valor por cuota en:', data);
-
     const cuotaFields = [
       "pago.cuota_monto[1]",      
       "pago.cuotas[0].prima",    
@@ -187,7 +153,6 @@ export function ExtractedDataForm({ hookInstance }: ExtractedDataFormProps) {
     for (const field of cuotaFields) {
       if (data[field]) {
         const valor = data[field].toString();
-        console.log(`✅ RENOVACIONES - Valor por cuota encontrado en ${field}:`, valor);
         return valor;
       }
     }
@@ -199,12 +164,10 @@ export function ExtractedDataForm({ hookInstance }: ExtractedDataFormProps) {
       const totalNum = parseFloat(total.toString().replace(/[^\d.-]/g, ''));
       if (!isNaN(totalNum)) {
         const valorCalculado = totalNum / cuotas;
-        console.log(`🧮 RENOVACIONES - Valor por cuota calculado: ${total} / ${cuotas} = ${valorCalculado}`);
         return valorCalculado.toString();
       }
     }
-    
-    console.log('❌ RENOVACIONES - No se encontró valor de cuota');
+
     return "";
   };
 
@@ -233,17 +196,12 @@ export function ExtractedDataForm({ hookInstance }: ExtractedDataFormProps) {
               {getFieldStatus('polizaNumber') === 'success' && <CheckCircle className="h-4 w-4 text-green-500" />}
               {getFieldStatus('polizaNumber') === 'warning' && <AlertTriangle className="h-4 w-4 text-amber-500" />}
             </Label>
-            {/* 🔧 RENOVACIONES FIX: Usar función inteligente de búsqueda */}
             <Input
               value={findPolizaNumber()}
               onChange={(e) => handleFieldChange('polizaNumber', e.target.value)}
               placeholder="Número de la nueva póliza"
               className="font-mono"
             />
-            {/* Debug info */}
-            <div className="text-xs text-gray-500">
-              Debug: Buscando en: polizaNumber, polizaNumero, numeroPoliza, NumeroPoliza
-            </div>
           </div>
 
           <div className="space-y-2">
@@ -460,20 +418,6 @@ export function ExtractedDataForm({ hookInstance }: ExtractedDataFormProps) {
             />
           </div>
         </div>
-      </div>
-
-      {/* 🔧 PANEL DE DEBUG (remover después) */}
-      <div className="p-4 bg-gray-100 dark:bg-gray-800 rounded text-xs">
-        <strong>Debug Info Renovaciones:</strong>
-        <pre>{JSON.stringify({
-          extractedDataKeys: Object.keys(editedData).slice(0, 10),
-          polizaNumbers: {
-            polizaNumber: editedData.polizaNumber,
-            polizaNumero: editedData.polizaNumero,
-            numeroPoliza: editedData.numeroPoliza,
-            NumeroPoliza: editedData.NumeroPoliza
-          }
-        }, null, 2)}</pre>
       </div>
     </div>
   );
